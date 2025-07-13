@@ -46,7 +46,7 @@ export const ExifPanel: FC<{
       className={`${
         isMobile
           ? 'exif-panel-mobile fixed right-0 bottom-0 left-0 z-10 max-h-[60vh] w-full rounded-t-2xl backdrop-blur-[70px]'
-          : 'w-80 shrink-0'
+          : 'relative z-10 w-80 shrink-0'
       } bg-material-medium flex flex-col text-white`}
       initial={{
         opacity: 0,
@@ -91,7 +91,11 @@ export const ExifPanel: FC<{
               {t('exif.basic.info')}
             </h4>
             <div className="space-y-1 text-sm">
-              <Row label={t('exif.filename')} value={currentPhoto.title} />
+              <Row
+                label={t('exif.filename')}
+                value={currentPhoto.title}
+                ellipsis={true}
+              />
               <Row label={t('exif.format')} value={imageFormat} />
               <Row
                 label={t('exif.dimensions')}
