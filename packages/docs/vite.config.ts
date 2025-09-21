@@ -63,11 +63,11 @@ export default defineConfig({
         ],
       }),
     },
-    react(),
     codeInspectorPlugin({
       bundler: 'vite',
       hotKeys: ['altKey'],
     }),
+    react(),
   ],
   resolve: {
     alias: {

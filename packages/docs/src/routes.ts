@@ -105,7 +105,7 @@ export const routes: RouteConfig[] = [
       title: 'Docs site',
       description: 'Docs site introduction and contribution guide',
       createdAt: '2025-09-11T17:05:55+08:00',
-      lastModified: '2025-09-11T17:05:55+08:00',
+      lastModified: '2025-09-11T17:10:35+08:00',
     },
   },
   {
