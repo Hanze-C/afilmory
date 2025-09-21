@@ -35,6 +35,11 @@ interface TileInfo {
 // 瓦片键值
 type TileKey = string // 格式：`${x}-${y}-${lodLevel}`
 
+type PixelAlignmentOffset = {
+  offsetX: number
+  offsetY: number
+}
+
 // 简化的 LOD 级别
 const SIMPLE_LOD_LEVELS = [
   { scale: 0.25 }, // 极低质量
@@ -609,11 +614,36 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.isOriginalSize = false
   }
 
-  private createMatrix(): Float32Array {
+  private getPixelAlignmentOffset(): PixelAlignmentOffset {
+    if (!this.imageWidth || !this.imageHeight) {
+      return { offsetX: 0, offsetY: 0 }
+    }
+
+    const scaledWidth = this.imageWidth * this.scale
+    const scaledHeight = this.imageHeight * this.scale
+
+    const imageLeftInCanvas =
+      this.canvasWidth / 2 + this.translateX - scaledWidth / 2
+    const imageTopInCanvas =
+      this.canvasHeight / 2 + this.translateY - scaledHeight / 2
+
+    const alignToDevicePixel = (value: number) =>
+      Math.round(value * this.devicePixelRatio) / this.devicePixelRatio
+
+    return {
+      offsetX: alignToDevicePixel(imageLeftInCanvas) - imageLeftInCanvas,
+      offsetY: alignToDevicePixel(imageTopInCanvas) - imageTopInCanvas,
+    }
+  }
+
+  private createMatrix(pixelAlignment?: PixelAlignmentOffset): Float32Array {
+    const { offsetX, offsetY } =
+      pixelAlignment ?? this.getPixelAlignmentOffset()
+
     const scaleX = (this.imageWidth * this.scale) / this.canvasWidth
     const scaleY = (this.imageHeight * this.scale) / this.canvasHeight
-    const translateX = (this.translateX * 2) / this.canvasWidth
-    const translateY = -(this.translateY * 2) / this.canvasHeight
+    const translateX = ((this.translateX + offsetX) * 2) / this.canvasWidth
+    const translateY = -((this.translateY + offsetY) * 2) / this.canvasHeight
 
     return new Float32Array([
       scaleX,
@@ -911,9 +941,15 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     const matrixLocation = gl.getUniformLocation(this.program, 'u_matrix')
     const imageLocation = gl.getUniformLocation(this.program, 'u_image')
 
+    const pixelAlignment = this.getPixelAlignmentOffset()
+
     // 始终渲染一个低分辨率的底图作为回退，防止瓦片加载过程中出现空白
     if (this.texture) {
-      gl.uniformMatrix3fv(matrixLocation, false, this.createMatrix())
+      gl.uniformMatrix3fv(
+        matrixLocation,
+        false,
+        this.createMatrix(pixelAlignment),
+      )
       gl.uniform1i(imageLocation, 0)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, this.texture)
@@ -934,6 +970,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         tileInfo.x,
         tileInfo.y,
         tileInfo.lodLevel,
+        pixelAlignment,
       )
       gl.uniformMatrix3fv(matrixLocation, false, tileMatrix)
 
@@ -961,6 +998,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     tileX: number,
     tileY: number,
     lodLevel: number,
+    pixelAlignment: PixelAlignmentOffset,
   ): Float32Array {
     const { cols, rows } = this.getTileGridSize(lodLevel)
 
@@ -984,30 +1022,50 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     const actualTileWidth = tileRightInImage - tileLeftInImage
     const actualTileHeight = tileBottomInImage - tileTopInImage
 
-    // 瓦片中心在原图中的位置
-    const tileCenterInImageX = tileLeftInImage + actualTileWidth / 2
-    const tileCenterInImageY = tileTopInImage + actualTileHeight / 2
+    const scaledImageWidth = this.imageWidth * this.scale
+    const scaledImageHeight = this.imageHeight * this.scale
 
-    // 将瓦片中心转换到相对于图像中心的坐标
-    const tileCenterRelativeX = tileCenterInImageX - this.imageWidth / 2
-    const tileCenterRelativeY = tileCenterInImageY - this.imageHeight / 2
+    const adjustedTranslateX = this.translateX + pixelAlignment.offsetX
+    const adjustedTranslateY = this.translateY + pixelAlignment.offsetY
 
-    // 计算瓦片在 canvas 中的位置
-    const tileCenterInCanvasX =
-      this.canvasWidth / 2 + this.translateX + tileCenterRelativeX * this.scale
-    const tileCenterInCanvasY =
-      this.canvasHeight / 2 + this.translateY + tileCenterRelativeY * this.scale
+    const imageLeftInCanvas =
+      this.canvasWidth / 2 + adjustedTranslateX - scaledImageWidth / 2
+    const imageTopInCanvas =
+      this.canvasHeight / 2 + adjustedTranslateY - scaledImageHeight / 2
 
-    // 计算瓦片在 canvas 中的尺寸
+    const tileLeftInCanvas = imageLeftInCanvas + tileLeftInImage * this.scale
+    const tileTopInCanvas = imageTopInCanvas + tileTopInImage * this.scale
     const tileWidthInCanvas = actualTileWidth * this.scale
     const tileHeightInCanvas = actualTileHeight * this.scale
 
-    // 转换到 WebGL 归一化坐标系 (-1 到 1)
-    const scaleX = tileWidthInCanvas / this.canvasWidth
-    const scaleY = tileHeightInCanvas / this.canvasHeight
+    const tileRightInCanvas = tileLeftInCanvas + tileWidthInCanvas
+    const tileBottomInCanvas = tileTopInCanvas + tileHeightInCanvas
 
-    const translateX = (tileCenterInCanvasX * 2) / this.canvasWidth - 1
-    const translateY = -((tileCenterInCanvasY * 2) / this.canvasHeight - 1)
+    const alignToDevicePixel = (value: number) =>
+      Math.round(value * this.devicePixelRatio) / this.devicePixelRatio
+
+    const alignedLeft = alignToDevicePixel(tileLeftInCanvas)
+    const alignedTop = alignToDevicePixel(tileTopInCanvas)
+    const alignedRight = alignToDevicePixel(tileRightInCanvas)
+    const alignedBottom = alignToDevicePixel(tileBottomInCanvas)
+
+    const adjustedWidth = alignedRight - alignedLeft
+    const adjustedHeight = alignedBottom - alignedTop
+
+    const finalLeft = adjustedWidth > 0 ? alignedLeft : tileLeftInCanvas
+    const finalTop = adjustedHeight > 0 ? alignedTop : tileTopInCanvas
+    const finalWidth = adjustedWidth > 0 ? adjustedWidth : tileWidthInCanvas
+    const finalHeight = adjustedHeight > 0 ? adjustedHeight : tileHeightInCanvas
+
+    const finalCenterInCanvasX = finalLeft + finalWidth / 2
+    const finalCenterInCanvasY = finalTop + finalHeight / 2
+
+    // 转换到 WebGL 归一化坐标系 (-1 到 1)
+    const scaleX = finalWidth / this.canvasWidth
+    const scaleY = finalHeight / this.canvasHeight
+
+    const translateX = (finalCenterInCanvasX * 2) / this.canvasWidth - 1
+    const translateY = -((finalCenterInCanvasY * 2) / this.canvasHeight - 1)
 
     return new Float32Array([
       scaleX,
