@@ -4,23 +4,23 @@ import * as bmp from '@vingle/bmp-js'
 import heicConvert from 'heic-convert'
 import sharp from 'sharp'
 
-import { HEIC_FORMATS } from '../constants/index.js'
-import type { Logger } from '../logger/index.js'
-import { getGlobalLoggers } from '../photo/logger-adapter.js'
+import { AVIF_FORMATS, HEIC_FORMATS } from '../constants/index.js'
+import { logger } from '../logger/index.js'
+import { photoLoggers } from '../photo/logger-adapter.js'
 import type { ImageMetadata } from '../types/photo.js'
+import { convertAvifToJpeg } from './avif.js'
 
 // 获取图片元数据（复用 Sharp 实例）
 export async function getImageMetadataWithSharp(
   sharpInstance: sharp.Sharp,
-  imageLogger?: Logger['image'],
 ): Promise<ImageMetadata | null> {
-  const log = imageLogger
+  const log = photoLoggers!.image
 
   try {
     const metadata = await sharpInstance.metadata()
 
     if (!metadata.width || !metadata.height || !metadata.format) {
-      log?.error('图片元数据不完整')
+      log.error('图片元数据不完整')
       return null
     }
 
@@ -37,7 +37,7 @@ export async function getImageMetadataWithSharp(
     ) {
       // 对于需要旋转 90°的图片，需要交换宽高
       ;[width, height] = [height, width]
-      log?.info(
+      log.info(
         `检测到需要旋转 90°的图片 (orientation: ${orientation})，交换宽高：${width}x${height}`,
       )
     }
@@ -48,20 +48,16 @@ export async function getImageMetadataWithSharp(
       format: metadata.format,
     }
   } catch (error) {
-    log?.error('获取图片元数据失败：', error)
+    log.error('获取图片元数据失败：', error)
     return null
   }
 }
 
 // 转换 HEIC/HEIF 格式到 JPEG
-export async function convertHeicToJpeg(
-  heicBuffer: Buffer,
-  imageLogger?: Logger['image'],
-): Promise<Buffer> {
-  const log = imageLogger
-
+export async function convertHeicToJpeg(heicBuffer: Buffer): Promise<Buffer> {
+  const log = photoLoggers!.image
   try {
-    log?.info(
+    log.info(
       `开始 HEIC/HEIF → JPEG 转换 (${Math.round(heicBuffer.length / 1024)}KB)`,
     )
     const startTime = Date.now()
@@ -74,11 +70,11 @@ export async function convertHeicToJpeg(
 
     const duration = Date.now() - startTime
     const outputSizeKB = Math.round(jpegBuffer.byteLength / 1024)
-    log?.success(`HEIC/HEIF 转换完成 (${outputSizeKB}KB, ${duration}ms)`)
+    log.success(`HEIC/HEIF 转换完成 (${outputSizeKB}KB, ${duration}ms)`)
 
     return Buffer.from(jpegBuffer)
   } catch (error) {
-    log?.error('HEIC/HEIF 转换失败：', error)
+    log.error('HEIC/HEIF 转换失败：', error)
     throw error
   }
 }
@@ -88,13 +84,18 @@ export async function preprocessImageBuffer(
   buffer: Buffer,
   key: string,
 ): Promise<Buffer> {
-  const log = getGlobalLoggers().image.originalLogger
   const ext = path.extname(key).toLowerCase()
+
+  if (AVIF_FORMATS.has(ext)) {
+    logger.image.info(`检测到 AVIF 格式：${key}`)
+    const { buffer: jpegBuffer } = await convertAvifToJpeg(buffer)
+    return jpegBuffer
+  }
 
   // 如果是 HEIC/HEIF 格式，先转换为 JPEG
   if (HEIC_FORMATS.has(ext)) {
-    log?.info(`检测到 HEIC/HEIF 格式：${key}`)
-    return await convertHeicToJpeg(buffer, log)
+    logger.image.info(`检测到 HEIC/HEIF 格式：${key}`)
+    return await convertHeicToJpeg(buffer)
   }
 
   // 其他格式直接返回原始 buffer
@@ -119,12 +120,11 @@ export function isBitmap(buf: Buffer): boolean {
  */
 export async function convertBmpToJpegSharpInstance(
   bmpBuffer: Buffer,
-  imageLogger?: Logger['image'],
 ): Promise<sharp.Sharp> {
-  const log = imageLogger
-
   try {
-    log?.info(`开始 BMP → JPEG 转换 (${Math.round(bmpBuffer.length / 1024)}KB)`)
+    logger.image.info(
+      `开始 BMP → JPEG 转换 (${Math.round(bmpBuffer.length / 1024)}KB)`,
+    )
     const startTime = Date.now()
 
     // 使用 @vingle/bmp-js 解析 BMP
@@ -146,11 +146,11 @@ export async function convertBmpToJpegSharpInstance(
     }).jpeg()
 
     const duration = Date.now() - startTime
-    log?.success(`BMP 转换完成 (${duration}ms)`)
+    logger.image.success(`BMP 转换完成 (${duration}ms)`)
 
     return sharpInstance
   } catch (error) {
-    log?.error('BMP 转换失败：', error)
+    logger.image.error('BMP 转换失败：', error)
     throw error
   }
 }

@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 
 import { Thumbhash } from '~/components/ui/thumbhash'
+import { decodeAvifToImageData, isAvifSource } from '~/lib/avif-decoder'
 import { clsxm } from '~/lib/cn'
 
 export interface LazyImageProps {
@@ -30,6 +31,11 @@ export const LazyImage = ({
 }: LazyImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [decodeFailed, setDecodeFailed] = useState(false)
+  const objectUrlRef = useRef<string | null>(null)
+
+  const isAvif = useMemo(() => isAvifSource(src), [src])
 
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -49,6 +55,78 @@ export const LazyImage = ({
 
   const shouldLoadImage = inView && !hasError
 
+  useEffect(() => {
+    setIsLoaded(false)
+    setHasError(false)
+    setObjectUrl(null)
+    setDecodeFailed(false)
+  }, [src])
+
+  useEffect(() => {
+    if (!isAvif || !shouldLoadImage || objectUrl || decodeFailed) {
+      return
+    }
+
+    let cancelled = false
+    const controller = new AbortController()
+
+    const decode = async () => {
+      try {
+        const response = await fetch(src, {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const buffer = await response.arrayBuffer()
+        const imageData = await decodeAvifToImageData(buffer)
+
+        if (cancelled) {
+          return
+        }
+
+        const url = await imageDataToObjectUrl(imageData)
+        if (cancelled) {
+          URL.revokeObjectURL(url)
+          return
+        }
+
+        setObjectUrl(url)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        console.error('Failed to decode AVIF image', error)
+        setDecodeFailed(true)
+      }
+    }
+
+    decode()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [decodeFailed, isAvif, objectUrl, shouldLoadImage, src])
+
+  useEffect(() => {
+    if (objectUrlRef.current && objectUrlRef.current !== objectUrl) {
+      URL.revokeObjectURL(objectUrlRef.current)
+    }
+
+    objectUrlRef.current = objectUrl
+
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
+    }
+  }, [objectUrl])
+
   return (
     <div
       ref={ref}
@@ -64,9 +142,9 @@ export const LazyImage = ({
       )}
 
       {/* Actual image */}
-      {shouldLoadImage && (
+      {shouldLoadImage && (!isAvif || objectUrl || decodeFailed) && (
         <img
-          src={src}
+          src={isAvif ? (objectUrl ?? src) : src}
           alt={alt}
           className={clsxm(
             'h-full w-full object-cover transition-opacity duration-300',
@@ -88,4 +166,29 @@ export const LazyImage = ({
       )}
     </div>
   )
+}
+
+async function imageDataToObjectUrl(imageData: ImageData): Promise<string> {
+  const canvas = document.createElement('canvas')
+  canvas.width = imageData.width
+  canvas.height = imageData.height
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('无法创建 Canvas 上下文')
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => {
+      if (value) {
+        resolve(value)
+      } else {
+        reject(new Error('Canvas toBlob 失败'))
+      }
+    }, 'image/png')
+  })
+
+  return URL.createObjectURL(blob)
 }

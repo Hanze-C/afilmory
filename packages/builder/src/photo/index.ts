@@ -23,8 +23,8 @@ export type { PhotoLogger, PhotoProcessingLoggers } from './logger-adapter.js'
 export {
   CompatibleLoggerAdapter,
   createPhotoProcessingLoggers,
-  getGlobalLoggers,
+  initPhotoLoggers,
   LoggerAdapter,
-  setGlobalLoggers,
+  photoLoggers,
   WorkerLoggerAdapter,
 } from './logger-adapter.js'

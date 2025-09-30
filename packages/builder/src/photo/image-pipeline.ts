@@ -21,7 +21,7 @@ import {
 } from './data-processors.js'
 import { extractPhotoInfo } from './info-extractor.js'
 import { processLivePhoto } from './live-photo-handler.js'
-import { getGlobalLoggers } from './logger-adapter.js'
+import { photoLoggers } from './logger-adapter.js'
 import type { PhotoProcessorOptions } from './processor.js'
 
 export interface ProcessedImageData {
@@ -45,7 +45,7 @@ export interface PhotoProcessingContext {
 export async function preprocessImage(
   photoKey: string,
 ): Promise<{ rawBuffer: Buffer; processedBuffer: Buffer } | null> {
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   try {
     // 获取图片数据
@@ -84,7 +84,7 @@ export async function processImageWithSharp(
   imageBuffer: Buffer,
   photoKey: string,
 ): Promise<ProcessedImageData | null> {
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   try {
     // 创建 Sharp 实例，复用于多个操作
@@ -95,10 +95,7 @@ export async function processImageWithSharp(
     if (isBitmap(imageBuffer)) {
       try {
         // Convert the BMP image to JPEG format and create a new Sharp instance for the converted image.
-        sharpInstance = await convertBmpToJpegSharpInstance(
-          imageBuffer,
-          loggers.image.originalLogger,
-        )
+        sharpInstance = await convertBmpToJpegSharpInstance(imageBuffer)
         // Update the image buffer to reflect the new JPEG data from the Sharp instance.
         processedBuffer = await sharpInstance.toBuffer()
       } catch (error) {
@@ -108,10 +105,7 @@ export async function processImageWithSharp(
     }
 
     // 获取图片元数据（复用 Sharp 实例）
-    const metadata = await getImageMetadataWithSharp(
-      sharpInstance,
-      loggers.image.originalLogger,
-    )
+    const metadata = await getImageMetadataWithSharp(sharpInstance)
     if (!metadata) {
       loggers.image.error(`获取图片元数据失败：${photoKey}`)
       return null
@@ -154,7 +148,7 @@ export async function executePhotoProcessingPipeline(
   context: PhotoProcessingContext,
 ): Promise<PhotoManifestItem | null> {
   const { photoKey, obj, existingItem, livePhotoMap, options } = context
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   // Generate the actual photo ID with digest suffix
   const photoId = await generatePhotoId(photoKey)
@@ -254,7 +248,7 @@ export async function processPhotoWithPipeline(
   type: 'new' | 'processed' | 'skipped' | 'failed'
 }> {
   const { photoKey, existingItem, obj, options } = context
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   const photoId = await generatePhotoId(photoKey)
 

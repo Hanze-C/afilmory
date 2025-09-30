@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -7,24 +8,30 @@ import { exiftool } from 'exiftool-vendored'
 import type { Metadata } from 'sharp'
 import sharp from 'sharp'
 
-import { getGlobalLoggers } from '../photo/logger-adapter.js'
+import { photoLoggers } from '../photo/logger-adapter.js'
 import type { PickedExif } from '../types/photo.js'
 
 // 提取 EXIF 数据
 export async function extractExifData(
   imageBuffer: Buffer,
   originalBuffer?: Buffer,
+  originalExtension?: string,
 ): Promise<PickedExif | null> {
-  const log = getGlobalLoggers().exif
+  const log = photoLoggers!.exif
 
   try {
     log.info('开始提取 EXIF 数据')
 
     // 首先尝试从处理后的图片中提取 EXIF
-    let metadata = await sharp(imageBuffer).metadata()
+    let metadata: Metadata | null = null
+    try {
+      metadata = await sharp(imageBuffer).metadata()
+    } catch (error) {
+      log.warn('从处理后的图片提取 EXIF 失败：', error)
+    }
 
     // 如果处理后的图片没有 EXIF 数据，且提供了原始 buffer，尝试从原始图片提取
-    if (!metadata.exif && originalBuffer) {
+    if ((!metadata || !metadata.exif) && originalBuffer) {
       log.info('处理后的图片缺少 EXIF 数据，尝试从原始图片提取')
       try {
         metadata = await sharp(originalBuffer).metadata()
@@ -33,15 +40,10 @@ export async function extractExifData(
       }
     }
 
-    if (!metadata.exif) {
-      log.warn('未找到 EXIF 数据')
-      return null
-    }
-
     await mkdir('/tmp/image_process', { recursive: true })
     const tempImagePath = path.resolve(
       '/tmp/image_process',
-      `${crypto.randomUUID()}.jpg`,
+      `${crypto.randomUUID()}${originalExtension ?? '.jpg'}`,
     )
 
     await writeFile(tempImagePath, originalBuffer || imageBuffer)
@@ -131,7 +133,7 @@ const pickKeys: Array<keyof Tags | (string & {})> = [
   // HDR相关字段
   'MPImageType',
 ]
-function handleExifData(exifData: Tags, metadata: Metadata): PickedExif {
+function handleExifData(exifData: Tags, metadata: Metadata | null): PickedExif {
   const date = {
     DateTimeOriginal: formatExifDate(exifData.DateTimeOriginal),
     DateTimeDigitized: formatExifDate(exifData.DateTimeDigitized),
@@ -173,8 +175,8 @@ function handleExifData(exifData: Tags, metadata: Metadata): PickedExif {
     }
   }
   const size = {
-    ImageWidth: exifData.ExifImageWidth || metadata.width,
-    ImageHeight: exifData.ExifImageHeight || metadata.height,
+    ImageWidth: exifData.ExifImageWidth || metadata?.width,
+    ImageHeight: exifData.ExifImageHeight || metadata?.height,
   }
   const result: any = structuredClone(exifData)
   for (const key in result) {

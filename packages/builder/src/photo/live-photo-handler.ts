@@ -2,7 +2,7 @@ import type { _Object } from '@aws-sdk/client-s3'
 
 import { defaultBuilder } from '../builder/builder.js'
 import type { StorageObject } from '../storage/interfaces.js'
-import { getGlobalLoggers } from './logger-adapter.js'
+import { photoLoggers } from './logger-adapter.js'
 
 export interface LivePhotoResult {
   isLivePhoto: boolean
@@ -20,7 +20,7 @@ export function processLivePhoto(
   photoKey: string,
   livePhotoMap: Map<string, _Object | StorageObject>,
 ): LivePhotoResult {
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
   const livePhotoVideo = livePhotoMap.get(photoKey)
   const isLivePhoto = !!livePhotoVideo
 

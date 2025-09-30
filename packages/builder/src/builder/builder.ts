@@ -12,6 +12,7 @@ import {
   saveManifest,
 } from '../manifest/manager.js'
 import { CURRENT_MANIFEST_VERSION } from '../manifest/version.js'
+import { initPhotoLoggers } from '../photo/logger-adapter.js'
 import type { PhotoProcessorOptions } from '../photo/processor.js'
 import { processPhoto } from '../photo/processor.js'
 import { StorageManager } from '../storage/index.js'
@@ -80,6 +81,8 @@ class PhotoGalleryBuilder {
   private configureLogging(): void {
     // 这里可以根据配置调整日志设置
     // 目前日志配置在 logger 模块中处理
+    // 初始化全局日志器（主线程/非 cluster 模式使用）
+    initPhotoLoggers(logger)
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {

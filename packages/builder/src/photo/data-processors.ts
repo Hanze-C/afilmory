@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import type sharp from 'sharp'
 
-import { HEIC_FORMATS } from '../constants/index.js'
+import { AVIF_FORMATS, HEIC_FORMATS } from '../constants/index.js'
 import { extractExifData } from '../image/exif.js'
 import { calculateHistogramAndAnalyzeTone } from '../image/histogram.js'
 import {
@@ -17,7 +17,7 @@ import type {
   PickedExif,
   ToneAnalysis,
 } from '../types/photo.js'
-import { getGlobalLoggers } from './logger-adapter.js'
+import { photoLoggers } from './logger-adapter.js'
 import type { PhotoProcessorOptions } from './processor.js'
 
 export interface ThumbnailResult {
@@ -36,7 +36,7 @@ export async function processThumbnailAndBlurhash(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): Promise<ThumbnailResult> {
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   // 检查是否可以复用现有数据
   if (
@@ -93,7 +93,7 @@ export async function processExifData(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): Promise<PickedExif | null> {
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   // 检查是否可以复用现有数据
   if (!options.isForceMode && !options.isForceManifest && existingItem?.exif) {
@@ -104,9 +104,14 @@ export async function processExifData(
 
   // 提取新的 EXIF 数据
   const ext = path.extname(photoKey).toLowerCase()
-  const originalBuffer = HEIC_FORMATS.has(ext) ? rawImageBuffer : undefined
+  const needsOriginalBuffer = HEIC_FORMATS.has(ext) || AVIF_FORMATS.has(ext)
+  const originalBuffer = needsOriginalBuffer ? rawImageBuffer : undefined
 
-  return await extractExifData(imageBuffer, originalBuffer)
+  return await extractExifData(
+    imageBuffer,
+    originalBuffer,
+    needsOriginalBuffer ? ext : undefined,
+  )
 }
 
 /**
@@ -119,7 +124,7 @@ export async function processToneAnalysis(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): Promise<ToneAnalysis | null> {
-  const loggers = getGlobalLoggers()
+  const loggers = photoLoggers!
 
   // 检查是否可以复用现有数据
   if (

@@ -60,14 +60,22 @@ class CompatibleLoggerAdapter implements PhotoLogger {
 #### 基本使用
 
 ```typescript
-import { processPhoto, setGlobalLoggers, createPhotoProcessingLoggers } from './index.js'
+import { processPhoto, initPhotoLoggers } from './index.js'
+import { logger } from '../logger/index.js'
 
-// 设置全局 logger
-const loggers = createPhotoProcessingLoggers(workerId, baseLogger)
-setGlobalLoggers(loggers)
+// 在初始化阶段设置全局 logger（仅调用一次）
+initPhotoLoggers(logger, workerId)
 
 // 处理照片
-const result = await processPhoto(obj, index, workerId, totalImages, existingManifestMap, livePhotoMap, options)
+const result = await processPhoto(
+  obj,
+  index,
+  workerId,
+  totalImages,
+  existingManifestMap,
+  livePhotoMap,
+  options,
+)
 ```
 
 #### 单独使用各个模块

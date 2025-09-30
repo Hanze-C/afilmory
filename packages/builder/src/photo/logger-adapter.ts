@@ -123,23 +123,37 @@ export function createPhotoProcessingLoggers(
 /**
  * 全局 Logger 实例
  */
-let globalLoggers: PhotoProcessingLoggers | null = null
+export let photoLoggers: PhotoProcessingLoggers = null!
 
 /**
- * 设置全局 Logger
+ * 初始化全局 Logger（在 init 阶段调用一次）
  */
-export function setGlobalLoggers(loggers: PhotoProcessingLoggers): void {
-  globalLoggers = loggers
+export function initPhotoLoggers(baseLogger: Logger, workerId?: number): void {
+  if (photoLoggers) return
+
+  // 选择根 Consola 实例：有 workerId 则使用 worker(id)，否则使用主 logger
+  const root =
+    typeof workerId === 'number' && Number.isFinite(workerId)
+      ? baseLogger.worker(workerId)
+      : baseLogger.main
+  photoLoggers = {
+    image: new CompatibleLoggerAdapter(root.withTag('IMAGE')),
+    s3: new CompatibleLoggerAdapter(root.withTag('S3')),
+    thumbnail: new CompatibleLoggerAdapter(root.withTag('THUMBNAIL')),
+    blurhash: new CompatibleLoggerAdapter(root.withTag('BLURHASH')),
+    exif: new CompatibleLoggerAdapter(root.withTag('EXIF')),
+    tone: new CompatibleLoggerAdapter(root.withTag('TONE')),
+  }
 }
 
 /**
- * 获取全局 Logger
+ * 获取全局 Logger（向后兼容：保留函数名但实现为直接返回全局对象）
  */
 export function getGlobalLoggers(): PhotoProcessingLoggers {
-  if (!globalLoggers) {
+  if (!photoLoggers) {
     throw new Error(
-      'Global loggers not initialized. Call setGlobalLoggers first.',
+      'Global photoLoggers not initialized. Call initPhotoLoggers during init phase.',
     )
   }
-  return globalLoggers
+  return photoLoggers
 }

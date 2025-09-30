@@ -5,7 +5,7 @@ import type {
 } from '@afilmory/builder/types/photo.js'
 import type sharp from 'sharp'
 
-import { getGlobalLoggers } from '../photo'
+import { photoLoggers } from '../photo/logger-adapter.js'
 
 /**
  * 计算图片的直方图
@@ -16,10 +16,10 @@ import { getGlobalLoggers } from '../photo'
 async function calculateHistogram(
   sharpInstance: sharp.Sharp,
 ): Promise<HistogramData | null> {
-  const log = getGlobalLoggers().image
+  const log = photoLoggers!.image
 
   try {
-    log?.info('开始计算图片直方图')
+    log.info('开始计算图片直方图')
     const startTime = Date.now()
 
     // 获取图片的原始像素数据
@@ -65,11 +65,11 @@ async function calculateHistogram(
     })
 
     const duration = Date.now() - startTime
-    log?.success(`直方图计算完成 (${duration}ms)`)
+    log.success(`直方图计算完成 (${duration}ms)`)
 
     return histogram
   } catch (error) {
-    log?.error('计算直方图失败：', error)
+    log.error('计算直方图失败：', error)
     return null
   }
 }
@@ -81,10 +81,10 @@ async function calculateHistogram(
  * @returns 影调分析结果
  */
 function analyzeTone(histogram: HistogramData): ToneAnalysis {
-  const log = getGlobalLoggers().image
+  const log = photoLoggers!.image
 
   try {
-    log?.info('开始分析图片影调')
+    log.info('开始分析图片影调')
 
     const { luminance } = histogram
 
@@ -145,7 +145,7 @@ function analyzeTone(histogram: HistogramData): ToneAnalysis {
       highlightRatio: Math.round(highlightRatio * 100) / 100,
     }
 
-    log?.success(
+    log.success(
       `影调分析完成：${toneType} (亮度：${brightness}, 对比度：${contrast})`,
     )
 

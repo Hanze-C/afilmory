@@ -4,7 +4,7 @@ import path from 'node:path'
 import { workdir } from '@afilmory/builder/path.js'
 import sharp from 'sharp'
 
-import { getGlobalLoggers } from '../photo/logger-adapter.js'
+import { photoLoggers } from '../photo/logger-adapter.js'
 import type { ThumbnailResult } from '../types/photo.js'
 import { generateBlurhash } from './blurhash.js'
 
@@ -66,7 +66,7 @@ async function processExistingThumbnail(
 ): Promise<ThumbnailResult | null> {
   const { thumbnailPath, thumbnailUrl } = getThumbnailPaths(photoId)
 
-  const thumbnailLog = getGlobalLoggers().thumbnail
+  const thumbnailLog = photoLoggers!.thumbnail
   thumbnailLog.info(`复用现有缩略图：${photoId}`)
 
   try {
@@ -87,7 +87,7 @@ async function generateNewThumbnail(
 ): Promise<ThumbnailResult> {
   const { thumbnailPath, thumbnailUrl } = getThumbnailPaths(photoId)
 
-  const log = getGlobalLoggers().thumbnail
+  const log = photoLoggers!.thumbnail
   log.info(`生成缩略图：${photoId}`)
   const startTime = Date.now()
 
@@ -128,7 +128,7 @@ export async function generateThumbnailAndBlurhash(
   photoId: string,
   forceRegenerate = false,
 ): Promise<ThumbnailResult> {
-  const thumbnailLog = getGlobalLoggers().thumbnail
+  const thumbnailLog = photoLoggers!.thumbnail
 
   try {
     await ensureThumbnailDir()

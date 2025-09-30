@@ -3,14 +3,14 @@ import path from 'node:path'
 import { env } from '@env'
 
 import type { PhotoInfo, PickedExif } from '../types/photo.js'
-import { getGlobalLoggers } from './logger-adapter.js'
+import { photoLoggers } from './logger-adapter.js'
 
 // 从文件名提取照片信息
 export function extractPhotoInfo(
   key: string,
   exifData?: PickedExif | null,
 ): PhotoInfo {
-  const log = getGlobalLoggers().image
+  const log = photoLoggers!.image
 
   log.info(`提取照片信息：${key}`)
 
@@ -55,13 +55,13 @@ export function extractPhotoInfo(
         dateTaken = dateTimeOriginal.toISOString()
         log.info('使用 EXIF Date 对象作为拍摄时间')
       } else {
-        log?.warn(
+        log.warn(
           `未知的 DateTimeOriginal 类型：${typeof dateTimeOriginal}`,
           dateTimeOriginal,
         )
       }
     } catch (error) {
-      log?.warn(
+      log.warn(
         `解析 EXIF DateTimeOriginal 失败：${exifData.DateTimeOriginal}`,
         error,
       )

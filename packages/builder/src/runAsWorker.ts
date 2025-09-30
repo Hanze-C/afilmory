@@ -1,6 +1,8 @@
 import process from 'node:process'
 import { deserialize } from 'node:v8'
 
+import { logger } from './logger/index.js'
+import { initPhotoLoggers } from './photo/logger-adapter.js'
 import type { StorageObject } from './storage/interfaces'
 import type { PhotoManifestItem } from './types/photo'
 import type {
@@ -29,6 +31,9 @@ interface SharedData {
 export async function runAsWorker() {
   process.title = 'photo-gallery-builder-worker'
   const workerId = Number.parseInt(process.env.WORKER_ID || '0')
+
+  // 初始化全局日志器（基于 workerId）
+  initPhotoLoggers(logger, workerId)
 
   // 立即注册消息监听器，避免被异步初始化阻塞
   let isInitialized = false
