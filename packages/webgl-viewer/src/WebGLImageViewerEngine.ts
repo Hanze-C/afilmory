@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 
 import { LoadingState } from './enum'
 import { ImageViewerEngineBase } from './ImageViewerEngineBase'
@@ -9,50 +9,7 @@ import {
   VERTEX_SHADER_SOURCE,
 } from './shaders'
 
-type DebugInfoSetter = MutableRefObject<(debugInfo: DebugInfo) => void>
-
-type WorkerMessagePayload =
-  | {
-      type: 'init-done'
-    }
-  | {
-      type: 'image-loaded'
-      payload: {
-        imageBitmap: ImageBitmap
-        imageWidth: number
-        imageHeight: number
-        lodLevel: number
-      }
-    }
-  | {
-      type: 'load-error'
-      payload: {
-        error: unknown
-      }
-    }
-  | {
-      type: 'tile-created'
-      payload: {
-        key: string
-        imageBitmap: ImageBitmap
-        lodLevel: number
-        x: number
-        y: number
-        width: number
-        height: number
-      }
-    }
-  | {
-      type: 'tile-error'
-      payload: {
-        key: string
-        error: unknown
-      }
-    }
-  | {
-      type: 'log'
-      payload: { level: 'info' | 'warn' | 'error'; message: string }
-    }
+type DebugInfoSetter = RefObject<(debugInfo: DebugInfo) => void>
 
 interface PointerSnapshot {
   readonly pointerId: number
@@ -265,8 +222,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.applyZoomAt(pivot.x, pivot.y, targetScale)
     this.stopZoomAnimation()
   }
-
-  private worker: Worker | null = null
   private pendingLoadResolve: ((value: void) => void) | null = null
   private pendingLoadReject: ((reason?: unknown) => void) | null = null
 
@@ -432,15 +387,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       this.pendingLoadResolve = resolve
       this.pendingLoadReject = reject
 
-      const worker = this.ensureWorker()
-      if (worker) {
-        worker.postMessage({
-          type: 'load-image',
-          payload: { url, maxTextureSize: this.maxTextureSize },
-        })
-        return
-      }
-
       this.loadImageWithoutWorker(url)
         .then((bitmap) => {
           this.handleImageBitmap({
@@ -464,10 +410,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.detachEventListeners()
     this.cancelAnimationFrame()
     this.releaseTexture()
-    if (this.worker) {
-      this.worker.terminate()
-    }
-    this.worker = null
+
     this.pendingLoadResolve = null
     this.pendingLoadReject = null
   }
@@ -861,9 +804,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.currentLOD = desiredLOD
     this.quality = qualityFromLOD(desiredLOD)
 
-    // Request tiles for current view (first-pass tiling)
-    this.requestVisibleTiles()
-
     // Draw tiles for desired LOD; if incomplete, keep fallback texture
     const { drewAny, complete } = this.drawTiles()
 
@@ -963,74 +903,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.canvasHeight = this.canvas.height
   }
 
-  private ensureWorker(): Worker | null {
-    if (typeof window === 'undefined' || typeof Worker === 'undefined') {
-      return null
-    }
-
-    if (this.worker) {
-      return this.worker
-    }
-
-    try {
-      const worker = new Worker(new URL('texture.worker.js', import.meta.url), {
-        type: 'module',
-      })
-      worker.onmessage = (event: MessageEvent<WorkerMessagePayload>) => {
-        this.handleWorkerMessage(event.data)
-      }
-      worker.onerror = (event) => {
-        this.handleLoadError(event.message)
-      }
-      this.worker = worker
-      return worker
-    } catch (error) {
-      console.warn(
-        'Failed to initialize texture worker, fallback to main thread.',
-        error,
-      )
-      this.worker = null
-      return null
-    }
-  }
-
-  private handleWorkerMessage(message: WorkerMessagePayload): void {
-    switch (message.type) {
-      case 'init-done': {
-        break
-      }
-      case 'image-loaded': {
-        this.handleImageBitmap(message.payload)
-        this.finishPendingLoad()
-        break
-      }
-      case 'load-error': {
-        this.handleLoadError(message.payload.error)
-        break
-      }
-      case 'tile-created': {
-        this.handleTileCreated(message.payload)
-        break
-      }
-      case 'tile-error': {
-        console.error(
-          '[WebGLImageViewerEngine] Tile error:',
-          message.payload.error,
-        )
-        break
-      }
-      case 'log': {
-        const { level, message: m } = message.payload
-        // eslint-disable-next-line no-console
-        console[level]?.('[Worker]', m)
-        break
-      }
-      default: {
-        break
-      }
-    }
-  }
-
   private handleImageBitmap(payload: {
     imageBitmap: ImageBitmap
     imageWidth: number
@@ -1067,11 +939,40 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private async loadImageWithoutWorker(url: string): Promise<ImageBitmap> {
     const response = await fetch(url, { mode: 'cors' })
     const blob = await response.blob()
+    let bitmap: ImageBitmap
     if ('createImageBitmap' in window) {
-      return await createImageBitmap(blob)
+      bitmap = await createImageBitmap(blob)
+    } else {
+      bitmap = await this.decodeWithImageElement(blob)
     }
 
-    return await this.decodeWithImageElement(blob)
+    // Safety clamp if worker is unavailable: resize on main thread (rare path)
+    if (
+      bitmap.width > this.maxTextureSize ||
+      bitmap.height > this.maxTextureSize
+    ) {
+      const scale = Math.min(
+        1,
+        this.maxTextureSize / Math.max(bitmap.width, bitmap.height),
+      )
+      const targetW = Math.max(1, Math.round(bitmap.width * scale))
+      const targetH = Math.max(1, Math.round(bitmap.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = targetW
+      canvas.height = targetH
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(bitmap as any, 0, 0, targetW, targetH)
+        // create a new ImageBitmap from canvas to upload
+        const resized = await createImageBitmap(canvas)
+        bitmap.close()
+        return resized
+      }
+    }
+
+    return bitmap
   }
 
   private async decodeWithImageElement(blob: Blob): Promise<ImageBitmap> {
@@ -1112,15 +1013,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   } {
     const { gl } = this
 
-    if (
-      imageBitmap.width > this.maxTextureSize ||
-      imageBitmap.height > this.maxTextureSize
-    ) {
-      console.warn(
-        `[WebGLImageViewerEngine] Image exceeds MAX_TEXTURE_SIZE (${this.maxTextureSize}), quality will be reduced.`,
-      )
-    }
-
     if (!this.texture) {
       this.texture = gl.createTexture()
     }
@@ -1129,37 +1021,22 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       throw new Error('Failed to create WebGL texture')
     }
 
-    // Downscale source if it exceeds MAX_TEXTURE_SIZE to prevent context loss
-    const scale = Math.min(
-      1,
-      this.maxTextureSize / Math.max(imageBitmap.width, imageBitmap.height),
-    )
-    const targetW = Math.max(1, Math.round(imageBitmap.width * scale))
-    const targetH = Math.max(1, Math.round(imageBitmap.height * scale))
-
-    const source: CanvasImageSource = (() => {
-      if (scale >= 1) return imageBitmap
-      const canvas = document.createElement('canvas')
-      canvas.width = targetW
-      canvas.height = targetH
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.imageSmoothingEnabled = true
-        ctx.imageSmoothingQuality = 'high'
-        ctx.drawImage(imageBitmap, 0, 0, targetW, targetH)
-      }
-      return canvas
-    })()
-
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      imageBitmap,
+    )
     gl.bindTexture(gl.TEXTURE_2D, null)
 
-    return { width: targetW, height: targetH }
+    return { width: imageBitmap.width, height: imageBitmap.height }
   }
 
   private setLoadingState(
@@ -1470,14 +1347,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private handleContextRestored(): void {
     // Recreate GL resources and texturing state
     this.setupGLResources()
-    // Re-upload initial texture by asking worker to recreate the initial LOD
-    const worker = this.ensureWorker()
-    if (worker) {
-      worker.postMessage({
-        type: 'recreate-initial',
-        payload: { maxTextureSize: this.maxTextureSize },
-      })
-    } else if (this.src) {
+    if (this.src) {
       // Fallback: reload image on main thread
       this.loadImageWithoutWorker(this.src)
         .then((bitmap) => {
@@ -1529,87 +1399,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       this.tileCache.delete(k)
       removed += 1
       if (removed >= toRemove) break
-    }
-  }
-
-  private requestVisibleTiles(): void {
-    if (!this.useTiling) return
-    const worker = this.ensureWorker()
-    if (!worker) return
-
-    const desiredLOD = this.currentLOD
-    const lodScale = SIMPLE_LOD_LEVELS[desiredLOD]?.scale ?? 1
-    const range = this.computeVisibleTileRange(lodScale, 0)
-    if (!range) return
-
-    const totalBudget = this.maxTilesPerFrame
-    let remaining = totalBudget
-    const alloc = (ratio: number) => {
-      const v = Math.min(
-        remaining,
-        Math.max(0, Math.floor(totalBudget * ratio)),
-      )
-      remaining -= v
-      return v
-    }
-    const inViewBudget = alloc(0.6)
-    const nearBudget = alloc(0.25)
-    const farBudget = alloc(0.05)
-    const fallbackBudget = alloc(0.1)
-
-    const requestBucket = (
-      r: { startCol: number; endCol: number; startRow: number; endRow: number },
-      lodLevel: number,
-      lodScaleForLevel: number,
-      budget: number,
-    ) => {
-      if (budget <= 0) return 0
-      const centerCol = (r.startCol + r.endCol) / 2
-      const centerRow = (r.startRow + r.endRow) / 2
-      const candidates: Array<{ c: number; r: number; dist: number }> = []
-      for (let rr = r.startRow; rr <= r.endRow; rr++) {
-        for (let cc = r.startCol; cc <= r.endCol; cc++) {
-          const dist = Math.hypot(cc - centerCol, rr - centerRow)
-          candidates.push({ c: cc, r: rr, dist })
-        }
-      }
-      candidates.sort((a, b) => a.dist - b.dist)
-      let used = 0
-      for (const { c, r } of candidates) {
-        const key = this.composeTileKey(lodLevel, c, r)
-        if (this.tileCache.has(key) || this.tileLoading.has(key)) continue
-        if (used >= budget) break
-        this.tileLoading.add(key)
-        used += 1
-        worker.postMessage({
-          type: 'create-tile',
-          payload: {
-            x: c,
-            y: r,
-            lodLevel,
-            lodConfig: { scale: lodScaleForLevel },
-            imageWidth: this.imageWidth,
-            imageHeight: this.imageHeight,
-            key,
-          },
-        })
-      }
-      return used
-    }
-
-    // Desired LOD buckets: in-view, near-edge, far
-    requestBucket(range, desiredLOD, lodScale, inViewBudget)
-    const near = this.computeVisibleTileRange(lodScale, 1)
-    if (near) requestBucket(near, desiredLOD, lodScale, nearBudget)
-    const far = this.computeVisibleTileRange(lodScale, 3)
-    if (far) requestBucket(far, desiredLOD, lodScale, farBudget)
-
-    // Fallback LOD bucket (in-view only)
-    const fallbackLOD = Math.max(0, desiredLOD - 1)
-    if (fallbackLOD < desiredLOD && fallbackBudget > 0) {
-      const fbScale = SIMPLE_LOD_LEVELS[fallbackLOD]?.scale ?? 1
-      const fbRange = this.computeVisibleTileRange(fbScale, 0)
-      if (fbRange) requestBucket(fbRange, fallbackLOD, fbScale, fallbackBudget)
     }
   }
 
