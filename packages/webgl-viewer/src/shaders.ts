@@ -1,5 +1,5 @@
 /**
- * WebGL着色器定义
+ * WebGL 着色器定义
  *
  * 包含顶点着色器和片段着色器的源码
  */
@@ -13,13 +13,14 @@ export const VERTEX_SHADER_SOURCE = `
   attribute vec2 a_texCoord;
   
   uniform mat3 u_matrix;
+  uniform vec4 u_uvRect; // xy = minUV, zw = maxUV
   
   varying vec2 v_texCoord;
   
   void main() {
     vec3 position = u_matrix * vec3(a_position, 1.0);
-    gl_Position = vec4(position.xy, 0, 1);
-    v_texCoord = a_texCoord;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+    v_texCoord = mix(u_uvRect.xy, u_uvRect.zw, a_texCoord);
   }
 `
 
@@ -39,8 +40,8 @@ export const FRAGMENT_SHADER_SOURCE = `
 `
 
 /**
- * 创建WebGL着色器
- * @param gl WebGL渲染上下文
+ * 创建 WebGL 着色器
+ * @param gl WebGL 渲染上下文
  * @param type 着色器类型
  * @param source 着色器源码
  * @returns 编译好的着色器

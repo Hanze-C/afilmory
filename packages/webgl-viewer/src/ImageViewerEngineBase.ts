@@ -5,6 +5,7 @@ export abstract class ImageViewerEngineBase {
     y: number,
     scale: number,
     animated?: boolean,
+    animationDurationMs?: number,
   ): void
 
   public abstract loadImage(

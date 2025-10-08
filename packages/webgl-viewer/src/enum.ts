@@ -2,4 +2,7 @@ export enum LoadingState {
   CREATE_TEXTURE,
 
   IMAGE_LOADING,
+
+  CONTEXT_LOST,
+  CONTEXT_RESTORED,
 }

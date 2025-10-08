@@ -1,3 +1,5 @@
+import type { MutableRefObject } from 'react'
+
 import { LoadingState } from './enum'
 import { ImageViewerEngineBase } from './ImageViewerEngineBase'
 import type { DebugInfo, WebGLImageViewerProps } from './interface'
@@ -6,210 +8,473 @@ import {
   FRAGMENT_SHADER_SOURCE,
   VERTEX_SHADER_SOURCE,
 } from './shaders'
-import TextureWorkerRaw from './texture.worker?raw'
 
-// 瓦片系统配置
-const TILE_SIZE = 512 // 每个瓦片的像素大小
-const MAX_TILES_PER_FRAME = 4 // 每帧最多创建的瓦片数量
-const TILE_CACHE_SIZE = 32 // 最大缓存瓦片数量
+type DebugInfoSetter = MutableRefObject<(debugInfo: DebugInfo) => void>
 
-// 瓦片信息接口
-interface TileInfo {
-  x: number // 瓦片在网格中的 x 坐标
-  y: number // 瓦片在网格中的 y 坐标
-  lodLevel: number // LOD 级别
-  texture: WebGLTexture | null // WebGL 纹理
-  lastUsed: number // 最后使用时间
-  isLoading: boolean // 是否正在加载
-  priority: number // 优先级（距离视口中心的距离）
+type WorkerMessagePayload =
+  | {
+      type: 'init-done'
+    }
+  | {
+      type: 'image-loaded'
+      payload: {
+        imageBitmap: ImageBitmap
+        imageWidth: number
+        imageHeight: number
+        lodLevel: number
+      }
+    }
+  | {
+      type: 'load-error'
+      payload: {
+        error: unknown
+      }
+    }
+  | {
+      type: 'tile-created'
+      payload: {
+        key: string
+        imageBitmap: ImageBitmap
+        lodLevel: number
+        x: number
+        y: number
+        width: number
+        height: number
+      }
+    }
+  | {
+      type: 'tile-error'
+      payload: {
+        key: string
+        error: unknown
+      }
+    }
+  | {
+      type: 'log'
+      payload: { level: 'info' | 'warn' | 'error'; message: string }
+    }
+
+interface PointerSnapshot {
+  readonly pointerId: number
+  readonly x: number
+  readonly y: number
 }
 
-// 瓦片键值
-type TileKey = string // 格式：`${x}-${y}-${lodLevel}`
+interface Matrix3x3 extends Float32Array {
+  0: number
+  1: number
+  2: number
+  3: number
+  4: number
+  5: number
+  6: number
+  7: number
+  8: number
+}
 
-// 简化的 LOD 级别
-const SIMPLE_LOD_LEVELS = [
-  { scale: 0.25 }, // 极低质量
-  { scale: 0.5 }, // 低质量
-  { scale: 1 }, // 正常质量
-  { scale: 2 }, // 高质量
-  { scale: 4 }, // 超高质量
-] as const
+const SIMPLE_LOD_LEVELS: ReadonlyArray<{
+  readonly scale: number
+  readonly quality: 'low' | 'medium' | 'high'
+}> = [
+  { scale: 0.25, quality: 'low' },
+  { scale: 0.5, quality: 'medium' },
+  { scale: 1, quality: 'high' },
+  { scale: 2, quality: 'high' },
+  { scale: 4, quality: 'high' },
+]
 
-// 简化的 WebGL 图像查看器引擎
+// Keep in sync with `texture.worker.js`
+const TILE_SIZE = 512 as const
+
+const SCALE_EPSILON = 1e-3
+const DEFAULT_ZOOM_ANIMATION_DURATION = 220
+const DEFAULT_ZOOM_EASING = 3
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+function createIdentityMatrix(): Matrix3x3 {
+  return new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]) as Matrix3x3
+}
+
+function createProjectionMatrix(width: number, height: number): Matrix3x3 {
+  const matrix = createIdentityMatrix()
+  matrix[0] = 2 / width
+  matrix[4] = -2 / height
+  matrix[6] = -1
+  matrix[7] = 1
+  return matrix
+}
+
+function multiplyMatrix(a: Matrix3x3, b: Matrix3x3): Matrix3x3 {
+  const out = createIdentityMatrix()
+
+  out[0] = a[0] * b[0] + a[3] * b[1] + a[6] * b[2]
+  out[1] = a[1] * b[0] + a[4] * b[1] + a[7] * b[2]
+  out[2] = a[2] * b[0] + a[5] * b[1] + a[8] * b[2]
+
+  out[3] = a[0] * b[3] + a[3] * b[4] + a[6] * b[5]
+  out[4] = a[1] * b[3] + a[4] * b[4] + a[7] * b[5]
+  out[5] = a[2] * b[3] + a[5] * b[4] + a[8] * b[5]
+
+  out[6] = a[0] * b[6] + a[3] * b[7] + a[6] * b[8]
+  out[7] = a[1] * b[6] + a[4] * b[7] + a[7] * b[8]
+  out[8] = a[2] * b[6] + a[5] * b[7] + a[8] * b[8]
+
+  return out
+}
+
+function createTranslationMatrix(tx: number, ty: number): Matrix3x3 {
+  const matrix = createIdentityMatrix()
+  matrix[6] = tx
+  matrix[7] = ty
+  return matrix
+}
+
+function createScaleMatrix(sx: number, sy: number): Matrix3x3 {
+  const matrix = createIdentityMatrix()
+  matrix[0] = sx
+  matrix[4] = sy
+  return matrix
+}
+
+function qualityFromLOD(
+  lodLevel: number,
+): 'high' | 'medium' | 'low' | 'unknown' {
+  const level = SIMPLE_LOD_LEVELS[lodLevel]
+  return level?.quality ?? 'unknown'
+}
+
 export class WebGLImageViewerEngine extends ImageViewerEngineBase {
-  private canvas: HTMLCanvasElement
-  private gl: WebGLRenderingContext
-  private program!: WebGLProgram
-  private texture: WebGLTexture | null = null
-  private imageLoaded = false
-  private originalImageSrc = ''
+  public src: string
+  public className: string
+  public width: number
+  public height: number
+  public initialScale: number
+  public minScale: number
+  public maxScale: number
+  public wheel: NonNullable<WebGLImageViewerProps['wheel']>
+  public pinch: NonNullable<WebGLImageViewerProps['pinch']>
+  public doubleClick: NonNullable<WebGLImageViewerProps['doubleClick']>
+  public panning: NonNullable<WebGLImageViewerProps['panning']>
+  public limitToBounds: boolean
+  public centerOnInit: boolean
+  public smooth: boolean
+  public alignmentAnimation: Required<
+    WebGLImageViewerProps['alignmentAnimation']
+  >
+  public velocityAnimation: Required<WebGLImageViewerProps['velocityAnimation']>
+  public onZoomChange: Required<WebGLImageViewerProps>['onZoomChange']
+  public onImageCopied: Required<WebGLImageViewerProps>['onImageCopied']
+  public onLoadingStateChange: Required<WebGLImageViewerProps>['onLoadingStateChange']
+  public debug: boolean
 
-  // 变换状态
-  private scale = 1
+  private readonly canvas: HTMLCanvasElement
+  private readonly gl: WebGLRenderingContext
+  private readonly debugInfoSetter?: DebugInfoSetter
+
+  private program: WebGLProgram | null = null
+  private positionBuffer: WebGLBuffer | null = null
+  private texCoordBuffer: WebGLBuffer | null = null
+  private positionLocation = -1
+  private texCoordLocation = -1
+  private matrixLocation: WebGLUniformLocation | null = null
+  private textureLocation: WebGLUniformLocation | null = null
+  private uvRectLocation: WebGLUniformLocation | null = null
+  private texture: WebGLTexture | null = null
+
+  private scaleInternal = 1
   private translateX = 0
   private translateY = 0
+  private fitToScreenScale = 1
+  private effectiveMinScale = 0
+  private effectiveMaxScale = 0
+
   private imageWidth = 0
   private imageHeight = 0
+  private textureWidth = 0
+  private textureHeight = 0
+
+  private viewportWidth = 0
+  private viewportHeight = 0
   private canvasWidth = 0
   private canvasHeight = 0
   private devicePixelRatio = 1
 
-  // 交互状态
-  private isDragging = false
-  private lastMouseX = 0
-  private lastMouseY = 0
-  private lastTouchDistance = 0
-  private lastDoubleClickTime = 0
-  private isOriginalSize = false
+  private isLoading = false
+  private currentLOD = 0
+  private readonly totalLODLevels = SIMPLE_LOD_LEVELS.length
+  private quality: 'high' | 'medium' | 'low' | 'unknown' = 'unknown'
 
-  // 触摸双击检测
-  private lastTouchTime = 0
-  private lastTouchX = 0
-  private lastTouchY = 0
+  private maxTextureSize = 0
+  private maxViewportWidth = 16384
+  private maxViewportHeight = 16384
+  private maxRenderbufferSize = 16384
+  private renderCount = 0
 
-  // 动画状态
-  private isAnimating = false
-  private animationStartTime = 0
-  private animationDuration = 300
-  private startScale = 1
-  private targetScale = 1
-  private startTranslateX = 0
-  private startTranslateY = 0
-  private targetTranslateX = 0
-  private targetTranslateY = 0
-  private animationStartLOD = -1
+  // Tiling system (first pass implementation)
+  private useTiling = true
+  private readonly tileSize = TILE_SIZE
+  private readonly maxTilesPerFrame = 24
+  private tileCache = new Map<
+    string,
+    {
+      texture: WebGLTexture
+      width: number
+      height: number
+      lod: number
+      x: number
+      y: number
+    }
+  >()
+  private tileLoading = new Set<string>()
+  private tileCacheLimit = 512
 
-  // 简化的纹理管理
-  private currentLOD = 1 // 默认使用正常质量
-  private lodTextures = new Map<number, WebGLTexture>()
+  private readonly pointerSnapshots = new Map<number, PointerSnapshot>()
+  private initialPinchDistance: number | null = null
+  private initialPinchScale = 1
 
-  // 配置和回调
-  private config: Required<WebGLImageViewerProps>
-  private onZoomChange?: (originalScale: number, relativeScale: number) => void
-  private onImageCopied?: () => void
-  private onLoadingStateChange?: (
-    isLoading: boolean,
-    state?: LoadingState,
-    quality?: 'high' | 'medium' | 'low' | 'unknown',
-  ) => void
-  private onDebugUpdate?: React.RefObject<(debugInfo: any) => void>
+  private readonly handleWheelBound: (event: WheelEvent) => void
+  private readonly handlePointerDownBound: (event: PointerEvent) => void
+  private readonly handlePointerMoveBound: (event: PointerEvent) => void
+  private readonly handlePointerUpBound: (event: PointerEvent) => void
+  private readonly handlePointerCancelBound: (event: PointerEvent) => void
+  private readonly handleDoubleClickBound: (event: MouseEvent) => void
+  private readonly handleResizeBound: () => void
+  private readonly handleContextLostBound: (event: Event) => void
+  private readonly handleContextRestoredBound: () => void
 
-  // 当前质量状态
-  private currentQuality: 'high' | 'medium' | 'low' | 'unknown' = 'unknown'
-  private isLoadingTexture = true
+  private readonly zoomAnimationStep = (timestamp: number) => {
+    if (!this.zoomAnimation) return
+    const { startTime, duration, startScale, targetScale, pivot } =
+      this.zoomAnimation
+
+    const elapsed = timestamp - startTime
+    const progress = duration <= 0 ? 1 : Math.min(elapsed / duration, 1)
+    const easedProgress = 1 - Math.pow(1 - progress, DEFAULT_ZOOM_EASING)
+
+    const currentScale = startScale + (targetScale - startScale) * easedProgress
+    this.applyZoomAt(pivot.x, pivot.y, currentScale)
+
+    if (progress < 1) {
+      this.zoomAnimation.rafId = requestAnimationFrame(this.zoomAnimationStep)
+      return
+    }
+
+    this.applyZoomAt(pivot.x, pivot.y, targetScale)
+    this.stopZoomAnimation()
+  }
+
   private worker: Worker | null = null
-  private textureWorkerInitialized = false
+  private pendingLoadResolve: ((value: void) => void) | null = null
+  private pendingLoadReject: ((reason?: unknown) => void) | null = null
 
-  // 事件处理器绑定
-  private boundHandleMouseDown: (e: MouseEvent) => void
-  private boundHandleMouseMove: (e: MouseEvent) => void
-  private boundHandleMouseUp: () => void
-  private boundHandleWheel: (e: WheelEvent) => void
-  private boundHandleDoubleClick: (e: MouseEvent) => void
-  private boundHandleTouchStart: (e: TouchEvent) => void
-  private boundHandleTouchMove: (e: TouchEvent) => void
-  private boundHandleTouchEnd: (e: TouchEvent) => void
-  private boundResizeCanvas: () => void
+  private renderScheduled = false
+  private animationFrameId: number | null = null
+  private destroyed = false
 
-  // 瓦片系统
-  private tileCache = new Map<TileKey, TileInfo>()
-  private loadingTiles = new Map<TileKey, { priority: number }>()
-  private pendingTileRequests: Array<{ key: TileKey; priority: number }> = []
+  private zoomAnimation: {
+    rafId: number | null
+    startTime: number
+    duration: number
+    startScale: number
+    targetScale: number
+    pivot: { x: number; y: number }
+  } | null = null
 
-  // 可视区域信息
-  private currentVisibleTiles = new Set<TileKey>()
-  private lastViewportHash = ''
-
-  // Promise resolvers for loadImage
-  private loadImageResolve: (() => void) | null = null
-  private loadImageReject: ((error: Error) => void) | null = null
-
-  constructor(
+  public constructor(
     canvas: HTMLCanvasElement,
     config: Required<WebGLImageViewerProps>,
-    onDebugUpdate?: React.RefObject<(debugInfo: DebugInfo) => void>,
+    debugInfoSetter?: DebugInfoSetter,
   ) {
     super()
+
     this.canvas = canvas
-    this.config = config
+    this.debugInfoSetter = debugInfoSetter
+
+    const gl = canvas.getContext('webgl', {
+      alpha: true,
+      antialias: true,
+      preserveDrawingBuffer: false,
+    })
+
+    if (!gl) {
+      throw new Error('Failed to acquire WebGL context')
+    }
+
+    this.gl = gl
+    this.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE)
+    const maxViewportDims = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array
+    if (maxViewportDims && maxViewportDims.length >= 2) {
+      this.maxViewportWidth = maxViewportDims[0]
+      this.maxViewportHeight = maxViewportDims[1]
+    }
+    const rboLimit = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number
+    if (typeof rboLimit === 'number') {
+      this.maxRenderbufferSize = rboLimit
+    }
+
+    this.src = config.src
+    this.className = config.className
+    this.width = config.width
+    this.height = config.height
+    this.initialScale = config.initialScale
+    this.minScale = config.minScale
+    this.maxScale = config.maxScale
+    this.wheel = config.wheel
+    this.pinch = config.pinch
+    this.doubleClick = config.doubleClick
+    this.panning = config.panning
+    this.limitToBounds = config.limitToBounds
+    this.centerOnInit = config.centerOnInit
+    this.smooth = config.smooth
+    this.alignmentAnimation = config.alignmentAnimation
+    this.velocityAnimation = config.velocityAnimation
     this.onZoomChange = config.onZoomChange
     this.onImageCopied = config.onImageCopied
     this.onLoadingStateChange = config.onLoadingStateChange
-    this.onDebugUpdate = onDebugUpdate
+    this.debug = config.debug
 
-    // 初始化 WebGL
-    const gl = canvas.getContext('webgl', {
-      alpha: true,
-      premultipliedAlpha: false,
-      antialias: true,
-      powerPreference: 'default',
-    })
-    if (!gl) {
-      throw new Error('WebGL not supported')
-    }
-    this.gl = gl
+    this.handleWheelBound = this.handleWheel.bind(this)
+    this.handlePointerDownBound = this.handlePointerDown.bind(this)
+    this.handlePointerMoveBound = this.handlePointerMove.bind(this)
+    this.handlePointerUpBound = this.handlePointerUp.bind(this)
+    this.handlePointerCancelBound = this.handlePointerCancel.bind(this)
+    this.handleDoubleClickBound = this.handleDoubleClick.bind(this)
+    this.handleResizeBound = this.handleResize.bind(this)
+    this.handleContextLostBound = this.handleContextLost.bind(this)
+    this.handleContextRestoredBound = this.handleContextRestored.bind(this)
 
-    // 绑定事件处理器
-    this.boundHandleMouseDown = (e: MouseEvent) => this.handleMouseDown(e)
-    this.boundHandleMouseMove = (e: MouseEvent) => this.handleMouseMove(e)
-    this.boundHandleMouseUp = () => this.handleMouseUp()
-    this.boundHandleWheel = (e: WheelEvent) => this.handleWheel(e)
-    this.boundHandleDoubleClick = (e: MouseEvent) => this.handleDoubleClick(e)
-    this.boundHandleTouchStart = (e: TouchEvent) => this.handleTouchStart(e)
-    this.boundHandleTouchMove = (e: TouchEvent) => this.handleTouchMove(e)
-    this.boundHandleTouchEnd = (e: TouchEvent) => this.handleTouchEnd(e)
-    this.boundResizeCanvas = () => this.resizeCanvas()
+    this.effectiveMinScale = this.minScale
+    this.effectiveMaxScale = this.maxScale
 
-    this.setupCanvas()
-    this.initWebGL()
-    this.initWorker()
-    this.setupEventListeners()
-
-    this.isLoadingTexture = false
-    this.notifyLoadingStateChange(false)
+    this.setupGLResources()
+    this.updateCanvasSize()
+    this.attachEventListeners()
   }
 
-  private resizeObserver: ResizeObserver | null = null
-
-  private setupCanvas() {
-    this.resizeCanvas()
-    window.addEventListener('resize', this.boundResizeCanvas)
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect()
-    }
-    this.resizeObserver = new ResizeObserver((e) => {
-      if (e[0].target !== this.canvas) return
-      this.boundResizeCanvas()
-    })
-    this.resizeObserver.observe(this.canvas)
+  public getScale(): number {
+    return this.scaleInternal
   }
 
-  private resizeCanvas() {
+  public zoomAt(
+    x: number,
+    y: number,
+    scale: number,
+    animated = false,
+    animationDurationMs = DEFAULT_ZOOM_ANIMATION_DURATION,
+  ): void {
+    if (!this.texture) return
+    const targetScale = this.clampScale(scale)
     const rect = this.canvas.getBoundingClientRect()
-    this.devicePixelRatio = window.devicePixelRatio || 1
+    const deviceX = clamp(x, 0, rect.width) * this.devicePixelRatio
+    const deviceY = clamp(y, 0, rect.height) * this.devicePixelRatio
 
-    this.canvasWidth = rect.width
-    this.canvasHeight = rect.height
-
-    const actualWidth = Math.round(rect.width * this.devicePixelRatio)
-    const actualHeight = Math.round(rect.height * this.devicePixelRatio)
-
-    this.canvas.width = actualWidth
-    this.canvas.height = actualHeight
-    this.gl.viewport(0, 0, actualWidth, actualHeight)
-
-    if (this.imageLoaded) {
-      this.constrainScaleAndPosition()
-      this.render()
-      this.notifyZoomChange()
+    if (animated) {
+      this.animateZoom(deviceX, deviceY, targetScale, animationDurationMs)
+      return
     }
+
+    this.stopZoomAnimation()
+    this.applyZoomAt(deviceX, deviceY, targetScale)
   }
 
-  private initWebGL() {
+  public zoomIn(animated?: boolean): void {
+    const factor = 1 + this.wheel.step
+    this.zoomAt(
+      this.viewportWidth / 2,
+      this.viewportHeight / 2,
+      this.scaleInternal * factor,
+      animated,
+    )
+  }
+
+  public zoomOut(animated?: boolean): void {
+    const factor = 1 + this.wheel.step
+    this.zoomAt(
+      this.viewportWidth / 2,
+      this.viewportHeight / 2,
+      this.scaleInternal / factor,
+      animated,
+    )
+  }
+
+  public resetView(): void {
+    if (!this.texture) return
+    this.scaleInternal = this.clampScale(
+      this.fitToScreenScale * (this.initialScale || 1),
+    )
+    this.translateX = 0
+    this.translateY = 0
+    this.clampTranslation()
+    this.scheduleRender()
+    this.emitZoomChange()
+  }
+
+  public async loadImage(
+    url: string,
+    preknownWidth?: number,
+    preknownHeight?: number,
+  ): Promise<void> {
+    this.releaseTexture()
+    this.cancelPendingLoad()
+
+    this.src = url
+    if (preknownWidth && preknownHeight) {
+      this.imageWidth = preknownWidth
+      this.imageHeight = preknownHeight
+    }
+
+    this.setLoadingState(true, LoadingState.IMAGE_LOADING, 'unknown')
+
+    return new Promise((resolve, reject) => {
+      this.pendingLoadResolve = resolve
+      this.pendingLoadReject = reject
+
+      const worker = this.ensureWorker()
+      if (worker) {
+        worker.postMessage({
+          type: 'load-image',
+          payload: { url, maxTextureSize: this.maxTextureSize },
+        })
+        return
+      }
+
+      this.loadImageWithoutWorker(url)
+        .then((bitmap) => {
+          this.handleImageBitmap({
+            imageBitmap: bitmap,
+            imageHeight: bitmap.height,
+            imageWidth: bitmap.width,
+            lodLevel: 2,
+          })
+          this.finishPendingLoad()
+        })
+        .catch((error) => {
+          this.handleLoadError(error)
+        })
+    })
+  }
+
+  public destroy(): void {
+    if (this.destroyed) return
+    this.destroyed = true
+
+    this.detachEventListeners()
+    this.cancelAnimationFrame()
+    this.releaseTexture()
+    if (this.worker) {
+      this.worker.terminate()
+    }
+    this.worker = null
+    this.pendingLoadResolve = null
+    this.pendingLoadReject = null
+  }
+
+  private setupGLResources(): void {
     const { gl } = this
 
-    // 创建着色器
     const vertexShader = createShader(
       gl,
       gl.VERTEX_SHADER,
@@ -221,1176 +486,1341 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       FRAGMENT_SHADER_SOURCE,
     )
 
-    // 创建程序
-    this.program = gl.createProgram()!
-    gl.attachShader(this.program, vertexShader)
-    gl.attachShader(this.program, fragmentShader)
-    gl.linkProgram(this.program)
-
-    if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-      throw new Error(
-        `Program linking failed: ${gl.getProgramInfoLog(this.program)}`,
-      )
+    const program = gl.createProgram()
+    if (!program) {
+      throw new Error('Failed to create WebGL program')
     }
 
-    gl.useProgram(this.program)
+    gl.attachShader(program, vertexShader)
+    gl.attachShader(program, fragmentShader)
+    gl.linkProgram(program)
 
-    // 启用混合
-    gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      const error = gl.getProgramInfoLog(program)
+      gl.deleteProgram(program)
+      throw new Error(`Failed to link WebGL program: ${error ?? ''}`)
+    }
 
-    // 创建几何体
-    const positions = new Float32Array([
-      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
-    ])
-    const texCoords = new Float32Array([0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0])
+    this.program = program
+    this.positionLocation = gl.getAttribLocation(program, 'a_position')
+    this.texCoordLocation = gl.getAttribLocation(program, 'a_texCoord')
+    this.matrixLocation = gl.getUniformLocation(program, 'u_matrix')
+    this.textureLocation = gl.getUniformLocation(program, 'u_image')
+    this.uvRectLocation = gl.getUniformLocation(program, 'u_uvRect')
 
-    // 位置缓冲
-    const positionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
+    this.positionBuffer = gl.createBuffer()
+    this.texCoordBuffer = gl.createBuffer()
+
+    if (!this.positionBuffer || !this.texCoordBuffer) {
+      throw new Error('Failed to create WebGL buffers')
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
+    const positions = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1])
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
 
-    const positionLocation = gl.getAttribLocation(this.program, 'a_position')
-    gl.enableVertexAttribArray(positionLocation)
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0)
-
-    // 纹理坐标缓冲
-    const texCoordBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer)
+    const texCoords = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1])
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW)
 
-    const texCoordLocation = gl.getAttribLocation(this.program, 'a_texCoord')
-    gl.enableVertexAttribArray(texCoordLocation)
-    gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0)
+    gl.useProgram(program)
+    gl.uniform1i(this.textureLocation, 0)
+    // default full-quad UV
+    gl.uniform4f(this.uvRectLocation, 0, 0, 1, 1)
+    gl.useProgram(null)
+
+    gl.disable(gl.DEPTH_TEST)
+    gl.disable(gl.CULL_FACE)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
   }
 
-  private initWorker() {
-    this.worker = new Worker(
-      URL.createObjectURL(new Blob([TextureWorkerRaw])),
-      {
-        name: 'texture-worker',
-      },
+  private attachEventListeners(): void {
+    this.canvas.addEventListener('wheel', this.handleWheelBound, {
+      passive: false,
+    })
+    this.canvas.addEventListener('pointerdown', this.handlePointerDownBound)
+    this.canvas.addEventListener('pointermove', this.handlePointerMoveBound)
+    this.canvas.addEventListener('pointerup', this.handlePointerUpBound)
+    this.canvas.addEventListener('pointercancel', this.handlePointerCancelBound)
+    this.canvas.addEventListener('dblclick', this.handleDoubleClickBound)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', this.handleResizeBound)
+    }
+    // Context loss / restore handling
+    this.canvas.addEventListener(
+      'webglcontextlost',
+      this.handleContextLostBound as EventListener,
+      false,
     )
+    this.canvas.addEventListener(
+      'webglcontextrestored',
+      this.handleContextRestoredBound as EventListener,
+      false,
+    )
+  }
 
-    this.worker.onmessage = (e: MessageEvent) => {
-      this.handleWorkerMessage(e)
+  private detachEventListeners(): void {
+    this.canvas.removeEventListener('wheel', this.handleWheelBound)
+    this.canvas.removeEventListener('pointerdown', this.handlePointerDownBound)
+    this.canvas.removeEventListener('pointermove', this.handlePointerMoveBound)
+    this.canvas.removeEventListener('pointerup', this.handlePointerUpBound)
+    this.canvas.removeEventListener(
+      'pointercancel',
+      this.handlePointerCancelBound,
+    )
+    this.canvas.removeEventListener('dblclick', this.handleDoubleClickBound)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.handleResizeBound)
+    }
+    this.canvas.removeEventListener(
+      'webglcontextlost',
+      this.handleContextLostBound as EventListener,
+    )
+    this.canvas.removeEventListener(
+      'webglcontextrestored',
+      this.handleContextRestoredBound as EventListener,
+    )
+  }
+
+  private handleWheel(event: WheelEvent): void {
+    if (!this.texture || this.wheel.wheelDisabled) return
+
+    event.preventDefault()
+
+    const isTrackPad = Math.abs(event.deltaY) < 30
+    if (isTrackPad && this.wheel.touchPadDisabled) {
+      return
     }
 
-    this.worker.onerror = (e: ErrorEvent) => {
-      console.error('[Worker] Error:', e.message, e.error)
+    const rect = this.canvas.getBoundingClientRect()
+    const cssX = event.clientX - rect.left
+    const cssY = event.clientY - rect.top
+
+    const direction = event.deltaY > 0 ? -1 : 1
+    const factor = 1 + this.wheel.step * direction
+    this.zoomAt(cssX, cssY, this.scaleInternal * factor)
+  }
+
+  private handlePointerDown(event: PointerEvent): void {
+    if (
+      !this.texture ||
+      (event.button !== 0 && event.pointerType === 'mouse')
+    ) {
+      return
+    }
+
+    this.canvas.setPointerCapture(event.pointerId)
+    const snapshot = this.createPointerSnapshot(event)
+    this.pointerSnapshots.set(event.pointerId, snapshot)
+
+    if (this.pointerSnapshots.size === 2) {
+      this.initialPinchDistance = this.computePinchDistance()
+      this.initialPinchScale = this.scaleInternal
     }
   }
 
-  private handleWorkerMessage(e: MessageEvent) {
-    const { type, payload } = e.data
+  private handlePointerMove(event: PointerEvent): void {
+    if (!this.pointerSnapshots.has(event.pointerId)) return
 
-    if (type === 'image-loaded') {
-      const { imageBitmap, imageWidth, imageHeight, lodLevel } = payload
-      try {
-        if (!this.imageWidth || !this.imageHeight) {
-          this.imageWidth = imageWidth
-          this.imageHeight = imageHeight
-          this.setupInitialScaling()
-        }
+    const nextSnapshot = this.createPointerSnapshot(event)
+    const previousSnapshot = this.pointerSnapshots.get(event.pointerId)
+    if (!previousSnapshot) return
 
-        this.notifyLoadingStateChange(true, LoadingState.CREATE_TEXTURE)
+    this.pointerSnapshots.set(event.pointerId, nextSnapshot)
 
-        const texture = this.createWebGLTexture(imageBitmap)
-        imageBitmap.close()
+    if (!this.texture) return
 
-        if (texture) {
-          this.cleanupLODTextures()
-          this.lodTextures.set(lodLevel, texture)
-          this.texture = texture
-          this.currentLOD = lodLevel
-          this.currentQuality =
-            SIMPLE_LOD_LEVELS[lodLevel].scale >= 2
-              ? 'high'
-              : SIMPLE_LOD_LEVELS[lodLevel].scale >= 1
-                ? 'medium'
-                : 'low'
-        }
-
-        this.imageLoaded = true
-        this.isLoadingTexture = false
-        this.notifyLoadingStateChange(false)
-        this.render()
-        this.notifyZoomChange()
-        if (this.loadImageResolve) {
-          this.loadImageResolve()
-        }
-      } catch (error) {
-        if (this.loadImageReject) {
-          this.loadImageReject(error as Error)
-        }
+    if (this.pointerSnapshots.size === 1) {
+      if (this.panning.disabled) return
+      this.stopZoomAnimation()
+      const deltaX = nextSnapshot.x - previousSnapshot.x
+      const deltaY = nextSnapshot.y - previousSnapshot.y
+      this.translateX += deltaX
+      this.translateY += deltaY
+      if (this.limitToBounds) {
+        this.clampTranslation()
       }
+      this.scheduleRender()
       return
     }
 
-    if (type === 'load-error') {
-      this.isLoadingTexture = false
-      this.notifyLoadingStateChange(false)
-      if (this.loadImageReject) {
-        this.loadImageReject(new Error('Failed to load image in worker'))
-      }
-      return
-    }
-
-    if (type === 'init-done') {
-      this.textureWorkerInitialized = true
-      // After worker is initialized, we can start processing pending tiles.
-      this.updateTileCache()
-      return
-    }
-
-    if (type === 'tile-created') {
-      const { key, imageBitmap, lodLevel } = payload
-      const loadingInfo = this.loadingTiles.get(key)
-      const tileInfoInCache = this.tileCache.get(key)
-
-      // Tile might have been loaded by other means or is no longer needed
-      if (!this.currentVisibleTiles.has(key)) {
-        imageBitmap.close()
-        if (loadingInfo) {
-          this.loadingTiles.delete(key)
-        }
+    if (this.pointerSnapshots.size === 2 && !this.pinch.disabled) {
+      const distance = this.computePinchDistance()
+      if (!distance || !this.initialPinchDistance) {
         return
       }
 
-      const texture = this.createWebGLTexture(imageBitmap)
-      imageBitmap.close() // free memory
-
-      if (texture) {
-        const [x, y] = key.split('-').map(Number)
-        const tileInfo: TileInfo = {
-          x,
-          y,
-          lodLevel,
-          texture,
-          lastUsed: performance.now(),
-          isLoading: false,
-          priority: loadingInfo
-            ? loadingInfo.priority
-            : tileInfoInCache
-              ? tileInfoInCache.priority
-              : 0,
-        }
-        this.tileCache.set(key, tileInfo)
-
-        if (loadingInfo) {
-          this.loadingTiles.delete(key)
-        }
-
-        if (this.currentVisibleTiles.has(key)) {
-          this.render()
-        }
-      } else if (loadingInfo) {
-        this.loadingTiles.delete(key)
-      }
-    } else if (type === 'tile-error') {
-      const { key, error } = payload
-      console.warn(`Worker failed to create tile: ${key}`, error)
-      this.loadingTiles.delete(key)
+      this.stopZoomAnimation()
+      const scaleRatio = distance / this.initialPinchDistance
+      const targetScale = this.clampScale(this.initialPinchScale * scaleRatio)
+      const center = this.computePinchCenter()
+      this.applyZoomAt(center.x, center.y, targetScale)
     }
   }
 
-  async loadImage(
-    url: string,
-    preknownWidth?: number,
-    preknownHeight?: number,
-  ) {
-    this.originalImageSrc = url
-    this.isLoadingTexture = true
-    this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING)
+  private handlePointerUp(event: PointerEvent): void {
+    if (this.canvas.hasPointerCapture(event.pointerId)) {
+      this.canvas.releasePointerCapture(event.pointerId)
+    }
+    this.pointerSnapshots.delete(event.pointerId)
+    if (this.pointerSnapshots.size < 2) {
+      this.initialPinchDistance = null
+    }
+  }
 
-    if (preknownWidth && preknownHeight) {
-      this.imageWidth = preknownWidth
-      this.imageHeight = preknownHeight
-      this.setupInitialScaling()
+  private handlePointerCancel(event: PointerEvent): void {
+    if (this.canvas.hasPointerCapture(event.pointerId)) {
+      this.canvas.releasePointerCapture(event.pointerId)
+    }
+    this.pointerSnapshots.delete(event.pointerId)
+    if (this.pointerSnapshots.size < 2) {
+      this.initialPinchDistance = null
+    }
+  }
+
+  private handleDoubleClick(event: MouseEvent): void {
+    if (this.doubleClick.disabled || !this.texture) return
+    event.preventDefault()
+
+    const rect = this.canvas.getBoundingClientRect()
+    const cssX = event.clientX - rect.left
+    const cssY = event.clientY - rect.top
+
+    if (this.doubleClick.mode === 'toggle') {
+      const originalScale = this.getOriginalScale()
+      const fitScale = this.clampScale(
+        this.fitToScreenScale > 0 ? this.fitToScreenScale : originalScale,
+      )
+
+      const targetScale = this.pickDoubleClickTarget(originalScale, fitScale)
+      const animated = this.doubleClick.animationTime > 0
+      this.zoomAt(
+        cssX,
+        cssY,
+        targetScale,
+        animated,
+        this.doubleClick.animationTime,
+      )
+      return
     }
 
-    return new Promise<void>((resolve, reject) => {
-      this.loadImageResolve = resolve
-      this.loadImageReject = reject
+    const animated = this.doubleClick.animationTime > 0
+    this.zoomAt(
+      cssX,
+      cssY,
+      this.scaleInternal * this.doubleClick.step,
+      animated,
+      this.doubleClick.animationTime,
+    )
+  }
 
-      console.info('[Engine] Posting "load-image" to worker', this.worker)
-      this.worker?.postMessage({
-        type: 'load-image',
-        payload: { url },
-      })
+  private pickDoubleClickTarget(
+    originalScale: number,
+    fitScale: number,
+  ): number {
+    if (
+      this.isApproximatelyScale(this.scaleInternal, originalScale) &&
+      this.doubleClick.mode === 'toggle'
+    ) {
+      return fitScale
+    }
+
+    if (this.isApproximatelyScale(this.scaleInternal, fitScale)) {
+      return originalScale
+    }
+
+    const closerToOriginal =
+      Math.abs(this.scaleInternal - originalScale) <
+      Math.abs(this.scaleInternal - fitScale)
+
+    return closerToOriginal ? originalScale : fitScale
+  }
+
+  private getOriginalScale(): number {
+    if (!this.imageWidth || !this.imageHeight) {
+      return this.scaleInternal
+    }
+
+    const scaleX =
+      this.textureWidth > 0 ? this.imageWidth / this.textureWidth : 1
+    const scaleY =
+      this.textureHeight > 0 ? this.imageHeight / this.textureHeight : 1
+    const originalScale = Math.max(scaleX, scaleY)
+    return this.clampScale(originalScale)
+  }
+
+  private isApproximatelyScale(a: number, b: number): boolean {
+    return Math.abs(a - b) <= SCALE_EPSILON * Math.max(1, b)
+  }
+
+  private computeInitialDisplayScale(): number {
+    const fitScale = this.fitToScreenScale > 0 ? this.fitToScreenScale : 1
+    const baseScale = this.initialScale > 0 ? this.initialScale : 1
+    return this.clampScale(fitScale * baseScale)
+  }
+
+  private handleResize(): void {
+    this.updateCanvasSize()
+    if (this.texture) {
+      this.fitToScreenScale = this.computeFitToScreenScale()
+      this.updateScaleBounds()
+      this.clampTranslation()
+      this.scheduleRender()
+      this.emitZoomChange()
+    }
+  }
+
+  private applyZoomAt(
+    deviceX: number,
+    deviceY: number,
+    targetScale: number,
+  ): void {
+    const previousScale = this.scaleInternal
+    if (Math.abs(previousScale - targetScale) < 1e-5) {
+      return
+    }
+
+    const drawMetadata = this.computeDrawMetadata(previousScale)
+    const normalizedX = this.computeNormalizedCoordinate(
+      deviceX,
+      drawMetadata.drawX,
+      drawMetadata.scaledWidth,
+    )
+    const normalizedY = this.computeNormalizedCoordinate(
+      deviceY,
+      drawMetadata.drawY,
+      drawMetadata.scaledHeight,
+    )
+
+    this.scaleInternal = targetScale
+
+    const nextMetadata = this.computeDrawMetadata(targetScale)
+    const nextDrawX =
+      deviceX -
+      normalizedX * nextMetadata.scaledWidth -
+      (this.canvasWidth - nextMetadata.scaledWidth) / 2
+    const nextDrawY =
+      deviceY -
+      normalizedY * nextMetadata.scaledHeight -
+      (this.canvasHeight - nextMetadata.scaledHeight) / 2
+
+    this.translateX = nextDrawX
+    this.translateY = nextDrawY
+
+    if (this.limitToBounds) {
+      this.clampTranslation()
+    }
+
+    this.scheduleRender()
+    this.emitZoomChange()
+  }
+
+  private computeNormalizedCoordinate(
+    deviceCoordinate: number,
+    drawStart: number,
+    scaledLength: number,
+  ): number {
+    if (scaledLength <= 0) return 0.5
+    return (deviceCoordinate - drawStart) / scaledLength
+  }
+
+  private computeDrawMetadata(scale: number): {
+    readonly drawX: number
+    readonly drawY: number
+    readonly scaledWidth: number
+    readonly scaledHeight: number
+  } {
+    const scaledWidth = this.imageWidth * scale
+    const scaledHeight = this.imageHeight * scale
+    const drawX = (this.canvasWidth - scaledWidth) / 2 + this.translateX
+    const drawY = (this.canvasHeight - scaledHeight) / 2 + this.translateY
+    return { drawX, drawY, scaledWidth, scaledHeight }
+  }
+
+  private scheduleRender(): void {
+    if (this.renderScheduled || this.destroyed) return
+    this.renderScheduled = true
+    this.animationFrameId = requestAnimationFrame(() => {
+      this.renderScheduled = false
+      this.render()
     })
   }
 
-  private setupInitialScaling() {
-    if (this.config.centerOnInit) {
-      this.fitImageToScreen()
-    } else {
-      const fitToScreenScale = this.getFitToScreenScale()
-      this.scale = fitToScreenScale * this.config.initialScale
+  private render(): void {
+    if ((!this.texture && this.tileCache.size === 0) || !this.program) return
+
+    const { gl } = this
+
+    gl.viewport(0, 0, this.canvasWidth, this.canvasHeight)
+    // Use transparent clear color to avoid black background
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+
+    // Decide desired LOD by current zoom for promotion/demotion
+    const desiredLOD = this.getDesiredLOD()
+    this.currentLOD = desiredLOD
+    this.quality = qualityFromLOD(desiredLOD)
+
+    // Request tiles for current view (first-pass tiling)
+    this.requestVisibleTiles()
+
+    // Draw tiles for desired LOD; if incomplete, keep fallback texture
+    const { drewAny, complete } = this.drawTiles()
+
+    if (!drewAny || !complete) {
+      // Fallback to single-texture draw (initial LOD)
+      gl.useProgram(this.program)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
+      gl.enableVertexAttribArray(this.positionLocation)
+      gl.vertexAttribPointer(this.positionLocation, 2, gl.FLOAT, false, 0, 0)
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer)
+      gl.enableVertexAttribArray(this.texCoordLocation)
+      gl.vertexAttribPointer(this.texCoordLocation, 2, gl.FLOAT, false, 0, 0)
+
+      gl.activeTexture(gl.TEXTURE0)
+      gl.bindTexture(gl.TEXTURE_2D, this.texture)
+
+      const matrix = this.composeMatrix()
+      gl.uniformMatrix3fv(this.matrixLocation, false, matrix)
+      // full UV for single texture
+      gl.uniform4f(this.uvRectLocation, 0, 0, 1, 1)
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+
+      gl.bindTexture(gl.TEXTURE_2D, null)
+      gl.useProgram(null)
+    }
+
+    this.renderCount += 1
+    this.updateDebugInfo()
+  }
+
+  private composeMatrix(): Matrix3x3 {
+    const projection = createProjectionMatrix(
+      this.canvasWidth,
+      this.canvasHeight,
+    )
+    const metadata = this.computeDrawMetadata(this.scaleInternal)
+    const translation = createTranslationMatrix(metadata.drawX, metadata.drawY)
+    const scale = createScaleMatrix(
+      this.imageWidth * this.scaleInternal,
+      this.imageHeight * this.scaleInternal,
+    )
+
+    const combined = multiplyMatrix(projection, translation)
+    return multiplyMatrix(combined, scale)
+  }
+
+  private computeFitToScreenScale(): number {
+    if (!this.imageWidth || !this.imageHeight) return 1
+    const widthScale = this.canvasWidth / this.imageWidth
+    const heightScale = this.canvasHeight / this.imageHeight
+    return Math.min(widthScale, heightScale)
+  }
+
+  private clampScale(scale: number): number {
+    return clamp(scale, this.effectiveMinScale, this.effectiveMaxScale)
+  }
+
+  private clampTranslation(): void {
+    const metadata = this.computeDrawMetadata(this.scaleInternal)
+    const { scaledWidth } = metadata
+    const { scaledHeight } = metadata
+
+    const maxTranslateX =
+      scaledWidth <= this.canvasWidth ? 0 : (scaledWidth - this.canvasWidth) / 2
+    const maxTranslateY =
+      scaledHeight <= this.canvasHeight
+        ? 0
+        : (scaledHeight - this.canvasHeight) / 2
+
+    this.translateX = clamp(this.translateX, -maxTranslateX, maxTranslateX)
+    this.translateY = clamp(this.translateY, -maxTranslateY, maxTranslateY)
+  }
+
+  private updateCanvasSize(): void {
+    const width = this.canvas.clientWidth || this.canvas.width || 1
+    const height = this.canvas.clientHeight || this.canvas.height || 1
+    this.viewportWidth = width
+    this.viewportHeight = height
+
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    // Cap backing store to GPU limits to avoid iOS Safari context loss
+    const desiredW = Math.max(1, Math.round(width * dpr))
+    const desiredH = Math.max(1, Math.round(height * dpr))
+    const maxW = Math.min(this.maxViewportWidth, this.maxRenderbufferSize)
+    const maxH = Math.min(this.maxViewportHeight, this.maxRenderbufferSize)
+    const scaleDown = Math.min(maxW / desiredW, maxH / desiredH, 1)
+    const effectiveDpr = dpr * scaleDown
+
+    this.devicePixelRatio = effectiveDpr
+    this.canvas.width = Math.max(1, Math.round(width * effectiveDpr))
+    this.canvas.height = Math.max(1, Math.round(height * effectiveDpr))
+
+    this.canvasWidth = this.canvas.width
+    this.canvasHeight = this.canvas.height
+  }
+
+  private ensureWorker(): Worker | null {
+    if (typeof window === 'undefined' || typeof Worker === 'undefined') {
+      return null
+    }
+
+    if (this.worker) {
+      return this.worker
+    }
+
+    try {
+      const worker = new Worker(new URL('texture.worker.js', import.meta.url), {
+        type: 'module',
+      })
+      worker.onmessage = (event: MessageEvent<WorkerMessagePayload>) => {
+        this.handleWorkerMessage(event.data)
+      }
+      worker.onerror = (event) => {
+        this.handleLoadError(event.message)
+      }
+      this.worker = worker
+      return worker
+    } catch (error) {
+      console.warn(
+        'Failed to initialize texture worker, fallback to main thread.',
+        error,
+      )
+      this.worker = null
+      return null
     }
   }
 
-  private createWebGLTexture(
-    source: HTMLCanvasElement | HTMLImageElement | ImageBitmap,
-  ): WebGLTexture | null {
+  private handleWorkerMessage(message: WorkerMessagePayload): void {
+    switch (message.type) {
+      case 'init-done': {
+        break
+      }
+      case 'image-loaded': {
+        this.handleImageBitmap(message.payload)
+        this.finishPendingLoad()
+        break
+      }
+      case 'load-error': {
+        this.handleLoadError(message.payload.error)
+        break
+      }
+      case 'tile-created': {
+        this.handleTileCreated(message.payload)
+        break
+      }
+      case 'tile-error': {
+        console.error(
+          '[WebGLImageViewerEngine] Tile error:',
+          message.payload.error,
+        )
+        break
+      }
+      case 'log': {
+        const { level, message: m } = message.payload
+        // eslint-disable-next-line no-console
+        console[level]?.('[Worker]', m)
+        break
+      }
+      default: {
+        break
+      }
+    }
+  }
+
+  private handleImageBitmap(payload: {
+    imageBitmap: ImageBitmap
+    imageWidth: number
+    imageHeight: number
+    lodLevel: number
+  }): void {
+    const { imageBitmap, imageWidth, imageHeight, lodLevel } = payload
+
+    this.imageWidth = imageWidth
+    this.imageHeight = imageHeight
+    // Upload with potential downscale to fit GPU limits
+    const { width: texW, height: texH } = this.uploadTexture(imageBitmap)
+    this.textureWidth = texW
+    this.textureHeight = texH
+    imageBitmap.close()
+
+    this.currentLOD = lodLevel
+    this.quality = qualityFromLOD(lodLevel)
+
+    this.fitToScreenScale = this.computeFitToScreenScale()
+    this.updateScaleBounds()
+    this.scaleInternal = this.computeInitialDisplayScale()
+    this.translateX = 0
+    this.translateY = 0
+    if (this.limitToBounds) {
+      this.clampTranslation()
+    }
+
+    this.setLoadingState(false, LoadingState.CREATE_TEXTURE, this.quality)
+    this.scheduleRender()
+    this.emitZoomChange()
+  }
+
+  private async loadImageWithoutWorker(url: string): Promise<ImageBitmap> {
+    const response = await fetch(url, { mode: 'cors' })
+    const blob = await response.blob()
+    if ('createImageBitmap' in window) {
+      return await createImageBitmap(blob)
+    }
+
+    return await this.decodeWithImageElement(blob)
+  }
+
+  private async decodeWithImageElement(blob: Blob): Promise<ImageBitmap> {
+    const url = URL.createObjectURL(blob)
+    try {
+      const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
+        const image = new Image()
+        image.crossOrigin = 'anonymous'
+        image.onload = async () => {
+          try {
+            if ('createImageBitmap' in window) {
+              const data = await createImageBitmap(image)
+              resolve(data)
+            } else {
+              reject(new Error('createImageBitmap is not supported'))
+            }
+          } catch (error) {
+            reject(error)
+          } finally {
+            URL.revokeObjectURL(url)
+          }
+        }
+        image.onerror = () => {
+          URL.revokeObjectURL(url)
+          reject(new Error('Failed to decode image'))
+        }
+        image.src = url
+      })
+      return bitmap
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  private uploadTexture(imageBitmap: ImageBitmap): {
+    width: number
+    height: number
+  } {
     const { gl } = this
 
-    const texture = gl.createTexture()
-    if (!texture) return null
+    if (
+      imageBitmap.width > this.maxTextureSize ||
+      imageBitmap.height > this.maxTextureSize
+    ) {
+      console.warn(
+        `[WebGLImageViewerEngine] Image exceeds MAX_TEXTURE_SIZE (${this.maxTextureSize}), quality will be reduced.`,
+      )
+    }
 
-    gl.bindTexture(gl.TEXTURE_2D, texture)
+    if (!this.texture) {
+      this.texture = gl.createTexture()
+    }
+
+    if (!this.texture) {
+      throw new Error('Failed to create WebGL texture')
+    }
+
+    // Downscale source if it exceeds MAX_TEXTURE_SIZE to prevent context loss
+    const scale = Math.min(
+      1,
+      this.maxTextureSize / Math.max(imageBitmap.width, imageBitmap.height),
+    )
+    const targetW = Math.max(1, Math.round(imageBitmap.width * scale))
+    const targetH = Math.max(1, Math.round(imageBitmap.height * scale))
+
+    const source: CanvasImageSource = (() => {
+      if (scale >= 1) return imageBitmap
+      const canvas = document.createElement('canvas')
+      canvas.width = targetW
+      canvas.height = targetH
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(imageBitmap, 0, 0, targetW, targetH)
+      }
+      return canvas
+    })()
+
+    gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
+    gl.bindTexture(gl.TEXTURE_2D, null)
 
-    return texture
+    return { width: targetW, height: targetH }
   }
 
-  private cleanupLODTextures() {
-    for (const texture of this.lodTextures.values()) {
-      this.gl.deleteTexture(texture)
-    }
-    this.lodTextures.clear()
-  }
-
-  private selectOptimalLOD(): number {
-    if (this.isAnimating && this.animationStartLOD > -1) {
-      return this.animationStartLOD
-    }
-    if (!this.imageLoaded) return 1
-
-    const requiredScale = this.scale * this.devicePixelRatio
-
-    // 寻找最佳的 LOD 级别
-    // 我们希望找到一个 LOD 级别，它的缩放比例刚好大于或等于所需的缩放比例
-    for (const [i, SIMPLE_LOD_LEVEL] of SIMPLE_LOD_LEVELS.entries()) {
-      if (SIMPLE_LOD_LEVEL.scale >= requiredScale) {
-        return i
-      }
-    }
-
-    // 如果没有找到，返回最高质量的 LOD
-    return SIMPLE_LOD_LEVELS.length - 1
-  }
-
-  // 缓动函数
-  private easeOutQuart(t: number): number {
-    return 1 - Math.pow(1 - t, 4)
-  }
-
-  private startAnimation(
-    targetScale: number,
-    targetTranslateX: number,
-    targetTranslateY: number,
-    animationTime?: number,
-  ) {
-    this.isAnimating = true
-    this.animationStartTime = performance.now()
-    this.animationDuration = animationTime || (this.config.smooth ? 300 : 0)
-    this.startScale = this.scale
-    this.targetScale = targetScale
-    this.startTranslateX = this.translateX
-    this.startTranslateY = this.translateY
-    this.targetTranslateX = targetTranslateX
-    this.targetTranslateY = targetTranslateY
-    this.animationStartLOD = this.selectOptimalLOD()
-
-    // 约束目标位置
-    const tempScale = this.scale
-    const tempTranslateX = this.translateX
-    const tempTranslateY = this.translateY
-
-    this.scale = targetScale
-    this.translateX = targetTranslateX
-    this.translateY = targetTranslateY
-    this.constrainImagePosition()
-
-    this.targetTranslateX = this.translateX
-    this.targetTranslateY = this.translateY
-
-    // 恢复当前状态
-    this.scale = tempScale
-    this.translateX = tempTranslateX
-    this.translateY = tempTranslateY
-
-    this.animate()
-  }
-
-  private animate() {
-    if (!this.isAnimating) return
-
-    const now = performance.now()
-    const elapsed = now - this.animationStartTime
-    const progress = Math.min(elapsed / this.animationDuration, 1)
-    const easedProgress = this.config.smooth
-      ? this.easeOutQuart(progress)
-      : progress
-
-    this.scale =
-      this.startScale + (this.targetScale - this.startScale) * easedProgress
-    this.translateX =
-      this.startTranslateX +
-      (this.targetTranslateX - this.startTranslateX) * easedProgress
-    this.translateY =
-      this.startTranslateY +
-      (this.targetTranslateY - this.startTranslateY) * easedProgress
-
-    this.render()
-    this.notifyZoomChange()
-
-    if (progress < 1) {
-      requestAnimationFrame(() => this.animate())
-    } else {
-      this.isAnimating = false
-      this.animationStartLOD = -1
-      this.scale = this.targetScale
-      this.translateX = this.targetTranslateX
-      this.translateY = this.targetTranslateY
-      this.render()
-      this.notifyZoomChange()
-      // 动画结束后，立即更新瓦片
-      this.updateTileCache()
-    }
-  }
-
-  private fitImageToScreen() {
-    const scaleX = this.canvasWidth / this.imageWidth
-    const scaleY = this.canvasHeight / this.imageHeight
-    const fitToScreenScale = Math.min(scaleX, scaleY)
-
-    this.scale = fitToScreenScale * this.config.initialScale
-    this.translateX = 0
-    this.translateY = 0
-    this.isOriginalSize = false
-  }
-
-  private createMatrix(): Float32Array {
-    const scaleX = (this.imageWidth * this.scale) / this.canvasWidth
-    const scaleY = (this.imageHeight * this.scale) / this.canvasHeight
-    const translateX = (this.translateX * 2) / this.canvasWidth
-    const translateY = -(this.translateY * 2) / this.canvasHeight
-
-    return new Float32Array([
-      scaleX,
-      0,
-      0,
-      0,
-      scaleY,
-      0,
-      translateX,
-      translateY,
-      1,
-    ])
-  }
-
-  private getFitToScreenScale(): number {
-    const scaleX = this.canvasWidth / this.imageWidth
-    const scaleY = this.canvasHeight / this.imageHeight
-    return Math.min(scaleX, scaleY)
-  }
-
-  private constrainImagePosition() {
-    if (!this.config.limitToBounds) return
-
-    const fitScale = this.getFitToScreenScale()
-
-    if (this.scale <= fitScale) {
-      this.translateX = 0
-      this.translateY = 0
-      return
-    }
-
-    const scaledWidth = this.imageWidth * this.scale
-    const scaledHeight = this.imageHeight * this.scale
-    const maxTranslateX = Math.max(0, (scaledWidth - this.canvasWidth) / 2)
-    const maxTranslateY = Math.max(0, (scaledHeight - this.canvasHeight) / 2)
-
-    this.translateX = Math.max(
-      -maxTranslateX,
-      Math.min(maxTranslateX, this.translateX),
-    )
-    this.translateY = Math.max(
-      -maxTranslateY,
-      Math.min(maxTranslateY, this.translateY),
-    )
-  }
-
-  private constrainScaleAndPosition() {
-    const fitToScreenScale = this.getFitToScreenScale()
-    const absoluteMinScale = fitToScreenScale * this.config.minScale
-    const originalSizeScale = 1
-    const userMaxScale = fitToScreenScale * this.config.maxScale
-    const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale)
-
-    if (this.scale < absoluteMinScale) {
-      this.scale = absoluteMinScale
-    } else if (this.scale > effectiveMaxScale) {
-      this.scale = effectiveMaxScale
-    }
-
-    this.constrainImagePosition()
-  }
-
-  // 瓦片系统实现
-  private getTileKey(x: number, y: number, lodLevel: number): TileKey {
-    return `${x}-${y}-${lodLevel}`
-  }
-
-  private getTileGridSize(lodLevel: number): { cols: number; rows: number } {
-    const lodConfig = SIMPLE_LOD_LEVELS[lodLevel]
-    const scaledWidth = this.imageWidth * lodConfig.scale
-    const scaledHeight = this.imageHeight * lodConfig.scale
-
-    const cols = Math.ceil(scaledWidth / TILE_SIZE)
-    const rows = Math.ceil(scaledHeight / TILE_SIZE)
-
-    return { cols, rows }
-  }
-
-  private calculateVisibleTiles(): Array<{
-    x: number
-    y: number
-    lodLevel: number
-    priority: number
-  }> {
-    if (!this.imageLoaded) return []
-
-    const lodLevel = this.selectOptimalLOD()
-    const { cols, rows } = this.getTileGridSize(lodLevel)
-
-    // 计算当前可视区域在图像坐标系中的范围
-    // 图像中心点在 canvas 中的位置
-    const imageCenterInCanvasX = this.canvasWidth / 2 + this.translateX
-    const imageCenterInCanvasY = this.canvasHeight / 2 + this.translateY
-
-    // 当前缩放后的图像尺寸
-    const scaledImageWidth = this.imageWidth * this.scale
-    const scaledImageHeight = this.imageHeight * this.scale
-
-    // 图像左上角在 canvas 中的位置
-    const imageLeftInCanvas = imageCenterInCanvasX - scaledImageWidth / 2
-    const imageTopInCanvas = imageCenterInCanvasY - scaledImageHeight / 2
-
-    // 可视区域在图像坐标中的范围 (0 到 imageWidth/Height)
-    const viewLeft = Math.max(0, -imageLeftInCanvas / this.scale)
-    const viewTop = Math.max(0, -imageTopInCanvas / this.scale)
-    const viewRight = Math.min(
-      this.imageWidth,
-      (this.canvasWidth - imageLeftInCanvas) / this.scale,
-    )
-    const viewBottom = Math.min(
-      this.imageHeight,
-      (this.canvasHeight - imageTopInCanvas) / this.scale,
-    )
-
-    // 计算瓦片大小在原图坐标中的尺寸
-    const tileWidthInImage = this.imageWidth / cols
-    const tileHeightInImage = this.imageHeight / rows
-
-    // 计算需要的瓦片范围
-    const margin = 1 // 额外加载 1 个瓦片的边距
-    const startTileX = Math.max(
-      0,
-      Math.floor(viewLeft / tileWidthInImage) - margin,
-    )
-    const endTileX = Math.min(
-      cols - 1,
-      Math.ceil(viewRight / tileWidthInImage) + margin,
-    )
-    const startTileY = Math.max(
-      0,
-      Math.floor(viewTop / tileHeightInImage) - margin,
-    )
-    const endTileY = Math.min(
-      rows - 1,
-      Math.ceil(viewBottom / tileHeightInImage) + margin,
-    )
-
-    const visibleTiles: Array<{
-      x: number
-      y: number
-      lodLevel: number
-      priority: number
-    }> = []
-
-    // 计算视口中心在图像坐标中的位置
-    const viewCenterX = (viewLeft + viewRight) / 2
-    const viewCenterY = (viewTop + viewBottom) / 2
-
-    for (let y = startTileY; y <= endTileY; y++) {
-      for (let x = startTileX; x <= endTileX; x++) {
-        // 计算瓦片中心到视口中心的距离作为优先级
-        const tileCenterX = (x + 0.5) * tileWidthInImage
-        const tileCenterY = (y + 0.5) * tileHeightInImage
-        const distance = Math.sqrt(
-          Math.pow(tileCenterX - viewCenterX, 2) +
-            Math.pow(tileCenterY - viewCenterY, 2),
-        )
-
-        visibleTiles.push({
-          x,
-          y,
-          lodLevel,
-          priority: distance,
-        })
-      }
-    }
-
-    // 按优先级排序（距离越近优先级越高）
-    visibleTiles.sort((a, b) => a.priority - b.priority)
-
-    return visibleTiles
-  }
-
-  private async updateTileCache(): Promise<void> {
-    const visibleTiles = this.calculateVisibleTiles()
-    const newVisibleTiles = new Set<TileKey>()
-
-    // 创建当前视口的哈希，用于检测视口变化
-    const viewportHash = `${this.scale.toFixed(3)}-${this.translateX.toFixed(1)}-${this.translateY.toFixed(1)}`
-
-    // 如果视口没有显著变化，跳过更新
-    if (viewportHash === this.lastViewportHash) {
-      return
-    }
-
-    this.lastViewportHash = viewportHash
-
-    // 标记需要的瓦片
-    for (const tile of visibleTiles) {
-      const key = this.getTileKey(tile.x, tile.y, tile.lodLevel)
-      newVisibleTiles.add(key)
-
-      if (!this.tileCache.has(key) && !this.loadingTiles.has(key)) {
-        this.pendingTileRequests.push({ key, priority: tile.priority })
-      } else if (this.tileCache.has(key)) {
-        // 更新使用时间
-        const tileInfo = this.tileCache.get(key)!
-        tileInfo.lastUsed = performance.now()
-      }
-    }
-
-    this.currentVisibleTiles = newVisibleTiles
-
-    // 清理不再需要的瓦片
-    this.cleanupOldTiles()
-
-    // 处理待加载的瓦片请求
-    this.processPendingTileRequests()
-  }
-
-  private cleanupOldTiles(): void {
-    const now = performance.now()
-    const maxAge = 30000 // 30 秒后清理不再使用的瓦片
-
-    // 如果缓存过大，强制清理
-    if (this.tileCache.size > TILE_CACHE_SIZE) {
-      const tilesToRemove = Array.from(this.tileCache.entries())
-        .filter(([key]) => !this.currentVisibleTiles.has(key))
-        .sort(([, a], [, b]) => a.lastUsed - b.lastUsed)
-        .slice(0, this.tileCache.size - TILE_CACHE_SIZE + 5) // 清理多一些
-
-      for (const [key, tileInfo] of tilesToRemove) {
-        if (tileInfo.texture) {
-          this.gl.deleteTexture(tileInfo.texture)
-        }
-        this.tileCache.delete(key)
-      }
-    }
-
-    // 清理过期的瓦片
-    for (const [key, tileInfo] of this.tileCache.entries()) {
-      if (
-        !this.currentVisibleTiles.has(key) &&
-        now - tileInfo.lastUsed > maxAge
-      ) {
-        if (tileInfo.texture) {
-          this.gl.deleteTexture(tileInfo.texture)
-        }
-        this.tileCache.delete(key)
-      }
-    }
-  }
-
-  private processPendingTileRequests(): void {
-    if (
-      this.pendingTileRequests.length === 0 ||
-      !this.worker ||
-      !this.textureWorkerInitialized
-    ) {
-      return
-    }
-
-    // 按优先级排序
-    this.pendingTileRequests.sort((a, b) => a.priority - b.priority)
-
-    // 限制并发加载数量
-    const batch = this.pendingTileRequests.splice(0, MAX_TILES_PER_FRAME)
-
-    for (const request of batch) {
-      const { key, priority } = request
-      if (this.loadingTiles.has(key) || this.tileCache.has(key)) {
-        continue
-      }
-
-      this.loadingTiles.set(key, { priority })
-
-      // 解析瓦片坐标
-      const [x, y, lodLevel] = key.split('-').map(Number)
-      const lodConfig = SIMPLE_LOD_LEVELS[lodLevel]
-
-      this.worker.postMessage({
-        type: 'create-tile',
-        payload: {
-          x,
-          y,
-          lodLevel,
-          lodConfig,
-          imageWidth: this.imageWidth,
-          imageHeight: this.imageHeight,
-          key,
-        },
-      })
-    }
-  }
-
-  // 修改渲染方法以支持瓦片渲染
-  private render() {
-    const { gl } = this
-
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height)
-    gl.clearColor(0, 0, 0, 0)
-    gl.clear(gl.COLOR_BUFFER_BIT)
-    gl.useProgram(this.program)
-
-    const matrixLocation = gl.getUniformLocation(this.program, 'u_matrix')
-    const imageLocation = gl.getUniformLocation(this.program, 'u_image')
-
-    // 始终渲染一个低分辨率的底图作为回退，防止瓦片加载过程中出现空白
-    if (this.texture) {
-      gl.uniformMatrix3fv(matrixLocation, false, this.createMatrix())
-      gl.uniform1i(imageLocation, 0)
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, this.texture)
-      gl.drawArrays(gl.TRIANGLES, 0, 6)
-    }
-
-    // 渲染可见的瓦片
-    const lodLevel = this.selectOptimalLOD()
-
-    for (const tileKey of this.currentVisibleTiles) {
-      const tileInfo = this.tileCache.get(tileKey)
-      if (!tileInfo || !tileInfo.texture || tileInfo.lodLevel !== lodLevel) {
-        continue
-      }
-
-      // 计算瓦片的渲染变换矩阵
-      const tileMatrix = this.createTileMatrix(
-        tileInfo.x,
-        tileInfo.y,
-        tileInfo.lodLevel,
-      )
-      gl.uniformMatrix3fv(matrixLocation, false, tileMatrix)
-
-      gl.uniform1i(imageLocation, 0)
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, tileInfo.texture)
-      gl.drawArrays(gl.TRIANGLES, 0, 6)
-    }
-
-    // 更新调试信息
+  private setLoadingState(
+    isLoading: boolean,
+    state: LoadingState,
+    quality: 'high' | 'medium' | 'low' | 'unknown',
+  ): void {
+    this.isLoading = isLoading
+    this.onLoadingStateChange(isLoading, state, quality)
     this.updateDebugInfo()
-
-    // 定期更新瓦片缓存
-    if (
-      !this.isAnimating &&
-      performance.now() - this.lastTileUpdateTime > 100
-    ) {
-      // 100ms 防抖
-      this.lastTileUpdateTime = performance.now()
-      setTimeout(() => this.updateTileCache(), 0)
-    }
   }
 
-  private createTileMatrix(
-    tileX: number,
-    tileY: number,
-    lodLevel: number,
-  ): Float32Array {
-    const { cols, rows } = this.getTileGridSize(lodLevel)
-
-    // 计算瓦片在原图中的区域
-    const tileWidthInImage = this.imageWidth / cols
-    const tileHeightInImage = this.imageHeight / rows
-
-    // 瓦片在原图中的边界
-    const tileLeftInImage = tileX * tileWidthInImage
-    const tileTopInImage = tileY * tileHeightInImage
-    const tileRightInImage = Math.min(
-      this.imageWidth,
-      tileLeftInImage + tileWidthInImage,
-    )
-    const tileBottomInImage = Math.min(
-      this.imageHeight,
-      tileTopInImage + tileHeightInImage,
-    )
-
-    // 瓦片的实际尺寸（处理边界情况）
-    const actualTileWidth = tileRightInImage - tileLeftInImage
-    const actualTileHeight = tileBottomInImage - tileTopInImage
-
-    // 瓦片中心在原图中的位置
-    const tileCenterInImageX = tileLeftInImage + actualTileWidth / 2
-    const tileCenterInImageY = tileTopInImage + actualTileHeight / 2
-
-    // 将瓦片中心转换到相对于图像中心的坐标
-    const tileCenterRelativeX = tileCenterInImageX - this.imageWidth / 2
-    const tileCenterRelativeY = tileCenterInImageY - this.imageHeight / 2
-
-    // 计算瓦片在 canvas 中的位置
-    const tileCenterInCanvasX =
-      this.canvasWidth / 2 + this.translateX + tileCenterRelativeX * this.scale
-    const tileCenterInCanvasY =
-      this.canvasHeight / 2 + this.translateY + tileCenterRelativeY * this.scale
-
-    // 计算瓦片在 canvas 中的尺寸
-    const tileWidthInCanvas = actualTileWidth * this.scale
-    const tileHeightInCanvas = actualTileHeight * this.scale
-
-    // 转换到 WebGL 归一化坐标系 (-1 到 1)
-    const scaleX = tileWidthInCanvas / this.canvasWidth
-    const scaleY = tileHeightInCanvas / this.canvasHeight
-
-    const translateX = (tileCenterInCanvasX * 2) / this.canvasWidth - 1
-    const translateY = -((tileCenterInCanvasY * 2) / this.canvasHeight - 1)
-
-    return new Float32Array([
-      scaleX,
-      0,
-      0,
-      0,
-      scaleY,
-      0,
-      translateX,
-      translateY,
-      1,
-    ])
+  private emitZoomChange(): void {
+    const originalScale = this.scaleInternal
+    const relativeScale = this.fitToScreenScale
+      ? originalScale / this.fitToScreenScale
+      : originalScale
+    this.onZoomChange(originalScale, relativeScale)
   }
 
-  // 添加瓦片更新时间追踪
-  private lastTileUpdateTime = 0
+  private updateDebugInfo(): void {
+    if (!this.debug || !this.debugInfoSetter) return
+    const memoryBudgetBytes = this.maxTextureSize * this.maxTextureSize * 4
+    const textureBytes = this.textureWidth * this.textureHeight * 4
+    const textureMiB = textureBytes / (1024 * 1024)
+    const budgetMiB = memoryBudgetBytes / (1024 * 1024)
+    const pressure =
+      textureBytes > 0 ? (textureBytes / memoryBudgetBytes) * 100 : 0
 
-  // 公共方法
-  public zoomIn(animated = false) {
-    const centerX = this.canvasWidth / 2
-    const centerY = this.canvasHeight / 2
-    this.zoomAt(centerX, centerY, 1 + this.config.wheel.step, animated)
-  }
+    const tileSystem = this.computeTileDebuggerInfo()
 
-  public zoomOut(animated = false) {
-    const centerX = this.canvasWidth / 2
-    const centerY = this.canvasHeight / 2
-    this.zoomAt(centerX, centerY, 1 - this.config.wheel.step, animated)
-  }
-
-  public resetView() {
-    const fitToScreenScale = this.getFitToScreenScale()
-    const targetScale = fitToScreenScale * this.config.initialScale
-    this.startAnimation(targetScale, 0, 0)
-  }
-
-  public getScale(): number {
-    return this.scale
-  }
-
-  public destroy() {
-    // 清理事件监听器
-    window.removeEventListener('resize', this.boundResizeCanvas)
-    this.canvas.removeEventListener('mousedown', this.boundHandleMouseDown)
-    this.canvas.removeEventListener('mousemove', this.boundHandleMouseMove)
-    this.canvas.removeEventListener('mouseup', this.boundHandleMouseUp)
-    this.canvas.removeEventListener('wheel', this.boundHandleWheel)
-    this.canvas.removeEventListener('dblclick', this.boundHandleDoubleClick)
-    this.canvas.removeEventListener('touchstart', this.boundHandleTouchStart)
-    this.canvas.removeEventListener('touchmove', this.boundHandleTouchMove)
-    this.canvas.removeEventListener('touchend', this.boundHandleTouchEnd)
-
-    // 清理 WebGL 资源
-    this.cleanupLODTextures()
-    if (this.texture) {
-      this.gl.deleteTexture(this.texture)
-    }
-    if (this.program) {
-      this.gl.deleteProgram(this.program)
-    }
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect()
-    }
-
-    this.worker?.terminate()
-  }
-
-  private updateDebugInfo() {
-    if (!this.onDebugUpdate?.current) return
-
-    const fitToScreenScale = this.getFitToScreenScale()
-    const relativeScale = this.scale / fitToScreenScale
-    const userMaxScale = fitToScreenScale * this.config.maxScale
-    const originalSizeScale = 1
-    const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale)
-
-    // 计算瓦片系统的内存使用
-    const tileMemoryMB = this.tileCache.size * 4 // 简化估算，每个瓦片约 4MB
-    const totalMemoryMB = tileMemoryMB + this.lodTextures.size * 16 // LOD 纹理约 16MB
-    const memoryBudget = 256 // 256MB 预算
-
-    // 收集瓦片系统调试信息
-    const tileSystemInfo = {
-      cacheSize: this.tileCache.size,
-      visibleTiles: this.currentVisibleTiles.size,
-      loadingTiles: this.loadingTiles.size,
-      pendingRequests: this.pendingTileRequests.length,
-      cacheLimit: TILE_CACHE_SIZE,
-      maxTilesPerFrame: MAX_TILES_PER_FRAME,
-      tileSize: TILE_SIZE,
-      cacheKeys: Array.from(this.tileCache.keys()),
-      visibleKeys: Array.from(this.currentVisibleTiles),
-      loadingKeys: Array.from(this.loadingTiles.keys()),
-      pendingKeys: this.pendingTileRequests.map((req) => req.key),
-    }
-
-    this.onDebugUpdate.current({
-      scale: this.scale,
-      relativeScale,
-      translateX: this.translateX,
-      translateY: this.translateY,
+    const debugInfo: DebugInfo = {
+      scale: this.scaleInternal,
+      relativeScale: this.fitToScreenScale
+        ? this.scaleInternal / this.fitToScreenScale
+        : this.scaleInternal,
+      translateX: this.translateX / this.devicePixelRatio,
+      translateY: this.translateY / this.devicePixelRatio,
       currentLOD: this.currentLOD,
-      lodLevels: SIMPLE_LOD_LEVELS.length,
-      canvasSize: { width: this.canvasWidth, height: this.canvasHeight },
-      imageSize: { width: this.imageWidth, height: this.imageHeight },
-      fitToScreenScale,
-      userMaxScale,
-      effectiveMaxScale,
-      originalSizeScale,
-      renderCount: performance.now(),
-      maxTextureSize: this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE),
-      quality: this.currentQuality,
-      isLoading: this.isLoadingTexture,
+      lodLevels: this.totalLODLevels,
+      canvasSize: {
+        width: this.viewportWidth,
+        height: this.viewportHeight,
+      },
+      imageSize: {
+        width: this.imageWidth,
+        height: this.imageHeight,
+      },
+      fitToScreenScale: this.fitToScreenScale,
+      userMaxScale: this.maxScale,
+      effectiveMaxScale: this.effectiveMaxScale,
+      originalSizeScale: this.scaleInternal,
+      renderCount: this.renderCount,
+      maxTextureSize: this.maxTextureSize,
+      quality: this.quality,
+      isLoading: this.isLoading,
       memory: {
-        textures: totalMemoryMB,
-        estimated: totalMemoryMB,
-        budget: memoryBudget,
-        pressure: (totalMemoryMB / memoryBudget) * 100,
-        activeLODs: this.lodTextures.size,
-        maxConcurrentLODs: 3,
+        textures: textureMiB,
+        estimated: textureMiB,
+        budget: budgetMiB,
+        pressure,
+        activeLODs: this.isLoading ? 1 : 0,
+        maxConcurrentLODs: this.totalLODLevels,
         onDemandStrategy: true,
       },
-      tileSystem: tileSystemInfo,
-    })
+      tileSystem,
+    }
+
+    this.debugInfoSetter.current(debugInfo)
   }
 
-  private notifyZoomChange() {
-    if (this.onZoomChange) {
-      const originalScale = this.scale
-      const fitToScreenScale = this.getFitToScreenScale()
-      const relativeScale = this.scale / fitToScreenScale
-      this.onZoomChange(originalScale, relativeScale)
+  /**
+   * Compute tile debugger information based on current viewport and LOD.
+   * This is an estimation to aid debugging; the engine does not schedule tiles yet.
+   */
+  private computeTileDebuggerInfo(): DebugInfo['tileSystem'] {
+    if (
+      !this.imageWidth ||
+      !this.imageHeight ||
+      !this.canvasWidth ||
+      !this.canvasHeight
+    ) {
+      return undefined
+    }
+
+    const lodScale = SIMPLE_LOD_LEVELS[this.currentLOD]?.scale ?? 1
+    const scaledWidth = this.imageWidth * lodScale
+    const scaledHeight = this.imageHeight * lodScale
+
+    const totalCols = Math.max(1, Math.ceil(scaledWidth / TILE_SIZE))
+    const totalRows = Math.max(1, Math.ceil(scaledHeight / TILE_SIZE))
+
+    // Compute the intersection between the drawn image rect and the canvas
+    const {
+      drawX,
+      drawY,
+      scaledWidth: drawW,
+      scaledHeight: drawH,
+    } = this.computeDrawMetadata(this.scaleInternal)
+
+    const visX0 = Math.max(0, drawX)
+    const visY0 = Math.max(0, drawY)
+    const visX1 = Math.min(this.canvasWidth, drawX + drawW)
+    const visY1 = Math.min(this.canvasHeight, drawY + drawH)
+
+    const interW = Math.max(0, visX1 - visX0)
+    const interH = Math.max(0, visY1 - visY0)
+    if (interW === 0 || interH === 0) {
+      return {
+        cacheSize: 0,
+        visibleTiles: 0,
+        loadingTiles: 0,
+        pendingRequests: 0,
+        cacheLimit: totalCols * totalRows,
+        maxTilesPerFrame: 0,
+        tileSize: TILE_SIZE,
+        cacheKeys: [],
+        visibleKeys: [],
+        loadingKeys: [],
+        pendingKeys: [],
+      }
+    }
+
+    // Map visible rect back to image coordinates, then into LOD-scaled tile space
+    const imageX0 = (visX0 - drawX) / this.scaleInternal
+    const imageY0 = (visY0 - drawY) / this.scaleInternal
+    const imageW = interW / this.scaleInternal
+    const imageH = interH / this.scaleInternal
+
+    const lodX0 = imageX0 * lodScale
+    const lodY0 = imageY0 * lodScale
+    const lodX1 = (imageX0 + imageW) * lodScale
+    const lodY1 = (imageY0 + imageH) * lodScale
+
+    const startCol = Math.max(0, Math.floor(lodX0 / TILE_SIZE))
+    const endCol = Math.min(totalCols - 1, Math.floor((lodX1 - 1) / TILE_SIZE))
+    const startRow = Math.max(0, Math.floor(lodY0 / TILE_SIZE))
+    const endRow = Math.min(totalRows - 1, Math.floor((lodY1 - 1) / TILE_SIZE))
+
+    let visibleTiles = 0
+    if (endCol >= startCol && endRow >= startRow) {
+      visibleTiles = (endCol - startCol + 1) * (endRow - startRow + 1)
+    }
+
+    // Generate a small sample of visible keys for display purposes (cap to 100)
+    const visibleKeys: string[] = []
+    const maxList = 100
+    for (let r = startRow; r <= endRow && visibleKeys.length < maxList; r++) {
+      for (let c = startCol; c <= endCol && visibleKeys.length < maxList; c++) {
+        visibleKeys.push(`${this.currentLOD}_${c}_${r}`)
+      }
+    }
+
+    return {
+      cacheSize: this.tileCache.size,
+      visibleTiles,
+      loadingTiles: this.tileLoading.size,
+      pendingRequests: this.tileLoading.size,
+      cacheLimit: this.tileCacheLimit,
+      maxTilesPerFrame: this.maxTilesPerFrame,
+      tileSize: TILE_SIZE,
+      cacheKeys: Array.from(this.tileCache.keys()).slice(0, 50),
+      visibleKeys,
+      loadingKeys: Array.from(this.tileLoading.values()).slice(0, 50),
+      pendingKeys: Array.from(this.tileLoading.values()).slice(0, 50),
     }
   }
 
-  private notifyLoadingStateChange(
-    isLoading: boolean,
-
-    state?: LoadingState,
-    quality?: 'high' | 'medium' | 'low' | 'unknown',
-  ) {
-    if (this.onLoadingStateChange) {
-      this.onLoadingStateChange(
-        isLoading,
-        state,
-        quality || this.currentQuality,
-      )
-    }
-  }
-
-  // 事件处理
-  private setupEventListeners() {
-    this.canvas.addEventListener('mousedown', this.boundHandleMouseDown)
-    this.canvas.addEventListener('mousemove', this.boundHandleMouseMove)
-    this.canvas.addEventListener('mouseup', this.boundHandleMouseUp)
-    this.canvas.addEventListener('wheel', this.boundHandleWheel)
-    this.canvas.addEventListener('dblclick', this.boundHandleDoubleClick)
-    this.canvas.addEventListener('touchstart', this.boundHandleTouchStart)
-    this.canvas.addEventListener('touchmove', this.boundHandleTouchMove)
-    this.canvas.addEventListener('touchend', this.boundHandleTouchEnd)
-  }
-
-  private handleMouseDown(e: MouseEvent) {
-    if (this.isAnimating) {
-      this.isAnimating = false
-      this.animationStartLOD = -1
-    }
-    if (this.config.panning.disabled) return
-
-    this.isDragging = true
-    this.lastMouseX = e.clientX
-    this.lastMouseY = e.clientY
-  }
-
-  private handleMouseMove(e: MouseEvent) {
-    if (!this.isDragging || this.config.panning.disabled) return
-
-    const deltaX = e.clientX - this.lastMouseX
-    const deltaY = e.clientY - this.lastMouseY
-
-    this.translateX += deltaX
-    this.translateY += deltaY
-
-    this.lastMouseX = e.clientX
-    this.lastMouseY = e.clientY
-
-    this.constrainImagePosition()
-    this.render()
-  }
-
-  private handleMouseUp() {
-    this.isDragging = false
-  }
-
-  private handleWheel(e: WheelEvent) {
-    e.preventDefault()
-    if (this.config.wheel.wheelDisabled) return
-
-    if (this.isAnimating) {
-      this.isAnimating = false
-      this.animationStartLOD = -1
-    }
-
+  private createPointerSnapshot(event: PointerEvent): PointerSnapshot {
     const rect = this.canvas.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
-    const scaleFactor =
-      e.deltaY > 0 ? 1 - this.config.wheel.step : 1 + this.config.wheel.step
-    this.zoomAt(mouseX, mouseY, scaleFactor)
+    const cssX = event.clientX - rect.left
+    const cssY = event.clientY - rect.top
+    return {
+      pointerId: event.pointerId,
+      x: cssX * this.devicePixelRatio,
+      y: cssY * this.devicePixelRatio,
+    }
   }
 
-  private handleDoubleClick(e: MouseEvent) {
-    e.preventDefault()
-    if (this.config.doubleClick.disabled) return
-
-    const now = Date.now()
-    if (now - this.lastDoubleClickTime < 300) return
-    this.lastDoubleClickTime = now
-
-    const rect = this.canvas.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
-    this.performDoubleClickAction(mouseX, mouseY)
+  private computePinchDistance(): number | null {
+    if (this.pointerSnapshots.size !== 2) return null
+    const [first, second] = Array.from(this.pointerSnapshots.values())
+    const dx = first.x - second.x
+    const dy = first.y - second.y
+    return Math.hypot(dx, dy)
   }
 
-  private handleTouchStart(e: TouchEvent) {
-    e.preventDefault()
+  private computePinchCenter(): { readonly x: number; readonly y: number } {
+    const [first, second] = Array.from(this.pointerSnapshots.values())
+    return {
+      x: (first.x + second.x) / 2,
+      y: (first.y + second.y) / 2,
+    }
+  }
 
-    if (this.isAnimating) {
-      this.isAnimating = false
-      this.animationStartLOD = -1
+  private handleTileCreated({
+    imageBitmap,
+    lodLevel,
+    x,
+    y,
+    width,
+    height,
+  }: {
+    key: string
+    imageBitmap: ImageBitmap
+    lodLevel: number
+    x: number
+    y: number
+    width: number
+    height: number
+  }): void {
+    // Upload tile to a dedicated texture and cache
+    const texture = this.createTextureFromBitmap(imageBitmap)
+    imageBitmap.close()
+
+    const key = this.composeTileKey(lodLevel, x, y)
+    this.tileCache.set(key, { texture, width, height, lod: lodLevel, x, y })
+    this.tileLoading.delete(key)
+
+    this.currentLOD = Math.max(this.currentLOD, lodLevel)
+    this.quality = qualityFromLOD(this.currentLOD)
+    this.evictTilesIfNeeded()
+    this.scheduleRender()
+    this.updateDebugInfo()
+  }
+
+  private finishPendingLoad(): void {
+    this.pendingLoadResolve?.()
+    this.pendingLoadResolve = null
+    this.pendingLoadReject = null
+  }
+
+  private handleLoadError(error: unknown): void {
+    console.error('[WebGLImageViewerEngine] Failed to load image:', error)
+    this.setLoadingState(false, LoadingState.IMAGE_LOADING, 'unknown')
+    this.pendingLoadReject?.(error)
+    this.pendingLoadResolve = null
+    this.pendingLoadReject = null
+  }
+
+  private cancelPendingLoad(): void {
+    if (this.pendingLoadReject) {
+      this.pendingLoadReject(new Error('Image loading was cancelled'))
+    }
+    this.pendingLoadResolve = null
+    this.pendingLoadReject = null
+  }
+
+  private releaseTexture(): void {
+    if (this.texture) {
+      this.gl.deleteTexture(this.texture)
+      this.texture = null
+    }
+    // release tiles
+    for (const { texture } of this.tileCache.values()) {
+      this.gl.deleteTexture(texture)
+    }
+    this.tileCache.clear()
+    this.tileLoading.clear()
+  }
+
+  private animateZoom(
+    deviceX: number,
+    deviceY: number,
+    targetScale: number,
+    duration: number,
+  ): void {
+    const cappedDuration = Math.max(0, duration)
+    if (cappedDuration === 0) {
+      this.applyZoomAt(deviceX, deviceY, targetScale)
       return
     }
 
-    if (e.touches.length === 1 && !this.config.panning.disabled) {
-      const touch = e.touches[0]
-      const now = Date.now()
+    const now = performance.now()
+    const animationPayload = {
+      rafId: requestAnimationFrame(this.zoomAnimationStep),
+      startTime: now,
+      duration: cappedDuration,
+      startScale: this.scaleInternal,
+      targetScale,
+      pivot: { x: deviceX, y: deviceY },
+    }
 
-      // 检测双击
-      if (
-        !this.config.doubleClick.disabled &&
-        now - this.lastTouchTime < 300 &&
-        Math.abs(touch.clientX - this.lastTouchX) < 50 &&
-        Math.abs(touch.clientY - this.lastTouchY) < 50
-      ) {
-        this.handleTouchDoubleTap(touch.clientX, touch.clientY)
-        this.lastTouchTime = 0
-        return
-      }
+    this.zoomAnimation = animationPayload
+  }
 
-      this.isDragging = true
-      this.lastMouseX = touch.clientX
-      this.lastMouseY = touch.clientY
+  private stopZoomAnimation(): void {
+    if (!this.zoomAnimation) return
+    if (typeof this.zoomAnimation.rafId === 'number') {
+      cancelAnimationFrame(this.zoomAnimation.rafId)
+    }
+    this.zoomAnimation = null
+  }
 
-      this.lastTouchTime = now
-      this.lastTouchX = touch.clientX
-      this.lastTouchY = touch.clientY
-    } else if (e.touches.length === 2 && !this.config.pinch.disabled) {
-      this.isDragging = false
-      const touch1 = e.touches[0]
-      const touch2 = e.touches[1]
-      this.lastTouchDistance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-          Math.pow(touch2.clientY - touch1.clientY, 2),
+  private updateScaleBounds(): void {
+    const minScale = Math.min(this.minScale, this.fitToScreenScale)
+    const maxScale = Math.max(this.maxScale, this.fitToScreenScale)
+    this.effectiveMinScale = minScale
+    this.effectiveMaxScale = maxScale
+  }
+
+  private handleContextLost(event: Event): void {
+    event.preventDefault()
+    this.setLoadingState(true, LoadingState.CONTEXT_LOST, 'unknown')
+    this.cancelAnimationFrame()
+  }
+
+  private handleContextRestored(): void {
+    // Recreate GL resources and texturing state
+    this.setupGLResources()
+    // Re-upload initial texture by asking worker to recreate the initial LOD
+    const worker = this.ensureWorker()
+    if (worker) {
+      worker.postMessage({
+        type: 'recreate-initial',
+        payload: { maxTextureSize: this.maxTextureSize },
+      })
+    } else if (this.src) {
+      // Fallback: reload image on main thread
+      this.loadImageWithoutWorker(this.src)
+        .then((bitmap) => {
+          this.handleImageBitmap({
+            imageBitmap: bitmap,
+            imageHeight: bitmap.height,
+            imageWidth: bitmap.width,
+            lodLevel: 2,
+          })
+        })
+        .catch((error) => this.handleLoadError(error))
+    }
+    this.setLoadingState(false, LoadingState.CONTEXT_RESTORED, this.quality)
+    this.scheduleRender()
+  }
+
+  private composeTileKey(lod: number, x: number, y: number): string {
+    return `${lod}_${x}_${y}`
+  }
+
+  private createTextureFromBitmap(imageBitmap: ImageBitmap): WebGLTexture {
+    const { gl } = this
+    const tex = gl.createTexture()
+    if (!tex) throw new Error('Failed to create tile texture')
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      imageBitmap,
+    )
+    gl.bindTexture(gl.TEXTURE_2D, null)
+    return tex
+  }
+
+  private evictTilesIfNeeded(): void {
+    if (this.tileCache.size <= this.tileCacheLimit) return
+    // Simple FIFO eviction for now
+    const toRemove = this.tileCache.size - this.tileCacheLimit
+    let removed = 0
+    for (const [k, v] of this.tileCache) {
+      this.gl.deleteTexture(v.texture)
+      this.tileCache.delete(k)
+      removed += 1
+      if (removed >= toRemove) break
+    }
+  }
+
+  private requestVisibleTiles(): void {
+    if (!this.useTiling) return
+    const worker = this.ensureWorker()
+    if (!worker) return
+
+    const desiredLOD = this.currentLOD
+    const lodScale = SIMPLE_LOD_LEVELS[desiredLOD]?.scale ?? 1
+    const range = this.computeVisibleTileRange(lodScale, 0)
+    if (!range) return
+
+    const totalBudget = this.maxTilesPerFrame
+    let remaining = totalBudget
+    const alloc = (ratio: number) => {
+      const v = Math.min(
+        remaining,
+        Math.max(0, Math.floor(totalBudget * ratio)),
       )
+      remaining -= v
+      return v
     }
-  }
+    const inViewBudget = alloc(0.6)
+    const nearBudget = alloc(0.25)
+    const farBudget = alloc(0.05)
+    const fallbackBudget = alloc(0.1)
 
-  private handleTouchMove(e: TouchEvent) {
-    e.preventDefault()
-
-    if (
-      e.touches.length === 1 &&
-      this.isDragging &&
-      !this.config.panning.disabled
-    ) {
-      const deltaX = e.touches[0].clientX - this.lastMouseX
-      const deltaY = e.touches[0].clientY - this.lastMouseY
-
-      this.translateX += deltaX
-      this.translateY += deltaY
-
-      this.lastMouseX = e.touches[0].clientX
-      this.lastMouseY = e.touches[0].clientY
-
-      this.constrainImagePosition()
-      this.render()
-    } else if (e.touches.length === 2 && !this.config.pinch.disabled) {
-      const touch1 = e.touches[0]
-      const touch2 = e.touches[1]
-      const distance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-          Math.pow(touch2.clientY - touch1.clientY, 2),
-      )
-
-      if (this.lastTouchDistance > 0) {
-        const scaleFactor = distance / this.lastTouchDistance
-        const centerX = (touch1.clientX + touch2.clientX) / 2
-        const centerY = (touch1.clientY + touch2.clientY) / 2
-
-        const rect = this.canvas.getBoundingClientRect()
-        this.zoomAt(centerX - rect.left, centerY - rect.top, scaleFactor)
+    const requestBucket = (
+      r: { startCol: number; endCol: number; startRow: number; endRow: number },
+      lodLevel: number,
+      lodScaleForLevel: number,
+      budget: number,
+    ) => {
+      if (budget <= 0) return 0
+      const centerCol = (r.startCol + r.endCol) / 2
+      const centerRow = (r.startRow + r.endRow) / 2
+      const candidates: Array<{ c: number; r: number; dist: number }> = []
+      for (let rr = r.startRow; rr <= r.endRow; rr++) {
+        for (let cc = r.startCol; cc <= r.endCol; cc++) {
+          const dist = Math.hypot(cc - centerCol, rr - centerRow)
+          candidates.push({ c: cc, r: rr, dist })
+        }
       }
-
-      this.lastTouchDistance = distance
-    }
-  }
-
-  private handleTouchEnd(_e: TouchEvent) {
-    this.isDragging = false
-    this.lastTouchDistance = 0
-  }
-
-  private handleTouchDoubleTap(clientX: number, clientY: number) {
-    if (this.config.doubleClick.disabled) return
-
-    const rect = this.canvas.getBoundingClientRect()
-    const touchX = clientX - rect.left
-    const touchY = clientY - rect.top
-
-    this.performDoubleClickAction(touchX, touchY)
-  }
-
-  private performDoubleClickAction(x: number, y: number) {
-    this.isAnimating = false
-    this.animationStartLOD = -1
-
-    if (this.config.doubleClick.mode === 'toggle') {
-      const fitToScreenScale = this.getFitToScreenScale()
-      const absoluteMinScale = fitToScreenScale * this.config.minScale
-      const originalSizeScale = 1
-      const userMaxScale = fitToScreenScale * this.config.maxScale
-      const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale)
-
-      if (this.isOriginalSize) {
-        const targetScale = Math.max(
-          absoluteMinScale,
-          Math.min(effectiveMaxScale, fitToScreenScale),
-        )
-        const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale
-        const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale
-        const targetTranslateX = x - this.canvasWidth / 2 - zoomX * targetScale
-        const targetTranslateY = y - this.canvasHeight / 2 - zoomY * targetScale
-
-        this.startAnimation(
-          targetScale,
-          targetTranslateX,
-          targetTranslateY,
-          this.config.doubleClick.animationTime,
-        )
-        this.isOriginalSize = false
-      } else {
-        const targetScale = Math.max(
-          absoluteMinScale,
-          Math.min(effectiveMaxScale, originalSizeScale),
-        )
-        const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale
-        const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale
-        const targetTranslateX = x - this.canvasWidth / 2 - zoomX * targetScale
-        const targetTranslateY = y - this.canvasHeight / 2 - zoomY * targetScale
-
-        this.startAnimation(
-          targetScale,
-          targetTranslateX,
-          targetTranslateY,
-          this.config.doubleClick.animationTime,
-        )
-        this.isOriginalSize = true
+      candidates.sort((a, b) => a.dist - b.dist)
+      let used = 0
+      for (const { c, r } of candidates) {
+        const key = this.composeTileKey(lodLevel, c, r)
+        if (this.tileCache.has(key) || this.tileLoading.has(key)) continue
+        if (used >= budget) break
+        this.tileLoading.add(key)
+        used += 1
+        worker.postMessage({
+          type: 'create-tile',
+          payload: {
+            x: c,
+            y: r,
+            lodLevel,
+            lodConfig: { scale: lodScaleForLevel },
+            imageWidth: this.imageWidth,
+            imageHeight: this.imageHeight,
+            key,
+          },
+        })
       }
-    } else {
-      this.zoomAt(x, y, this.config.doubleClick.step, true)
+      return used
+    }
+
+    // Desired LOD buckets: in-view, near-edge, far
+    requestBucket(range, desiredLOD, lodScale, inViewBudget)
+    const near = this.computeVisibleTileRange(lodScale, 1)
+    if (near) requestBucket(near, desiredLOD, lodScale, nearBudget)
+    const far = this.computeVisibleTileRange(lodScale, 3)
+    if (far) requestBucket(far, desiredLOD, lodScale, farBudget)
+
+    // Fallback LOD bucket (in-view only)
+    const fallbackLOD = Math.max(0, desiredLOD - 1)
+    if (fallbackLOD < desiredLOD && fallbackBudget > 0) {
+      const fbScale = SIMPLE_LOD_LEVELS[fallbackLOD]?.scale ?? 1
+      const fbRange = this.computeVisibleTileRange(fbScale, 0)
+      if (fbRange) requestBucket(fbRange, fallbackLOD, fbScale, fallbackBudget)
     }
   }
 
-  public zoomAt(x: number, y: number, scaleFactor: number, animated = false) {
-    const newScale = this.scale * scaleFactor
-    const fitToScreenScale = this.getFitToScreenScale()
-    const absoluteMinScale = fitToScreenScale * this.config.minScale
-    const originalSizeScale = 1
-    const userMaxScale = fitToScreenScale * this.config.maxScale
-    const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale)
+  private drawTiles(): { drewAny: boolean; complete: boolean } {
+    if (!this.useTiling || !this.program)
+      return { drewAny: false, complete: false }
+    const { gl } = this
+    const desiredLOD = this.currentLOD
+    const lodScale = SIMPLE_LOD_LEVELS[desiredLOD]?.scale ?? 1
+    const range = this.computeVisibleTileRange(lodScale, 0)
+    if (!range) return { drewAny: false, complete: false }
 
-    if (newScale < absoluteMinScale || newScale > effectiveMaxScale) return
+    gl.useProgram(this.program)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer)
+    gl.enableVertexAttribArray(this.positionLocation)
+    gl.vertexAttribPointer(this.positionLocation, 2, gl.FLOAT, false, 0, 0)
 
-    if (animated && this.config.smooth) {
-      const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale
-      const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale
-      const targetTranslateX = x - this.canvasWidth / 2 - zoomX * newScale
-      const targetTranslateY = y - this.canvasHeight / 2 - zoomY * newScale
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer)
+    gl.enableVertexAttribArray(this.texCoordLocation)
+    gl.vertexAttribPointer(this.texCoordLocation, 2, gl.FLOAT, false, 0, 0)
 
-      this.startAnimation(newScale, targetTranslateX, targetTranslateY)
-    } else {
-      const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale
-      const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale
+    let drew = 0
+    let expected = 0
+    for (let r = range.startRow; r <= range.endRow; r++) {
+      for (let c = range.startCol; c <= range.endCol; c++) {
+        expected += 1
+        const key = this.composeTileKey(desiredLOD, c, r)
+        const entry = this.tileCache.get(key)
+        if (!entry) continue
+        // LRU touch
+        this.touchTile(key)
+        const {
+          texture,
+          width: tileLODWidth,
+          height: tileLODHeight,
+          x,
+          y,
+        } = entry
 
-      this.scale = newScale
-      this.translateX = x - this.canvasWidth / 2 - zoomX * this.scale
-      this.translateY = y - this.canvasHeight / 2 - zoomY * this.scale
+        // Convert LOD tile size/offset to original image pixels
+        const tileImgW = tileLODWidth / lodScale
+        const tileImgH = tileLODHeight / lodScale
+        const tileImgX = (x * this.tileSize) / lodScale
+        const tileImgY = (y * this.tileSize) / lodScale
 
-      this.constrainImagePosition()
-      this.render()
-      this.notifyZoomChange()
+        const { drawX, drawY } = this.computeDrawMetadata(this.scaleInternal)
+        const dispX = drawX + tileImgX * this.scaleInternal
+        const dispY = drawY + tileImgY * this.scaleInternal
+        const dispW = tileImgW * this.scaleInternal
+        const dispH = tileImgH * this.scaleInternal
+
+        gl.activeTexture(gl.TEXTURE0)
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        const matrix = (() => {
+          const projection = createProjectionMatrix(
+            this.canvasWidth,
+            this.canvasHeight,
+          )
+          const translation = createTranslationMatrix(dispX, dispY)
+          const scale = createScaleMatrix(dispW, dispH)
+          const combined = multiplyMatrix(projection, translation)
+          return multiplyMatrix(combined, scale)
+        })()
+        gl.uniformMatrix3fv(this.matrixLocation, false, matrix)
+        // Shrink UV to avoid sampling edges (seam reduction)
+        const epsU = 0.5 / tileLODWidth
+        const epsV = 0.5 / tileLODHeight
+        gl.uniform4f(this.uvRectLocation, epsU, epsV, 1 - epsU, 1 - epsV)
+        gl.drawArrays(gl.TRIANGLES, 0, 6)
+        drew += 1
+      }
+    }
+
+    gl.bindTexture(gl.TEXTURE_2D, null)
+    gl.useProgram(null)
+    // Progressive LOD: draw fallback LOD underneath if not complete
+    if (drew !== expected) {
+      const fallbackLOD = Math.max(0, desiredLOD - 1)
+      if (fallbackLOD < desiredLOD) {
+        this.drawTilesForLOD(fallbackLOD)
+      }
+    }
+
+    return { drewAny: drew > 0, complete: drew === expected }
+  }
+
+  private drawTilesForLOD(lodLevel: number): void {
+    const { gl } = this
+    const lodScale = SIMPLE_LOD_LEVELS[lodLevel]?.scale ?? 1
+    const range = this.computeVisibleTileRange(lodScale, 0)
+    if (!range) return
+    for (let r = range.startRow; r <= range.endRow; r++) {
+      for (let c = range.startCol; c <= range.endCol; c++) {
+        const key = this.composeTileKey(lodLevel, c, r)
+        const entry = this.tileCache.get(key)
+        if (!entry) continue
+        const {
+          texture,
+          width: tileLODWidth,
+          height: tileLODHeight,
+          x,
+          y,
+        } = entry
+        const tileImgW = tileLODWidth / lodScale
+        const tileImgH = tileLODHeight / lodScale
+        const tileImgX = (x * this.tileSize) / lodScale
+        const tileImgY = (y * this.tileSize) / lodScale
+        const { drawX, drawY } = this.computeDrawMetadata(this.scaleInternal)
+        const dispX = drawX + tileImgX * this.scaleInternal
+        const dispY = drawY + tileImgY * this.scaleInternal
+        const dispW = tileImgW * this.scaleInternal
+        const dispH = tileImgH * this.scaleInternal
+        gl.activeTexture(gl.TEXTURE0)
+        gl.bindTexture(gl.TEXTURE_2D, texture)
+        const matrix = (() => {
+          const projection = createProjectionMatrix(
+            this.canvasWidth,
+            this.canvasHeight,
+          )
+          const translation = createTranslationMatrix(dispX, dispY)
+          const scale = createScaleMatrix(dispW, dispH)
+          const combined = multiplyMatrix(projection, translation)
+          return multiplyMatrix(combined, scale)
+        })()
+        gl.uniformMatrix3fv(this.matrixLocation, false, matrix)
+        const epsU = 0.5 / tileLODWidth
+        const epsV = 0.5 / tileLODHeight
+        gl.uniform4f(this.uvRectLocation, epsU, epsV, 1 - epsU, 1 - epsV)
+        gl.drawArrays(gl.TRIANGLES, 0, 6)
+      }
     }
   }
 
-  async copyOriginalImageToClipboard() {
-    try {
-      const response = await fetch(this.originalImageSrc)
-      const blob = await response.blob()
+  private computeVisibleTileRange(
+    lodScale: number,
+    marginTiles = 0,
+  ): {
+    startCol: number
+    endCol: number
+    startRow: number
+    endRow: number
+  } | null {
+    const scaledWidth = this.imageWidth * lodScale
+    const scaledHeight = this.imageHeight * lodScale
+    const cols = Math.max(1, Math.ceil(scaledWidth / this.tileSize))
+    const rows = Math.max(1, Math.ceil(scaledHeight / this.tileSize))
 
-      if (!navigator.clipboard || !navigator.clipboard.write) {
-        console.warn('Clipboard API not supported')
-        return
-      }
+    const {
+      drawX,
+      drawY,
+      scaledWidth: drawW,
+      scaledHeight: drawH,
+    } = this.computeDrawMetadata(this.scaleInternal)
+    const visX0 = Math.max(0, drawX)
+    const visY0 = Math.max(0, drawY)
+    const visX1 = Math.min(this.canvasWidth, drawX + drawW)
+    const visY1 = Math.min(this.canvasHeight, drawY + drawH)
+    const interW = Math.max(0, visX1 - visX0)
+    const interH = Math.max(0, visY1 - visY0)
+    if (interW === 0 || interH === 0) return null
 
-      const clipboardItem = new ClipboardItem({ [blob.type]: blob })
-      await navigator.clipboard.write([clipboardItem])
+    const imageX0 = (visX0 - drawX) / this.scaleInternal
+    const imageY0 = (visY0 - drawY) / this.scaleInternal
+    const imageW = interW / this.scaleInternal
+    const imageH = interH / this.scaleInternal
 
-      if (this.onImageCopied) {
-        this.onImageCopied()
-      }
-    } catch (error) {
-      console.error('Failed to copy image to clipboard:', error)
+    const lodX0 = imageX0 * lodScale
+    const lodY0 = imageY0 * lodScale
+    const lodX1 = (imageX0 + imageW) * lodScale
+    const lodY1 = (imageY0 + imageH) * lodScale
+
+    let startCol = Math.max(0, Math.floor(lodX0 / this.tileSize))
+    let endCol = Math.min(cols - 1, Math.floor((lodX1 - 1) / this.tileSize))
+    let startRow = Math.max(0, Math.floor(lodY0 / this.tileSize))
+    let endRow = Math.min(rows - 1, Math.floor((lodY1 - 1) / this.tileSize))
+    if (marginTiles > 0) {
+      startCol = Math.max(0, startCol - marginTiles)
+      endCol = Math.min(cols - 1, endCol + marginTiles)
+      startRow = Math.max(0, startRow - marginTiles)
+      endRow = Math.min(rows - 1, endRow + marginTiles)
     }
+    return { startCol, endCol, startRow, endRow }
+  }
+
+  private getDesiredLOD(): number {
+    // Choose the smallest LOD whose scale >= current zoom scale
+    const s = this.scaleInternal
+    for (let i = 0; i < this.totalLODLevels; i++) {
+      if (SIMPLE_LOD_LEVELS[i].scale >= s) return i
+    }
+    return this.totalLODLevels - 1
+  }
+
+  private touchTile(key: string): void {
+    const v = this.tileCache.get(key)
+    if (!v) return
+    // Reinsert to mark as most-recently-used
+    this.tileCache.delete(key)
+    this.tileCache.set(key, v)
+  }
+
+  private cancelAnimationFrame(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = null
+    }
+    const currentAnimation = this.zoomAnimation
+    if (typeof currentAnimation?.rafId === 'number') {
+      cancelAnimationFrame(currentAnimation.rafId)
+    }
+    this.zoomAnimation = null
+    this.renderScheduled = false
   }
 }

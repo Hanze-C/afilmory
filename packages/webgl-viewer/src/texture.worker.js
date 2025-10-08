@@ -5,7 +5,7 @@ let originalImage = null
 
 const TILE_SIZE = 512 // Must be same as in WebGLImageViewerEngine.ts
 
-// 简化的 LOD 级别
+// 简化的 LOD 级别（用于选择首帧 LOD）
 const WORKER_SIMPLE_LOD_LEVELS = [
   { scale: 0.25 }, // 极低质量
   { scale: 0.5 }, // 低质量
@@ -13,6 +13,19 @@ const WORKER_SIMPLE_LOD_LEVELS = [
   { scale: 2 }, // 高质量
   { scale: 4 }, // 超高质量
 ]
+
+function pickInitialScaleByMaxSize(imgW, imgH, maxTextureSize) {
+  if (!maxTextureSize || maxTextureSize <= 0) {
+    return WORKER_SIMPLE_LOD_LEVELS[1].scale // default ~0.5
+  }
+  const needScale = maxTextureSize / Math.max(imgW, imgH)
+  // choose nearest predefined scale that is <= needScale, else clamp to needScale
+  let best = null
+  for (const level of WORKER_SIMPLE_LOD_LEVELS) {
+    if (level.scale <= needScale) best = level.scale
+  }
+  return best || Math.min(1, needScale)
+}
 /**
  *
  * @param {MessageEvent} e
@@ -24,7 +37,7 @@ self.onmessage = async (e) => {
 
   switch (type) {
     case 'load-image': {
-      const { url } = payload
+      const { url, maxTextureSize } = payload
       try {
         console.info('[Worker] Fetching image:', url)
         const response = await fetch(url, { mode: 'cors' })
@@ -35,8 +48,16 @@ self.onmessage = async (e) => {
         self.postMessage({ type: 'init-done' })
 
         // Create initial LOD texture
-        const lodLevel = 1 // Initial LOD level
-        const lodConfig = WORKER_SIMPLE_LOD_LEVELS[lodLevel]
+        // pick initial scale by maxTextureSize (adaptive on iOS)
+        const initialScale = pickInitialScaleByMaxSize(
+          originalImage.width,
+          originalImage.height,
+          maxTextureSize,
+        )
+        const lodLevel = WORKER_SIMPLE_LOD_LEVELS.findIndex(
+          (l) => l.scale === initialScale,
+        )
+        const lodConfig = { scale: initialScale }
         const finalWidth = Math.max(
           1,
           Math.round(originalImage.width * lodConfig.scale),
@@ -49,7 +70,7 @@ self.onmessage = async (e) => {
         const initialLODBitmap = await createImageBitmap(originalImage, {
           resizeWidth: finalWidth,
           resizeHeight: finalHeight,
-          resizeQuality: 'medium',
+          resizeQuality: initialScale >= 1 ? 'high' : 'medium',
         })
 
         console.info('[Worker] Initial LOD created, posting image-loaded')
@@ -60,7 +81,7 @@ self.onmessage = async (e) => {
               imageBitmap: initialLODBitmap,
               imageWidth: originalImage.width,
               imageHeight: originalImage.height,
-              lodLevel,
+              lodLevel: Math.max(lodLevel, 0),
             },
           },
           [initialLODBitmap],
@@ -136,12 +157,65 @@ self.onmessage = async (e) => {
 
         const imageBitmap = canvas.transferToImageBitmap()
         self.postMessage(
-          { type: 'tile-created', payload: { key, imageBitmap, lodLevel } },
+          {
+            type: 'tile-created',
+            payload: {
+              key,
+              imageBitmap,
+              lodLevel,
+              x,
+              y,
+              width: targetWidth,
+              height: targetHeight,
+            },
+          },
           [imageBitmap],
         )
       } catch (error) {
         console.error('Error creating tile in worker:', error)
         self.postMessage({ type: 'tile-error', payload: { key, error } })
+      }
+      break
+    }
+    case 'recreate-initial': {
+      if (!originalImage) return
+      const { maxTextureSize } = payload || {}
+      try {
+        const initialScale = pickInitialScaleByMaxSize(
+          originalImage.width,
+          originalImage.height,
+          maxTextureSize,
+        )
+        const lodLevel = WORKER_SIMPLE_LOD_LEVELS.findIndex(
+          (l) => l.scale === initialScale,
+        )
+        const finalWidth = Math.max(
+          1,
+          Math.round(originalImage.width * initialScale),
+        )
+        const finalHeight = Math.max(
+          1,
+          Math.round(originalImage.height * initialScale),
+        )
+        const bmp = await createImageBitmap(originalImage, {
+          resizeWidth: finalWidth,
+          resizeHeight: finalHeight,
+          resizeQuality: initialScale >= 1 ? 'high' : 'medium',
+        })
+        self.postMessage(
+          {
+            type: 'image-loaded',
+            payload: {
+              imageBitmap: bmp,
+              imageWidth: originalImage.width,
+              imageHeight: originalImage.height,
+              lodLevel: Math.max(lodLevel, 0),
+            },
+          },
+          [bmp],
+        )
+      } catch (error) {
+        self.postMessage({ type: 'load-error', payload: { error } })
       }
       break
     }

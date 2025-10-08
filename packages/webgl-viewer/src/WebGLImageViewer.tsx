@@ -1,7 +1,7 @@
 /**
- * WebGL图像查看器React组件
+ * WebGL 图像查看器 React 组件
  *
- * 高性能的WebGL图像查看器组件
+ * 高性能的 WebGL 图像查看器组件
  */
 
 import * as React from 'react'
@@ -16,11 +16,12 @@ import {
   defaultWheelConfig,
 } from './constants'
 import DebugInfoComponent from './DebugInfo'
+import { LoadingState } from './enum'
 import type { WebGLImageViewerProps, WebGLImageViewerRef } from './interface'
 import { WebGLImageViewerEngine } from './WebGLImageViewerEngine'
 
 /**
- * WebGL图像查看器组件
+ * WebGL 图像查看器组件
  */
 export const WebGLImageViewer = ({
   ref,
@@ -54,6 +55,8 @@ export const WebGLImageViewer = ({
 
   const setDebugInfo = useRef((() => {}) as (debugInfo: any) => void)
 
+  const [overlay, setOverlay] = React.useState<string | null>(null)
+
   const config: Required<WebGLImageViewerProps> = useMemo(
     () => ({
       src,
@@ -80,7 +83,14 @@ export const WebGLImageViewer = ({
       velocityAnimation: { ...defaultVelocityAnimation, ...velocityAnimation },
       onZoomChange: onZoomChange || (() => {}),
       onImageCopied: onImageCopied || (() => {}),
-      onLoadingStateChange: onLoadingStateChange || (() => {}),
+      onLoadingStateChange: (isLoading, state, quality) => {
+        onLoadingStateChange?.(isLoading, state, quality)
+        if (state === LoadingState.CONTEXT_LOST) {
+          setOverlay('WebGL context lost, recovering…')
+        } else if (state === LoadingState.CONTEXT_RESTORED || !isLoading) {
+          setOverlay(null)
+        }
+      },
       debug: debug || false,
     }),
     [
@@ -124,7 +134,7 @@ export const WebGLImageViewer = ({
     )
 
     try {
-      // 如果提供了尺寸，传递给loadImage进行优化
+      // 如果提供了尺寸，传递给 loadImage 进行优化
       const preknownWidth = config.width > 0 ? config.width : undefined
       const preknownHeight = config.height > 0 ? config.height : undefined
       webGLImageViewerEngine
@@ -166,6 +176,25 @@ export const WebGLImageViewer = ({
           imageRendering: 'pixelated',
         }}
       />
+      {overlay && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(17,17,17,0.9)',
+            color: '#fff',
+            padding: '6px 10px',
+            borderRadius: 6,
+            fontSize: 12,
+            border: '1px solid rgba(255,255,255,0.1)',
+            zIndex: 1001,
+          }}
+        >
+          {overlay}
+        </div>
+      )}
       {debug && (
         <DebugInfoComponent
           ref={(e) => {
@@ -179,10 +208,7 @@ export const WebGLImageViewer = ({
   )
 }
 
-// 设置显示名称用于React DevTools
 WebGLImageViewer.displayName = 'WebGLImageViewer'
-
-// 导出类型定义
 
 export {
   type WebGLImageViewerProps,
