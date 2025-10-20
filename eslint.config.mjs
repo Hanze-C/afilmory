@@ -15,6 +15,13 @@ export default defineConfig(
   },
 
   {
+    languageOptions: {
+      parserOptions: {
+        emitDecoratorMetadata: true,
+        experimentalDecorators: true,
+      },
+    },
+
     settings: {
       tailwindcss: {
         whitelist: ['center'],
@@ -31,7 +38,7 @@ export default defineConfig(
       // NOTE: Disable this temporarily
       'react-compiler/react-compiler': 0,
       'no-restricted-syntax': 0,
-
+      '@typescript-eslint/no-unsafe-function-type': 0,
       // disable react compiler rules for now
       'react-hooks/no-unused-directives': 'off',
       'react-hooks/static-components': 'off',
