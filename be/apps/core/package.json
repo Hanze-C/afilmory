@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@afilmory/builder": "workspace:*",
     "@afilmory/db": "workspace:*",
     "@afilmory/env": "workspace:*",
     "@afilmory/framework": "workspace:*",

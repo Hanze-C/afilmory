@@ -1,6 +1,5 @@
 import path from 'node:path'
 
-import type { BuilderConfig } from '@builder'
 import { builderConfig } from '@builder'
 
 import { thumbnailExists } from '../image/thumbnail.js'
@@ -15,6 +14,7 @@ import { CURRENT_MANIFEST_VERSION } from '../manifest/version.js'
 import type { PhotoProcessorOptions } from '../photo/processor.js'
 import { processPhoto } from '../photo/processor.js'
 import { StorageManager } from '../storage/index.js'
+import type { BuilderConfig } from '../types/config.js'
 import type {
   AfilmoryManifest,
   CameraInfo,
@@ -40,7 +40,7 @@ export interface BuilderResult {
   totalPhotos: number
 }
 
-class PhotoGalleryBuilder {
+export class AfilmoryBuilder {
   private storageManager: StorageManager
   private config: BuilderConfig
 
@@ -543,4 +543,4 @@ class PhotoGalleryBuilder {
 }
 
 // 导出默认的构建器实例
-export const defaultBuilder = new PhotoGalleryBuilder()
+export const defaultBuilder = new AfilmoryBuilder()

@@ -332,7 +332,7 @@ async function main() {
   logger.main.info(`🚀 运行模式：${runMode}`)
   logger.main.info(`⚡ 最大并发数：${finalConcurrency}`)
   logger.main.info(`🔧 处理模式：${processingMode}`)
-  logger.main.info(`🏗️ 使用构建器：PhotoGalleryBuilder (适配器模式)`)
+  logger.main.info(`🏗️ 使用构建器：AfilmoryBuilder (适配器模式)`)
 
   environmentCheck()
 
