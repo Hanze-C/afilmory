@@ -1,5 +1,5 @@
 {
-  "name": "@afilmory/utils",
+  "name": "@afilmory/be-utils",
   "type": "module",
   "version": "1.0.0",
   "exports": {
@@ -15,6 +15,6 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@types/node": "^24.6.2"
+    "@types/node": "^24.9.1"
   }
 }

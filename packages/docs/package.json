@@ -20,7 +20,7 @@
     "@pastel-palette/tailwindcss": "1.0.0-canary.3",
     "@radix-ui/react-context-menu": "2.2.16",
     "@radix-ui/react-scroll-area": "1.2.10",
-    "@tailwindcss/vite": "4.1.14",
+    "@tailwindcss/vite": "4.1.16",
     "@types/mdast": "^4.0.4",
     "lucide-react": "^0.546.0",
     "mdast": "^3.0.0",
@@ -61,7 +61,7 @@
     "tailwindcss-uikit-colors": "catalog:",
     "tsx": "^4.20.6",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.1",
-    "vite": "^7.1.10"
+    "typescript-eslint": "^8.46.2",
+    "vite": "^7.1.12"
   }
 }

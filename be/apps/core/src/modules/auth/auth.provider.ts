@@ -1,7 +1,7 @@
+import { generateId } from '@afilmory/be-utils'
 import { authAccounts, authSessions, authUsers } from '@afilmory/db'
 import type { OnModuleInit } from '@afilmory/framework'
 import { createLogger } from '@afilmory/framework'
-import { generateId } from '@afilmory/utils'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin } from 'better-auth/plugins'

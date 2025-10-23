@@ -4,6 +4,5 @@ import { PhotoBuilderService } from './photo.service'
 
 @Module({
   providers: [PhotoBuilderService],
-  exports: [PhotoBuilderService],
 })
 export class PhotoModule {}

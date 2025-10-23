@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
 
+import { compressUint8Array } from '@afilmory/utils'
 import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
@@ -12,7 +13,6 @@ import {
   isBitmap,
   preprocessImageBuffer,
 } from '../image/processor.js'
-import { compressUint8Array } from '../lib/u8array.js'
 import type { PhotoManifestItem } from '../types/photo.js'
 import { shouldProcessPhoto } from './cache-manager.js'
 import {

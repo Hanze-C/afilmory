@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+import { decompressUint8Array } from '@afilmory/utils'
 import type sharp from 'sharp'
 
 import { HEIC_FORMATS } from '../constants/index.js'
@@ -10,7 +11,6 @@ import {
   generateThumbnailAndBlurhash,
   thumbnailExists,
 } from '../image/thumbnail.js'
-import { decompressUint8Array } from '../lib/u8array.js'
 import { workdir } from '../path.js'
 import type {
   PhotoManifestItem,

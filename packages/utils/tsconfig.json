@@ -20,23 +20,6 @@
     "noImplicitAny": false,
     "noEmit": true,
     "jsx": "preserve",
-    "paths": {
-      "@afilmory/builder/*": [
-        "./src/*"
-      ],
-      "@pkg": [
-        "./package.json"
-      ],
-      "@builder": [
-        "../../builder.config.ts"
-      ],
-      "@env": [
-        "../../env.ts"
-      ]
-    },
   },
-  "include": [
-    "./src/**/*",
-    "./scripts/**/*",
-  ]
+  "include": []
 }

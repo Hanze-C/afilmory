@@ -1,4 +1,4 @@
-import { decompressUint8Array } from '@afilmory/builder'
+import { decompressUint8Array } from '@afilmory/utils'
 import { useMemo } from 'react'
 import { thumbHashToDataURL } from 'thumbhash'
 

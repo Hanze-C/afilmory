@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "core-demo",
   "type": "module",
   "version": "1.0.0",
   "private": true,
@@ -10,14 +10,14 @@
     "preview": "vite preview --port 5174"
   },
   "dependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "@types/react": "18.3.12",
-    "@types/react-dom": "18.3.1",
-    "typescript": "5.6.3",
-    "vite": "7.1.8",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3",
+    "vite": "7.1.12",
     "vite-tsconfig-paths": "5.1.4"
   }
 }

@@ -3,9 +3,9 @@ import path from 'node:path'
 import type { _Object, S3Client } from '@aws-sdk/client-s3'
 import { GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 
+import { backoffDelay, sleep } from '../../../../utils/src/backoff.js'
+import { Semaphore } from '../../../../utils/src/semaphore.js'
 import { SUPPORTED_FORMATS } from '../../constants/index.js'
-import { backoffDelay, sleep } from '../../lib/backoff.js'
-import { Semaphore } from '../../lib/semaphore.js'
 import { logger } from '../../logger/index.js'
 import { createS3Client } from '../../s3/client.js'
 import type {

@@ -1,4 +1,4 @@
-import { generateId } from '@afilmory/utils'
+import { generateId } from '@afilmory/be-utils'
 import { boolean, pgEnum, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core'
 
 function createSnowflakeId(name: string) {
