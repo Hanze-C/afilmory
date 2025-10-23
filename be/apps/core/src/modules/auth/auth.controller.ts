@@ -1,7 +1,6 @@
-import { Body, ContextParam, Controller, Get, Post, UnauthorizedException, UseGuards } from '@afilmory/framework'
+import { Body, ContextParam, Controller, Get, Post, UnauthorizedException } from '@afilmory/framework'
 import type { Context } from 'hono'
 
-import { AuthGuard } from '../../guards/auth.guard'
 import { RoleBit, Roles } from '../../guards/roles.decorator'
 import { AuthProvider } from './auth.provider'
 
@@ -19,24 +18,6 @@ export class AuthController {
     return { user: session.user, session: session.session }
   }
 
-  @Post('/sign-up/email')
-  async signUpEmail(
-    @ContextParam() _context: Context,
-    @Body() body: { name: string; email: string; password: string },
-  ) {
-    const auth = this.auth.getAuth()
-
-    const res = await auth.api.signUpEmail({
-      body: {
-        name: body.name,
-        email: body.email,
-        password: body.password,
-      },
-    })
-
-    return res
-  }
-
   @Post('/sign-in/email')
   async signInEmail(@ContextParam() _context: Context, @Body() body: { email: string; password: string }) {
     const auth = this.auth.getAuth()
@@ -51,7 +32,6 @@ export class AuthController {
   }
 
   @Get('/admin-only')
-  @UseGuards(AuthGuard)
   @Roles(RoleBit.ADMIN)
   async adminOnly(@ContextParam() _context: Context) {
     return { ok: true }

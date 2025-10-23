@@ -4,7 +4,8 @@ import type { Session } from 'better-auth'
 import { BizException, ErrorCode } from 'core/errors'
 import { injectable } from 'tsyringe'
 
-import { AuthProvider, AuthSession } from '../modules/auth/auth.provider'
+import type { AuthSession } from '../modules/auth/auth.provider'
+import { AuthProvider } from '../modules/auth/auth.provider'
 import { getAllowedRoleMask, roleNameToBit } from './roles.decorator'
 
 declare module '@afilmory/framework' {
@@ -24,24 +25,26 @@ export class AuthGuard implements CanActivate {
     const store = context.getContext()
     const { hono } = store
 
-    const auth = this.authProvider.getAuth()
+    const auth = await this.authProvider.getAuth()
 
     const session = await auth.api.getSession({ headers: hono.req.raw.headers })
-    if (!session) {
-      throw new BizException(ErrorCode.AUTH_UNAUTHORIZED)
+
+    if (session) {
+      HttpContext.assign({
+        auth: {
+          user: session.user,
+          session: session.session,
+        },
+      })
     }
-
-    HttpContext.assign({
-      auth: {
-        user: session.user,
-        session: session.session,
-      },
-    })
-
     // Role verification if decorator is present
     const handler = context.getHandler()
     const requiredMask = getAllowedRoleMask(handler)
     if (requiredMask > 0) {
+      if (!session) {
+        throw new BizException(ErrorCode.AUTH_UNAUTHORIZED)
+      }
+
       const userRoleName = session.user.role as 'user' | 'admin' | undefined
       const userMask = userRoleName ? roleNameToBit(userRoleName) : 0
       const hasRole = (requiredMask & userMask) !== 0
