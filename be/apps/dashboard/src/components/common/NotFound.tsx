@@ -1,6 +1,5 @@
+import { Button } from '@afilmory/ui'
 import { useLocation, useNavigate } from 'react-router'
-
-import { Button } from '../ui/button'
 
 export const NotFound = () => {
   const location = useLocation()
