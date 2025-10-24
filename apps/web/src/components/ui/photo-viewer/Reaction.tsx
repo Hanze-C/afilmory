@@ -26,21 +26,19 @@ interface ReactionButtonProps {
 
 const reactionButton = tv({
   slots: {
-    base: 'relative [&_[data-radix-popper-content-wrapper]]:z-[2]',
+    base: 'relative **:data-radix-popper-content-wrapper:z-2',
     mainButton: [
-      'relative z-[2] flex size-10 items-center justify-center rounded-full',
-      'border border-border !bg-black/70 text-white/80 shadow-2xl backdrop-blur-[70px]',
-      'bg-gradient-to-br from-white/20 to-white/0',
-      'transition-colors duration-300',
+      'relative z-2 flex size-10 items-center justify-center rounded-full',
+      'border border-border/50 backdrop-blur-2xl',
+      'transition-all duration-300',
       'active:scale-95',
       'disabled:cursor-not-allowed disabled:opacity-50',
+      'bg-background/95',
     ],
     mainButtonIcon: 'text-lg',
     reactionsContainer: [
-      'mb-4 flex relative items-center justify-center gap-2',
-
-      'rounded-full border-white/20 !bg-black/70 p-2 shadow-2xl backdrop-blur-[70px]',
-      'bg-gradient-to-br from-white/20 to-white/0',
+      'relative mb-4 flex items-center justify-center gap-2',
+      'rounded-full border border-accent/20 p-2 backdrop-blur-2xl',
       'select-none',
     ],
     reactionItem: [
@@ -209,9 +207,15 @@ export const ReactionButton = ({
                 animate="open"
                 exit="closed"
                 className={styles.reactionsContainer()}
+                style={{
+                  backgroundImage:
+                    'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+                  boxShadow:
+                    '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+                }}
               >
-                {reactions.map((reaction, index) => (
-                  <DropdownMenu.Item key={index} asChild>
+                {reactions.map((reaction) => (
+                  <DropdownMenu.Item key={reaction} asChild>
                     <m.button
                       className={styles.reactionItem()}
                       variants={emojiVariants}

@@ -307,6 +307,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
       const response = await fetch(currentPhoto.originalUrl)
       const blob = await response.blob()
       const data = await ExifToolManager.parse(blob, currentPhoto.s3Key)
+
       setRawExifData(data || null)
       setIsOpen(true)
     } catch (error) {
@@ -347,7 +348,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
           className="cursor-pointer text-white/70 duration-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? (
-            <i className="i-mingcute-loading-3-line animate-spin" />
+            <i className="i-mingcute-loading-3-line animate-spin !duration-1000" />
           ) : (
             <i className="i-mingcute-braces-line" />
           )}
@@ -368,7 +369,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
 
         {isLoading && (
           <div className="flex h-full grow flex-col items-center justify-center gap-4 text-white/70">
-            <i className="i-mingcute-loading-3-line animate-spin text-3xl" />
+            <i className="i-mingcute-loading-3-line animate-spin text-3xl !duration-1000" />
             <span className="text-sm">
               {t('exif.raw.loading', {
                 defaultValue: 'Loading EXIF data...',

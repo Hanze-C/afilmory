@@ -1,6 +1,4 @@
-import type {
-  HTMLMotionProps,
-} from 'motion/react'
+import type { HTMLMotionProps } from 'motion/react'
 import { m } from 'motion/react'
 import type { FC, PropsWithChildren } from 'react'
 
@@ -35,7 +33,7 @@ export const GlassButton: FC<HTMLMotionProps<'button'> & PropsWithChildren> = (
       transition={Spring.presets.smooth}
     >
       {/* Glass effect overlay */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-t from-white/5 to-white/20 opacity-0 transition-opacity duration-300 hover:opacity-100" />
+      <div className="absolute inset-0 rounded-full bg-linear-to-t from-white/5 to-white/20 opacity-0 transition-opacity duration-300 hover:opacity-100" />
 
       {/* Icon container */}
       <div className="center relative z-10 flex">{props.children}</div>

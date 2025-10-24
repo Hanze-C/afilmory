@@ -100,7 +100,7 @@ export const GalleryThumbnail: FC<{
 
   return (
     <m.div
-      className="bg-material-medium pb-safe z-10 shrink-0"
+      className="pb-safe border-accent/20 z-10 shrink-0 border-t backdrop-blur-2xl"
       initial={{ y: 100, opacity: 0 }}
       animate={{
         y: visible ? 0 : 48,
@@ -108,11 +108,25 @@ export const GalleryThumbnail: FC<{
       }}
       exit={{ y: 100, opacity: 0 }}
       transition={Spring.presets.smooth}
-      style={{ pointerEvents: visible ? 'auto' : 'none' }}
+      style={{
+        pointerEvents: visible ? 'auto' : 'none',
+        backgroundImage:
+          'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+        boxShadow:
+          '0 -8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 -4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 -2px 8px rgba(0, 0, 0, 0.1)',
+      }}
     >
+      {/* Inner glow layer */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to top, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent)',
+        }}
+      />
       <div
         ref={scrollContainerRef}
-        className={`scrollbar-none flex overflow-x-auto`}
+        className="scrollbar-none relative z-10 flex overflow-x-auto"
         style={{
           gap: isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop,
           padding: isMobile
@@ -125,10 +139,10 @@ export const GalleryThumbnail: FC<{
             type="button"
             key={photo.id}
             className={clsxm(
-              `flex-shrink-0 rounded-lg overflow-hidden ring-2 transition-all contain-intrinsic-size`,
+              'contain-intrinsic-size relative shrink-0 overflow-hidden rounded-lg border-2 transition-all',
               index === currentIndex
-                ? 'ring-accent scale-110'
-                : 'ring-transparent hover:ring-accent grayscale-50 hover:grayscale-0',
+                ? 'scale-110 border-accent shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_20%,transparent)]'
+                : 'grayscale-50 border-accent/20 hover:border-accent hover:grayscale-0',
             )}
             style={
               isMobile

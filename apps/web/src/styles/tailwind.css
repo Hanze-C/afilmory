@@ -38,6 +38,8 @@
   --container-padding: 2rem;
   --container-max-width-2xl: 1400px;
 
+  --color-background: #1c1c1e;
+
   /* Custom cursors */
   --cursor-button: var(--cursor-button);
   --cursor-select: var(--cursor-select);
@@ -132,5 +134,107 @@ html body {
   .shadow-tooltip-top {
     --bg: var(--color-primary);
     box-shadow: 0px -5px 20px -11px var(--bg);
+  }
+
+  /* Glassmorphic menu item highlight effect */
+  [data-highlighted] {
+    background: var(--highlight-bg, transparent);
+  }
+}
+
+[data-sonner-toast] {
+  background-image: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--color-background) 98%, transparent),
+    color-mix(in srgb, var(--color-background) 95%, transparent)
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 20%,
+    transparent
+  ) !important;
+  box-shadow:
+    0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent),
+    0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-sonner-toast][data-type='success'] {
+  border-color: rgba(48, 209, 88, 0.3) !important;
+  background-image: linear-gradient(
+    to bottom right,
+    rgba(48, 209, 88, 0.15),
+    color-mix(in srgb, var(--color-background) 95%, transparent)
+  ) !important;
+}
+
+[data-sonner-toast][data-type='error'] {
+  border-color: rgba(255, 69, 58, 0.3) !important;
+  background-image: linear-gradient(
+    to bottom right,
+    rgba(255, 69, 58, 0.15),
+    color-mix(in srgb, var(--color-background) 95%, transparent)
+  ) !important;
+}
+
+[data-sonner-toast][data-type='warning'] {
+  border-color: rgba(255, 159, 10, 0.3) !important;
+  background-image: linear-gradient(
+    to bottom right,
+    rgba(255, 159, 10, 0.15),
+    color-mix(in srgb, var(--color-background) 95%, transparent)
+  ) !important;
+}
+
+[data-sonner-toast][data-type='info'] {
+  border-color: rgba(10, 132, 255, 0.3) !important;
+  background-image: linear-gradient(
+    to bottom right,
+    rgba(10, 132, 255, 0.15),
+    color-mix(in srgb, var(--color-background) 95%, transparent)
+  ) !important;
+}
+
+[data-sonner-toast][data-type='loading'] {
+  border-color: rgba(142, 142, 147, 0.3) !important;
+  background-image: linear-gradient(
+    to bottom right,
+    rgba(142, 142, 147, 0.15),
+    color-mix(in srgb, var(--color-background) 95%, transparent)
+  ) !important;
+}
+
+[data-sonner-toast]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--color-accent) 5%, transparent),
+    transparent,
+    color-mix(in srgb, var(--color-accent) 5%, transparent)
+  );
+}
+@layer components {
+  /* Glassmorphic button hover effect */
+  .glassmorphic-btn:hover {
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-accent) 8%, transparent),
+      color-mix(in srgb, var(--color-accent) 5%, transparent)
+    ) !important;
+    color: var(--color-accent) !important;
+  }
+
+  /* Command item hover/selected effect */
+  .command-item:hover,
+  .command-item.selected {
+    background: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-accent) 8%, transparent),
+      color-mix(in srgb, var(--color-accent) 5%, transparent)
+    ) !important;
   }
 }

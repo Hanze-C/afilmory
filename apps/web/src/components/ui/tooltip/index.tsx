@@ -34,13 +34,29 @@ const TooltipContent = ({
     {...props}
   >
     <m.div
-      initial={{ opacity: 0.82, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={Spring.presets.smooth}
+      className="border-accent/20 relative overflow-hidden border"
+      style={{
+        backgroundImage:
+          'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+        boxShadow:
+          '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+      }}
+      initial={{ opacity: 0, scale: 0.95, y: 4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 4 }}
+      transition={Spring.presets.snappy}
     >
-      {/* https://github.com/radix-ui/primitives/discussions/868 */}
-      <TooltipPrimitive.Arrow className="z-50 fill-white [clip-path:inset(0_-10px_-10px_-10px)] dark:fill-neutral-950 dark:drop-shadow-[0_0_1px_theme(colors.white/0.5)]" />
-      {props.children}
+      {/* Inner glow layer */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-xl"
+        style={{
+          background:
+            'linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))',
+        }}
+      />
+
+      {/* Content */}
+      <div className="relative">{props.children}</div>
     </m.div>
   </TooltipPrimitive.Content>
 )

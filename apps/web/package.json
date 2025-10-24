@@ -42,7 +42,7 @@
     "@t3-oss/env-core": "catalog:",
     "@tanstack/react-query": "5.90.5",
     "@use-gesture/react": "10.3.1",
-    "@uswriting/exiftool": "1.0.5",
+    "@uswriting/exiftool": "1.0.3",
     "blurhash": "2.0.5",
     "clsx": "2.1.1",
     "consola": "3.4.2",

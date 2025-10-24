@@ -14,6 +14,6 @@ export const LoadingCircle: Component<LoadingCircleProps> = ({
   size,
 }) => (
   <div className={clsxm(sizeMap[size], className)}>
-    <i className="i-mingcute-loading-3-line animate-spin" />
+    <i className="i-mingcute-loading-3-line animate-spin !duration-1000" />
   </div>
 )

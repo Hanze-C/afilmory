@@ -10,6 +10,8 @@ import { clsxm } from '~/lib/cn'
 import { Spring } from '~/lib/spring'
 import type { PhotoManifest } from '~/types/photo'
 
+import { RootPortal } from '../portal'
+
 interface SharePanelProps {
   photo: PhotoManifest
   trigger: React.ReactNode
@@ -193,11 +195,11 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
 
       <AnimatePresence>
         {isOpen && (
-          <DropdownMenuPrimitive.Portal forceMount>
+          <RootPortal>
             <DropdownMenuPrimitive.Content
               align="end"
               sideOffset={8}
-              className="z-[10000] min-w-[280px] will-change-[opacity,transform]"
+              className="z-10000 min-w-[280px] will-change-[opacity,transform]"
               asChild
             >
               <m.div
@@ -205,15 +207,24 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
                 transition={Spring.presets.smooth}
-                className={clsxm(
-                  'rounded-2xl border border-border/10 p-4',
-                  'bg-material-ultra-thick backdrop-blur-[70px]',
-                  'shadow-2xl shadow-black/20',
-                  'dark:shadow-black/50',
-                )}
+                className="border-accent/20 rounded-2xl border p-4 backdrop-blur-2xl"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+                  boxShadow:
+                    '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+                }}
               >
+                {/* Inner glow layer */}
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-2xl"
+                  style={{
+                    background:
+                      'linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))',
+                  }}
+                />
                 {/* 标题区域 */}
-                <div className="mb-4 text-center">
+                <div className="relative mb-4 text-center">
                   <h3 className="text-text font-semibold">
                     {t('photo.share.title')}
                   </h3>
@@ -225,7 +236,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 </div>
 
                 {/* 社交媒体分享 - 第一排 */}
-                <div className="mb-6">
+                <div className="relative mb-6">
                   <div className="mb-3">
                     <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
                       {t('photo.share.social.media')}
@@ -265,7 +276,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
 
                 {/* 嵌入代码 - 第二排 */}
                 {injectConfig.useNext && (
-                  <div className="mb-6">
+                  <div className="relative mb-6">
                     <div className="mb-3">
                       <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
                         {t('photo.share.embed.code')}
@@ -275,7 +286,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       </p>
                     </div>
                     <div className="relative">
-                      <div className="bg-fill-secondary/50 border-border/10 rounded-lg border p-3">
+                      <div className="border-accent/20 bg-accent/5 rounded-lg border p-3">
                         <code
                           ref={(ref) => {
                             if (ref) {
@@ -297,21 +308,17 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       </div>
                       <button
                         type="button"
-                        className={clsxm(
-                          'absolute top-2 right-2 flex items-center justify-center',
-                          'size-7 rounded-md bg-fill-tertiary/80 hover:bg-fill-tertiary backdrop-blur-3xl',
-                          'transition-colors duration-200 group',
-                        )}
+                        className="glassmorphic-btn border-accent/20 bg-accent/5 absolute top-2 right-2 flex size-7 items-center justify-center rounded-md border backdrop-blur-3xl transition-all duration-200"
                         onClick={handleCopyEmbedCode}
                       >
-                        <i className="i-mingcute-copy-line text-text-secondary group-hover:text-text size-3.5" />
+                        <i className="i-mingcute-copy-line size-3.5" />
                       </button>
                     </div>
                   </div>
                 )}
 
                 {/* 功能选项 - 第三排 */}
-                <div>
+                <div className="relative">
                   <div className="mb-3">
                     <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
                       {t('photo.share.actions')}
@@ -324,22 +331,11 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                         <button
                           key={option.id}
                           type="button"
-                          className={clsxm(
-                            'relative flex cursor-pointer select-none items-center rounded-lg px-2 py-2',
-                            'text-sm outline-none transition-all duration-200',
-                            'hover:bg-fill-secondary/80 active:bg-fill-secondary',
-                            'group',
-                          )}
+                          className="glassmorphic-btn group relative flex cursor-pointer items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 outline-none select-none"
                           onClick={() => option.action()}
                         >
                           <div className="flex items-center gap-2">
-                            <div
-                              className={clsxm(
-                                'flex size-7 items-center justify-center rounded-full',
-                                'bg-fill-tertiary/80 group-hover:bg-fill-tertiary',
-                                'transition-colors duration-200',
-                              )}
-                            >
+                            <div className="bg-accent/10 flex size-7 items-center justify-center rounded-full transition-colors duration-200">
                               <i
                                 className={clsxm(
                                   option.icon,
@@ -358,7 +354,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 </div>
               </m.div>
             </DropdownMenuPrimitive.Content>
-          </DropdownMenuPrimitive.Portal>
+          </RootPortal>
         )}
       </AnimatePresence>
     </DropdownMenuPrimitive.Root>

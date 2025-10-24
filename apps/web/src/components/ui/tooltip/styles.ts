@@ -1,10 +1,8 @@
 export const tooltipStyle = {
   content: [
-    'relative z-[9999] bg-white px-2 py-1 text-text dark:bg-neutral-950',
+    'relative z-9999 px-3 py-2 text-text backdrop-blur-2xl',
     'data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
-    'rounded-lg text-sm',
+    'rounded-xl text-sm',
     'max-w-[75ch] select-text',
-    'drop-shadow data-[side=top]:shadow-tooltip-bottom data-[side=bottom]:shadow-tooltip-top',
-    'dark:drop-shadow-[0_0_1px_theme(colors.white/0.5)]',
   ],
 }

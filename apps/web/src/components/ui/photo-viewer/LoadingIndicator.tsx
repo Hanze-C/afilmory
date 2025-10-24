@@ -85,7 +85,7 @@ export const LoadingIndicator = ({
           {loadingState.isError ? (
             <div className="i-mingcute-warning-line text-lg text-red-400" />
           ) : (
-            <div className="i-mingcute-loading-3-line animate-spin text-lg" />
+            <div className="i-mingcute-loading-3-line animate-spin text-lg !duration-1000" />
           )}
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">

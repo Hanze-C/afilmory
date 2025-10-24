@@ -53,13 +53,18 @@ const ContextMenuSubContent = ({
     <ContextMenuPrimitive.SubContent
       ref={ref}
       className={clsxm(
-        'bg-material-medium backdrop-blur-[70px] text-text text-body',
+        'backdrop-blur-2xl text-text text-body',
         'min-w-32 overflow-hidden',
-        'rounded-[6px] border p-1',
-        'shadow-context-menu',
-        'z-[10061]',
+        'rounded-xl p-1 relative border border-accent/20',
+        'z-10061',
         className,
       )}
+      style={{
+        backgroundImage:
+          'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+        boxShadow:
+          '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+      }}
       {...props}
     />
   </RootPortal>
@@ -77,10 +82,16 @@ const ContextMenuContent = ({
     <ContextMenuPrimitive.Content
       ref={ref}
       className={clsxm(
-        'bg-material-medium backdrop-blur-[70px] text-text shadow-context-menu z-[10060] min-w-32 overflow-hidden rounded-[6px] border border-border p-1',
+        'backdrop-blur-2xl text-text z-10060 min-w-32 overflow-hidden rounded-xl p-1 relative border border-accent/20',
         'motion-scale-in-75 motion-duration-150 text-body lg:animate-none',
         className,
       )}
+      style={{
+        backgroundImage:
+          'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+        boxShadow:
+          '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+      }}
       {...props}
     />
   </RootPortal>
@@ -100,12 +111,18 @@ const ContextMenuItem = ({
   <ContextMenuPrimitive.Item
     ref={ref}
     className={clsxm(
-      'cursor-menu focus:bg-accent text-sm focus:text-accent-foreground relative flex select-none items-center rounded-[5px] px-2.5 py-1 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      'data-[highlighted]:bg-theme-selection-hover focus-within:outline-transparent',
+      'cursor-menu text-sm relative flex select-none items-center rounded-lg px-2.5 py-1 outline-none data-disabled:pointer-events-none data-disabled:opacity-50',
+      'focus-within:outline-transparent transition-all duration-200',
+      'data-highlighted:text-accent',
       'h-[28px]',
       inset && 'pl-8',
       className,
     )}
+    style={{
+      // @ts-ignore - CSS variable for data-highlighted state
+      '--highlight-bg':
+        'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))',
+    }}
     {...props}
   />
 )
@@ -125,12 +142,18 @@ const ContextMenuCheckboxItem = ({
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
     className={clsxm(
-      'cursor-checkbox focus:bg-accent text-sm focus:text-accent-foreground relative flex select-none items-center rounded-[5px] px-8 py-1.5 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      'focus-within:outline-transparent',
+      'cursor-checkbox text-sm relative flex select-none items-center rounded-lg px-8 py-1.5 outline-none data-disabled:pointer-events-none data-disabled:opacity-50',
+      'focus-within:outline-transparent transition-all duration-200',
+      'data-highlighted:text-accent',
       'h-[28px]',
       className,
     )}
     checked={checked}
+    style={{
+      // @ts-ignore - CSS variable for data-highlighted state
+      '--highlight-bg':
+        'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))',
+    }}
     {...props}
   >
     <span className="absolute left-2 flex items-center justify-center">
@@ -175,13 +198,14 @@ const ContextMenuSeparator = ({
   > | null>
 }) => (
   <ContextMenuPrimitive.Separator
-    className="mx-2 my-1 h-px backdrop-blur-[70px]"
-    asChild
+    className="mx-2 my-1 h-px"
+    style={{
+      background:
+        'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent)',
+    }}
     ref={ref}
     {...props}
-  >
-    <div className="bg-border mr-2 h-px" />
-  </ContextMenuPrimitive.Separator>
+  />
 )
 ContextMenuSeparator.displayName = ContextMenuPrimitive.Separator.displayName
 

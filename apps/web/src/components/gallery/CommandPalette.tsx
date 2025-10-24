@@ -413,19 +413,33 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-end justify-center lg:items-start lg:pt-[15vh]"
+      className="fixed inset-0 z-9999 flex items-end justify-center lg:items-start lg:pt-[15vh]"
       onClick={onClose}
     >
       {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-lg transition-all duration-200" />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-xl transition-all duration-200" />
 
       {/* Command Palette Panel */}
       <div
-        className="animate-in fade-in slide-in-from-bottom-4 lg:slide-in-from-top-4 border-border relative w-full max-w-2xl overflow-hidden rounded-2xl rounded-b-none border shadow-2xl backdrop-blur-[120px] duration-200 lg:!rounded-2xl"
+        className="animate-in fade-in slide-in-from-bottom-4 border-accent/20 lg:slide-in-from-top-4 relative w-full max-w-2xl overflow-hidden rounded-2xl rounded-b-none border backdrop-blur-2xl duration-200 lg:rounded-2xl!"
+        style={{
+          backgroundImage:
+            'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+          boxShadow:
+            '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Inner glow layer */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-2xl"
+          style={{
+            background:
+              'linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))',
+          }}
+        />
         {/* Search Input */}
-        <div className="border-border flex items-center gap-3 border-b px-4 py-4">
+        <div className="border-accent/20 relative flex items-center gap-3 border-b px-4 py-4">
           <i className="i-mingcute-search-line text-text-tertiary shrink-0 text-xl" />
           <input
             ref={inputRef}
@@ -439,10 +453,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           <button
             type="button"
             onClick={handleReset}
-            className={clsxm(
-              'inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium transition-colors',
-              'text-text-secondary hover:bg-fill-tertiary hover:text-text',
-            )}
+            className="glassmorphic-btn border-accent/20 text-text-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-all duration-200"
           >
             <i className="i-mingcute-refresh-1-line text-sm" />
             Reset
@@ -450,22 +461,14 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           <button
             type="button"
             onClick={onClose}
-            className={clsxm(
-              'inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium transition-colors',
-              'text-text-secondary hover:bg-fill-tertiary hover:text-text',
-            )}
+            className="glassmorphic-btn border-accent/20 text-text-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-all duration-200"
           >
             <i className="i-mingcute-close-line text-sm" />
             Close
           </button>
         </div>
 
-        <div
-          className={clsxm(
-            'flex items-center justify-between gap-3 px-4 py-2 text-xs',
-            'border-b border-border bg-fill-tertiary/40 text-text-secondary',
-          )}
-        >
+        <div className="border-accent/20 bg-accent/3 text-text-secondary relative flex items-center justify-between gap-3 border-b px-4 py-2 text-xs">
           <div className="flex items-center gap-2">
             <i className="i-mingcute-filter-3-line text-sm" />
             <span>{t('action.tag.match.label')}</span>
@@ -475,10 +478,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               type="button"
               onClick={() => updateTagFilterMode('union')}
               className={clsxm(
-                'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                'rounded-full px-3 py-1 text-xs font-medium transition-all duration-200',
                 gallerySetting.tagFilterMode === 'union'
                   ? 'bg-accent text-white'
-                  : 'bg-fill-secondary text-text-secondary hover:bg-fill-tertiary hover:text-text',
+                  : 'glassmorphic-btn text-text-secondary',
               )}
             >
               {t('action.tag.match.any')}
@@ -487,10 +490,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               type="button"
               onClick={() => updateTagFilterMode('intersection')}
               className={clsxm(
-                'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                'rounded-full px-3 py-1 text-xs font-medium transition-all duration-200',
                 gallerySetting.tagFilterMode === 'intersection'
                   ? 'bg-accent text-white'
-                  : 'bg-fill-secondary text-text-secondary hover:bg-fill-tertiary hover:text-text',
+                  : 'glassmorphic-btn text-text-secondary',
               )}
             >
               {t('action.tag.match.all')}
@@ -518,22 +521,26 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 onClick={cmd.action}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsxm(
-                  'flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-100',
-                  selectedIndex === index
-                    ? 'bg-fill-secondary'
-                    : 'hover:bg-fill-tertiary',
+                  'command-item group flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200',
+                  selectedIndex === index && 'selected',
                 )}
               >
                 {/* Icon */}
                 <div
                   className={clsxm(
-                    'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors',
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg transition-all duration-200',
                     cmd.active
-                      ? 'bg-accent/10 ring-accent/20 ring-1 ring-inset'
-                      : 'bg-fill-secondary',
-                    'text-lg',
-                    cmd.active ? 'text-accent' : 'text-text-secondary',
+                      ? 'bg-accent/10 text-accent'
+                      : 'bg-background/95 text-text-secondary',
                   )}
+                  style={
+                    cmd.active
+                      ? {
+                          boxShadow:
+                            'inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                        }
+                      : undefined
+                  }
                 >
                   {typeof cmd.icon === 'string' ? (
                     <i className={cmd.icon} />
@@ -571,17 +578,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Footer */}
-        <div className="border-border border-t px-4 py-2">
+        <div className="border-accent/20 relative border-t px-4 py-2">
           <div className="text-text-secondary flex items-center justify-between text-xs">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
-                <kbd className="bg-fill-secondary border-border rounded border px-1.5 py-0.5 font-mono">
+                <kbd className="border-accent/20 bg-accent/5 rounded border px-1.5 py-0.5 font-mono">
                   ↑↓
                 </kbd>
                 Navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="bg-fill-secondary border-border rounded border px-1.5 py-0.5 font-mono">
+                <kbd className="border-accent/20 bg-accent/5 rounded border px-1.5 py-0.5 font-mono">
                   ↵
                 </kbd>
                 Select

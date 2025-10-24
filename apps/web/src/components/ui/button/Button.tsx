@@ -115,7 +115,7 @@ const Button = ({
         <span className="pointer-events-none inline-flex items-center justify-center gap-1.5">
           <i
             className={cx(
-              'shrink-0 animate-spin i-mingcute-loading-3-line',
+              'shrink-0 animate-spin i-mingcute-loading-3-line !duration-1000',
               size === 'xs' || size === 'sm' ? 'size-3' : 'size-4',
             )}
             aria-hidden="true"

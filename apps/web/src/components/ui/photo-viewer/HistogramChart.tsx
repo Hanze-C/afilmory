@@ -258,7 +258,7 @@ export const HistogramChart: FC<{
     <div className={cx('relative grow w-full h-32 group', className)}>
       {loading && (
         <div className="bg-material-ultra-thin absolute inset-0 flex items-center justify-center rounded-sm backdrop-blur-xl">
-          <div className="i-mingcute-loading-3-line animate-spin text-xl" />
+          <div className="i-mingcute-loading-3-line animate-spin text-xl !duration-1000" />
         </div>
       )}
       {error && (

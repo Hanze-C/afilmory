@@ -58,9 +58,15 @@ const DropdownMenuContent = ({
         ref={ref}
         sideOffset={sideOffset}
         className={clsxm(
-          'bg-material-medium backdrop-blur-[70px] text-text shadow z-[60] min-w-32 overflow-hidden rounded-[6px] border border-border p-1',
+          'backdrop-blur-2xl text-text z-60 min-w-32 overflow-hidden rounded-xl p-1 relative border border-accent/20',
           className,
         )}
+        style={{
+          backgroundImage:
+            'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+          boxShadow:
+            '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+        }}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
@@ -74,8 +80,8 @@ const DropdownMenuItem = ({
   inset,
   icon,
   active,
-  highlightColor = 'accent',
-  shortcut,
+  highlightColor: _highlightColor = 'accent',
+  shortcut: _shortcut,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean
@@ -89,16 +95,18 @@ const DropdownMenuItem = ({
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={clsxm(
-      'cursor-menu relative flex select-none items-center rounded-[5px] px-2.5 py-1 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      'focus-within:outline-transparent text-sm my-0.5',
-      highlightColor === 'accent'
-        ? 'data-[highlighted]:bg-accent/10 focus:bg-accent/10 focus:text-accent data-[highlighted]:text-accent'
-        : 'data-[highlighted]:bg-accent/10 focus:bg-accent/10 focus:text-accent',
-
+      'cursor-menu relative flex select-none items-center rounded-lg px-2.5 py-1 outline-none data-disabled:pointer-events-none data-disabled:opacity-50',
+      'focus-within:outline-transparent text-sm my-0.5 transition-all duration-200',
+      'data-highlighted:text-accent',
       'h-[28px]',
       inset && 'pl-8',
       className,
     )}
+    style={{
+      // @ts-ignore - CSS variable for data-highlighted state
+      '--highlight-bg':
+        'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))',
+    }}
     {...props}
   >
     {!!icon && (
@@ -130,11 +138,17 @@ const DropdownMenuCheckboxItem = ({
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={clsxm(
-      'cursor-menu relative flex select-none items-center rounded-[5px] py-1.5 pl-2 pr-2 text-sm outline-none transition-colors',
-      'focus:bg-accent/10 focus:text-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'cursor-menu relative flex select-none items-center rounded-lg py-1.5 pl-2 pr-2 text-sm outline-none transition-all duration-200',
+      'data-disabled:pointer-events-none data-disabled:opacity-50',
+      'data-highlighted:text-accent',
       className,
     )}
     checked={checked}
+    style={{
+      // @ts-ignore - CSS variable for data-highlighted state
+      '--highlight-bg':
+        'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))',
+    }}
     {...props}
   >
     {!!icon && (
@@ -184,7 +198,11 @@ const DropdownMenuSeparator = ({
   > | null>
 }) => (
   <DropdownMenuPrimitive.Separator
-    className="bg-border mx-2 my-1 h-px px-2"
+    className="mx-2 my-1 h-px px-2"
+    style={{
+      background:
+        'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent)',
+    }}
     ref={ref}
     {...props}
   />

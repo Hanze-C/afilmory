@@ -22,7 +22,13 @@ export const ViewPanel = () => {
       </div>
 
       {/* 分隔线 */}
-      <div className="bg-border mx-2 my-3 h-px" />
+      <div
+        className="mx-2 my-3 h-px"
+        style={{
+          background:
+            'linear-gradient(to right, transparent, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent)',
+        }}
+      />
 
       {/* 列数部分 */}
       <div className="px-2">

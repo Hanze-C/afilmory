@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# AGENTS
 
 ## Commands
 
@@ -206,8 +204,197 @@ class PhotoLoader {
 - Keep components focused - use hooks and component splitting for large logic blocks
 - Master React philosophy - proper Context usage, component composition, state management to prevent re-renders
 
+## Glassmorphic Depth Design System
+
+Follow uses a sophisticated glassmorphic depth design system for elevated UI components (modals, toasts, floating panels, etc.). This design provides visual hierarchy through layered transparency and subtle color accents.
+
+### Design Principles
+
+- **Multi-layer Depth**: Create visual depth through stacked transparent layers
+- **Subtle Color Accents**: Use brand colors at very low opacity (5-20%) for borders, glows, and backgrounds
+- **Refined Blur**: Heavy backdrop blur (backdrop-blur-2xl) for frosted glass effect
+- **Minimal Shadows**: Combine multiple soft shadows with accent colors for depth perception
+- **Smooth Animations**: Use Spring presets for all transitions
+
+### Color Usage
+
+**IMPORTANT**: Tailwind CSS 4 uses `color-mix()` by default for `/opacity` syntax. **Always prefer Tailwind classes over inline styles.**
+
+#### Tailwind CSS Classes (Preferred)
+- **Borders**: `border-accent/20` instead of `borderColor: 'color-mix(...)'`
+- **Backgrounds**: `bg-accent/5`, `bg-accent/[0.03]` (use bracket notation for custom percentages)
+- **Text Colors**: `text-accent/80`
+- **Any solid color with opacity**: Use Tailwind `/opacity` syntax
+
+#### When to Use Inline Styles with `color-mix()`
+Only use explicit `color-mix(in srgb, var(--color-accent) X%, transparent)` for:
+1. **Gradients**: `linear-gradient`, `radial-gradient` (Tailwind doesn't support color-mix in gradients)
+2. **Box Shadows**: Tailwind doesn't support color-mix in shadows yet
+3. **Complex multi-color blending**: When you need more than simple opacity
+
+#### Examples
+
+✅ **CORRECT - Use Tailwind Classes**:
+```tsx
+<div className="border-accent/20 bg-accent/5">
+  <div className="bg-accent/[0.03]"> {/* Custom percentage */}
+    Content
+  </div>
+</div>
+```
+
+❌ **WRONG - Unnecessary inline styles**:
+```tsx
+<div 
+  style={{
+    borderColor: 'color-mix(in srgb, var(--color-accent) 20%, transparent)',
+    background: 'color-mix(in srgb, var(--color-accent) 5%, transparent)',
+  }}
+>
+```
+
+✅ **CORRECT - Inline styles for gradients/shadows**:
+```tsx
+<div 
+  className="border-accent/20" 
+  style={{
+    background: 'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))',
+    boxShadow: '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent)',
+  }}
+>
+```
+
+#### Color Usage Summary
+- **Borders**: `border-accent/20` (Tailwind class)
+- **Solid Backgrounds**: `bg-accent/5` or `bg-accent/[0.03]` (Tailwind class)
+- **Gradient Backgrounds**: Inline style with `linear-gradient` + `color-mix()`
+- **Shadows**: Inline style with `color-mix()`
+- **Inner Glow**: Inline style with gradient + `color-mix()`
+
+### Component Structure
+
+```tsx
+<div
+  className="rounded-2xl border border-accent/20 backdrop-blur-2xl"
+  style={{
+    backgroundImage:
+      "linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))",
+    boxShadow:
+      "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
+  }}
+>
+  {/* Inner glow layer */}
+  <div
+    className="pointer-events-none absolute inset-0 rounded-2xl"
+    style={{
+      background:
+        "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
+    }}
+  />
+
+  {/* Content */}
+  <div className="relative">{/* Your content here */}</div>
+</div>
+```
+
+### Interactive Elements
+
+**IMPORTANT**: Prefer CSS-driven hover effects over JavaScript event handlers for better performance and cleaner code.
+
+#### Radix UI Menu Items (using `data-highlighted`)
+
+For Radix UI components that support `data-highlighted` attribute:
+
+```tsx
+<DropdownMenuItem
+  className="rounded-lg transition-all duration-200 data-[highlighted]:text-accent"
+  style={{
+    // Use CSS custom properties for dynamic background on highlight
+    ['--highlight-bg' as any]: 'linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))'
+  }}
+  onSelect={() => {}}
+>
+  Menu Item
+</DropdownMenuItem>
+
+// Add this CSS for highlighted state (in tailwind.css):
+// @layer components {
+//   [data-highlighted] { background: var(--highlight-bg); }
+// }
+```
+
+#### Custom Buttons (using CSS classes)
+
+**✅ PREFERRED - CSS-driven hover**:
+```tsx
+<button className="glassmorphic-btn border-accent/20 text-text-secondary ...">
+  Button Text
+</button>
+
+// In tailwind.css:
+// @layer components {
+//   .glassmorphic-btn:hover {
+//     background: linear-gradient(to right, 
+//       color-mix(in srgb, var(--color-accent) 8%, transparent), 
+//       color-mix(in srgb, var(--color-accent) 5%, transparent)
+//     ) !important;
+//     color: var(--color-accent) !important;
+//   }
+// }
+```
+
+**❌ AVOID - JavaScript event handlers** (use only when CSS cannot achieve the effect):
+```tsx
+<button
+  onMouseEnter={(e) => {
+    e.currentTarget.style.background = "..."
+    e.currentTarget.style.color = "var(--color-accent)"
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = "transparent"
+    e.currentTarget.style.color = ""
+  }}
+>
+  Button Text
+</button>
+```
+
+### Dividers
+
+Use gradient dividers within glass containers:
+
+```tsx
+<div
+  className="mx-4 h-px"
+  style={{
+    background: "linear-gradient(to right, transparent, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent)",
+  }}
+/>
+```
+
+### Animation Guidelines
+
+- Entry animations: `initial={{ y: 8, opacity: 0 }}` → `animate={{ y: 0, opacity: 1 }}`
+- Use `Spring.presets.snappy` for quick interactions
+- Use `Spring.presets.smooth` for larger movements
+- Keep scale animations subtle (1.0 ↔ 1.02)
+
+### When to Use
+
+Apply this design system to:
+
+- Toast notifications
+- Modal dialogs
+- Floating panels and popovers
+- Ambient UI prompts
+- Contextual menus
+- Elevated cards with actions
+
+## Design Guidelines
+
 ### UI/UX Guidelines
 
+- Follow Glassmorphic Depth Design System
 - Use Apple UIKit color system via tailwind-uikit-colors package
 - Prefer semantic color names: `text-primary`, `fill-secondary`, `material-thin`, etc.
 - Follow system colors: `red`, `blue`, `green`, `mint`, `teal`, `cyan`, `indigo`, `purple`, `pink`, `brown`, `gray`

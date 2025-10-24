@@ -221,7 +221,7 @@ export const PhotoViewer = ({
             <div
               className={`flex size-full ${isMobile ? 'flex-col' : 'flex-row'}`}
             >
-              <div className="z-[1] flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="z-1 flex min-h-0 min-w-0 flex-1 flex-col">
                 <m.div
                   className="group relative flex min-h-0 min-w-0 flex-1"
                   animate={{ opacity: isViewerContentVisible ? 1 : 0 }}

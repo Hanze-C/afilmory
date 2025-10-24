@@ -289,7 +289,7 @@ export const MasonryPhotoItem = ({
         >
           {isConvertingVideo ? (
             <div className="flex items-center gap-1 px-1">
-              <i className="i-mingcute-loading-line animate-spin" />
+              <i className="i-mingcute-loading-line animate-spin !duration-1000" />
               <span>{t('loading.converting')}</span>
             </div>
           ) : (
