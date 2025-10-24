@@ -27,9 +27,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
-    "@vitest/coverage-v8": "4.0.1",
+    "@vitest/coverage-v8": "4.0.3",
     "ioredis": "5.8.2",
     "unplugin-swc": "1.5.8",
-    "vitest": "4.0.1"
+    "vitest": "4.0.3"
   }
 }

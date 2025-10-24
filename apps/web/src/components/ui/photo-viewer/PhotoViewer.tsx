@@ -3,6 +3,8 @@ import './PhotoViewer.css'
 import 'swiper/css'
 import 'swiper/css/navigation'
 
+import { Thumbhash } from '@afilmory/ui'
+import { Spring } from '@afilmory/utils'
 import { AnimatePresence, m } from 'motion/react'
 import {
   Fragment,
@@ -19,10 +21,8 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 
 import { injectConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
-import { Spring } from '@afilmory/utils'
 import type { PhotoManifest } from '~/types/photo'
 
-import { Thumbhash } from '../thumbhash'
 import { PhotoViewerTransitionPreview } from './animations/PhotoViewerTransitionPreview'
 import { usePhotoViewerTransitions } from './animations/usePhotoViewerTransitions'
 import { ExifPanel } from './ExifPanel'

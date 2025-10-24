@@ -1,3 +1,4 @@
+import { clsxm, Spring } from '@afilmory/utils'
 import { FluentEmoji, getEmoji } from '@lobehub/fluent-emoji'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { produce } from 'immer'
@@ -10,8 +11,6 @@ import { tv } from 'tailwind-variants'
 import { useOnClickOutside } from 'usehooks-ts'
 
 import { client } from '~/lib/client'
-import { clsxm } from '@afilmory/utils'
-import { Spring } from '@afilmory/utils'
 
 import { useAnalysis } from './hooks/useAnalysis'
 

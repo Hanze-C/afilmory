@@ -1,10 +1,10 @@
+import { Toaster } from '@afilmory/ui'
+import { Spring } from '@afilmory/utils'
 import { Provider } from 'jotai'
 import { domMax, LazyMotion, MotionConfig } from 'motion/react'
 import type { FC, PropsWithChildren } from 'react'
 
-import { Toaster } from '@afilmory/ui/sonner'
-import { jotaiStore } from '@afilmory/utils'
-import { Spring } from '@afilmory/utils/spring'
+import { jotaiStore } from '~/lib/jotai'
 
 import { ContextMenuProvider } from './context-menu-provider'
 import { EventProvider } from './event-provider'

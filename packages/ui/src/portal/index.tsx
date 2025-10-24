@@ -14,3 +14,4 @@ export const RootPortal: FC<
 
   return createPortal(props.children, props.to || to || document.body)
 }
+export { RootPortalProvider } from './provider'

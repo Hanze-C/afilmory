@@ -1,8 +1,7 @@
+import { GlassButton } from '@afilmory/ui'
 import { startTransition } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-
-import { GlassButton } from '../button/GlassButton'
 
 export const MapBackButton = () => {
   const { t } = useTranslation()

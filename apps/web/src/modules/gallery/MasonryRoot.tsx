@@ -1,24 +1,14 @@
+import { useScrollViewElement } from '@afilmory/ui'
+import { clsxm, Spring } from '@afilmory/utils'
 import { useAtomValue } from 'jotai'
 import { AnimatePresence, m } from 'motion/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { useMobile } from '@afilmory/hooks/useMobile'
-import { useContextPhotos } from '@afilmory/hooks/usePhotos'
-import {
-  usePhotoViewer,
-  usePhotos,
-  useVisiblePhotosDateRange,
-} from '@afilmory/hooks/usePhotoViewer'
-import { DateRangeIndicator } from '@afilmory/ui/date-range-indicator'
-import {
-  ScrollArea,
-  ScrollElementContext,
-  useScrollViewElement,
-} from '@afilmory/ui/scroll-area'
-import { clsxm } from '@afilmory/utils'
-import { Spring } from '@afilmory/utils/spring'
-
 import { gallerySettingAtom } from '~/atoms/app'
+import { DateRangeIndicator } from '~/components/ui/date-range-indicator'
+import { useMobile } from '~/hooks/useMobile'
+import { useContextPhotos } from '~/hooks/usePhotoViewer'
+import { useVisiblePhotosDateRange } from '~/hooks/useVisiblePhotosDateRange'
 import type { PhotoManifest } from '~/types/photo'
 
 import { ActionGroup } from './ActionGroup'

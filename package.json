@@ -33,7 +33,7 @@
     "@afilmory/ui": "workspace:*",
     "@t3-oss/env-core": "catalog:",
     "dotenv": "17.2.3",
-    "es-toolkit": "1.40.0",
+    "es-toolkit": "1.41.0",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,10 +1,9 @@
 import type { FujiRecipe, PickedExif } from '@afilmory/builder'
+import { EllipsisHorizontalTextWithTooltip } from '@afilmory/ui'
 import type { FC } from 'react'
 
 import { i18nAtom } from '~/i18n'
 import { jotaiStore } from '~/lib/jotai'
-
-import { EllipsisHorizontalTextWithTooltip } from '../typography/EllipsisWithTooltip'
 
 // Helper function to clean up EXIF values by removing unnecessary characters
 const cleanExifValue = (value: string | null | undefined): string | null => {

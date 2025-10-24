@@ -1,7 +1,5 @@
-import type { AfilmoryManifest } from '@packages/builder/src/types/manifest'
 import type { FC, PropsWithChildren } from 'react'
 
-import type { InjectConfig } from './config/types'
 
 declare global {
   export type Nullable<T> = T | null | undefined

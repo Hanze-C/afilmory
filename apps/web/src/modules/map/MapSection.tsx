@@ -9,7 +9,7 @@ import {
   MapBackButton,
   MapInfoPanel,
   MapLoadingState,
-} from '@afilmory/ui'
+} from '~/components/ui/map'
 import {
   calculateMapBounds,
   convertExifGPSToDecimal,

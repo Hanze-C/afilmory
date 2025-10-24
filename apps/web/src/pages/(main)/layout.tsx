@@ -1,4 +1,5 @@
 import { photoLoader } from '@afilmory/data'
+import { ScrollArea, ScrollElementContext } from '@afilmory/ui'
 import siteConfig from '@config'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
@@ -10,15 +11,13 @@ import {
   useSearchParams,
 } from 'react-router'
 
-import { ScrollArea, ScrollElementContext } from '@afilmory/ui/scroll-area'
-import { useMobile } from '@afilmory/hooks/useMobile'
+import { gallerySettingAtom } from '~/atoms/app'
+import { useMobile } from '~/hooks/useMobile'
 import {
   getFilteredPhotos,
   usePhotos,
   usePhotoViewer,
-} from '@afilmory/hooks/usePhotoViewer'
-
-import { gallerySettingAtom } from '~/atoms/app'
+} from '~/hooks/usePhotoViewer'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
 

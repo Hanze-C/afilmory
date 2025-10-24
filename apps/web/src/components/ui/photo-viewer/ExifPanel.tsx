@@ -1,6 +1,8 @@
 import './PhotoViewer.css'
 
 import type { PhotoManifestItem, PickedExif } from '@afilmory/builder'
+import { MotionButtonBase, ScrollArea } from '@afilmory/ui'
+import { Spring } from '@afilmory/utils'
 import { isNil } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { m } from 'motion/react'
@@ -9,7 +11,6 @@ import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { isExiftoolLoadedAtom } from '~/atoms/app'
-import { ScrollArea } from '@afilmory/ui'
 import { useMobile } from '~/hooks/useMobile'
 import {
   CarbonIsoOutline,
@@ -20,9 +21,7 @@ import {
 } from '~/icons'
 import { getImageFormat } from '~/lib/image-utils'
 import { convertExifGPSToDecimal } from '~/lib/map-utils'
-import { Spring } from '@afilmory/utils'
 
-import { MotionButtonBase } from '../button'
 import { formatExifData, Row } from './formatExifData'
 import { HistogramChart } from './HistogramChart'
 import { MiniMap } from './MiniMap'
