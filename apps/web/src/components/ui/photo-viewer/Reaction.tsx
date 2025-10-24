@@ -10,8 +10,8 @@ import { tv } from 'tailwind-variants'
 import { useOnClickOutside } from 'usehooks-ts'
 
 import { client } from '~/lib/client'
-import { clsxm } from '~/lib/cn'
-import { Spring } from '~/lib/spring'
+import { clsxm } from '@afilmory/utils'
+import { Spring } from '@afilmory/utils'
 
 import { useAnalysis } from './hooks/useAnalysis'
 

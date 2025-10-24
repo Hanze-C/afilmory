@@ -2,7 +2,7 @@ import { useAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 
 import { gallerySettingAtom } from '~/atoms/app'
-import { Slider } from '~/components/ui/slider'
+import { Slider } from '@afilmory/ui'
 import { useMobile } from '~/hooks/useMobile'
 
 export const ColumnsPanel = () => {

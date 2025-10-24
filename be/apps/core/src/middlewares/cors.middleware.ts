@@ -6,6 +6,8 @@ import { injectable } from 'tsyringe'
 
 import { logger } from '../helpers/logger.helper'
 import { SettingService } from '../modules/setting/setting.service'
+import { getTenantContext } from '../modules/tenant/tenant.context'
+import { TenantService } from '../modules/tenant/tenant.service'
 
 type AllowedOrigins = '*' | string[]
 
@@ -43,34 +45,50 @@ function parseAllowedOrigins(raw: string | null): AllowedOrigins {
 @Middleware({ path: '/*', priority: -100 })
 @injectable()
 export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDestroy {
-  private allowedOrigins: AllowedOrigins = []
+  private readonly allowedOrigins = new Map<string, AllowedOrigins>()
+  private defaultTenantId?: string
   private readonly logger = logger.extend('CorsMiddleware')
   private readonly corsMiddleware = cors({
     origin: (origin) => this.resolveOrigin(origin),
     credentials: true,
   })
 
-  private readonly handleSettingUpdated = ({ key, value }: { key: string; value: string }) => {
+  private readonly handleSettingUpdated = ({
+    tenantId,
+    key,
+    value,
+  }: {
+    tenantId: string
+    key: string
+    value: string
+  }) => {
     if (key !== 'http.cors.allowedOrigins') {
       return
     }
-    this.updateAllowedOrigins(value)
+    void this.reloadAllowedOrigins(tenantId)
   }
 
-  private readonly handleSettingDeleted = ({ key }: { key: string }) => {
+  private readonly handleSettingDeleted = ({ tenantId, key }: { tenantId: string; key: string }) => {
     if (key !== 'http.cors.allowedOrigins') {
       return
     }
-    this.updateAllowedOrigins(null)
+    this.allowedOrigins.delete(tenantId)
   }
 
   constructor(
     private readonly eventEmitter: EventEmitterService,
     private readonly settingService: SettingService,
+    private readonly tenantService: TenantService,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.reloadAllowedOrigins()
+    try {
+      const defaultTenant = await this.tenantService.getDefaultTenant()
+      this.defaultTenantId = defaultTenant.tenant.id
+      await this.reloadAllowedOrigins(defaultTenant.tenant.id)
+    } catch (error) {
+      this.logger.warn('Failed to preload default tenant CORS configuration', error)
+    }
     this.eventEmitter.on('setting.updated', this.handleSettingUpdated)
     this.eventEmitter.on('setting.deleted', this.handleSettingDeleted)
   }
@@ -81,24 +99,46 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   }
 
   async use(context: Context, next: Next): Promise<Response | void> {
+    const tenantContext = getTenantContext()
+    const tenantId = tenantContext?.tenant.id ?? this.defaultTenantId
+
+    if (tenantId) {
+      await this.ensureTenantOriginsLoaded(tenantId)
+    } else {
+      this.logger.warn('Tenant context missing for request %s %s', context.req.method, context.req.path)
+    }
+
     return await this.corsMiddleware(context, next)
   }
 
-  private async reloadAllowedOrigins(): Promise<void> {
+  private async ensureTenantOriginsLoaded(tenantId: string): Promise<void> {
+    if (this.allowedOrigins.has(tenantId)) {
+      return
+    }
+
+    await this.reloadAllowedOrigins(tenantId)
+  }
+
+  private async reloadAllowedOrigins(tenantId: string): Promise<void> {
     let raw: string | null = null
 
     try {
-      raw = await this.settingService.get('http.cors.allowedOrigins', {})
+      raw = await this.settingService.get('http.cors.allowedOrigins', { tenantId })
     } catch (error) {
-      this.logger.warn('Failed to load CORS configuration from settings', error)
+      this.logger.warn('Failed to load CORS configuration from settings for tenant %s', tenantId, error)
     }
 
-    this.updateAllowedOrigins(raw)
+    this.updateAllowedOrigins(tenantId, raw)
   }
 
-  private updateAllowedOrigins(next: string | null): void {
-    this.allowedOrigins = parseAllowedOrigins(next)
-    this.logger.info('Updated CORS allowed origins', this.allowedOrigins === '*' ? '*' : this.allowedOrigins)
+  private updateAllowedOrigins(tenantId: string, next: string | null): void {
+    const parsed = parseAllowedOrigins(next)
+    this.allowedOrigins.set(tenantId, parsed)
+    this.logger.info(
+      'Updated CORS allowed origins for tenant %s %s',
+      tenantId,
+      parsed === '*' ? '*' : JSON.stringify(parsed),
+    )
   }
 
   private resolveOrigin(origin: string | undefined): string | null {
@@ -112,10 +152,23 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
       return null
     }
 
-    if (this.allowedOrigins === '*') {
+    const tenantContext = getTenantContext()
+    const tenantId = tenantContext?.tenant.id ?? this.defaultTenantId
+
+    if (!tenantId) {
+      return null
+    }
+
+    const allowed = this.allowedOrigins.get(tenantId)
+
+    if (!allowed) {
+      return null
+    }
+
+    if (allowed === '*') {
       return normalized
     }
 
-    return this.allowedOrigins.includes(normalized) ? normalized : null
+    return allowed.includes(normalized) ? normalized : null
   }
 }

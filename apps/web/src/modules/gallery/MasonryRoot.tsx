@@ -2,15 +2,23 @@ import { useAtomValue } from 'jotai'
 import { AnimatePresence, m } from 'motion/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { useMobile } from '@afilmory/hooks/useMobile'
+import { useContextPhotos } from '@afilmory/hooks/usePhotos'
+import {
+  usePhotoViewer,
+  usePhotos,
+  useVisiblePhotosDateRange,
+} from '@afilmory/hooks/usePhotoViewer'
+import { DateRangeIndicator } from '@afilmory/ui/date-range-indicator'
+import {
+  ScrollArea,
+  ScrollElementContext,
+  useScrollViewElement,
+} from '@afilmory/ui/scroll-area'
+import { clsxm } from '@afilmory/utils'
+import { Spring } from '@afilmory/utils/spring'
+
 import { gallerySettingAtom } from '~/atoms/app'
-import { DateRangeIndicator } from '~/components/ui/date-range-indicator'
-import { useScrollViewElement } from '~/components/ui/scroll-areas/hooks'
-import { useMobile } from '~/hooks/useMobile'
-import { useContextPhotos } from '~/hooks/usePhotoViewer'
-import { useTypeScriptHappyCallback } from '~/hooks/useTypeScriptCallback'
-import { useVisiblePhotosDateRange } from '~/hooks/useVisiblePhotosDateRange'
-import { clsxm } from '~/lib/cn'
-import { Spring } from '~/lib/spring'
 import type { PhotoManifest } from '~/types/photo'
 
 import { ActionGroup } from './ActionGroup'
@@ -175,7 +183,7 @@ export const MasonryRoot = () => {
           columnGutter={4}
           rowGutter={4}
           itemHeightEstimate={400}
-          itemKey={useTypeScriptHappyCallback((data, _index) => {
+          itemKey={useCallback((data, _index) => {
             if (data instanceof MasonryHeaderItem) {
               return 'header'
             }

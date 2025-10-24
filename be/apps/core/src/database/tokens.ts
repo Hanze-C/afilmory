@@ -17,4 +17,8 @@ export interface TransactionContext {
 export interface DatabaseContextStore {
   transaction?: TransactionContext
   db?: DrizzleDb
+  tenantIsolation?: {
+    tenantId?: string | null
+    isSuperAdmin?: boolean
+  }
 }

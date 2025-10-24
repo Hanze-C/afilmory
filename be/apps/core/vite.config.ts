@@ -14,6 +14,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   plugins: [tsconfigPaths(), swc.vite()],
   esbuild: false,
+  resolve: {
+    alias: {
+      '@afilmory/be-utils': resolve(__dirname, '../../packages/utils/src'),
+      '@afilmory/be-utils/': `${resolve(__dirname, '../../packages/utils/src')}/`,
+    },
+  },
   ssr: {
     noExternal: true,
   },

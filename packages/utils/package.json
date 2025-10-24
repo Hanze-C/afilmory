@@ -6,5 +6,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "motion": "12.23.24"
   }
 }

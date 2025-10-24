@@ -1,7 +1,8 @@
-import { APP_GUARD, APP_INTERCEPTOR, APP_MIDDLEWARE, EventModule, Module } from '@afilmory/framework'
-import { TransactionInterceptor } from 'core/database/transaction.interceptor'
+import { APP_GUARD, APP_MIDDLEWARE, EventModule, Module } from '@afilmory/framework'
 import { AuthGuard } from 'core/guards/auth.guard'
 import { CorsMiddleware } from 'core/middlewares/cors.middleware'
+import { TenantResolverMiddleware } from 'core/middlewares/tenant-resolver.middleware'
+import { DatabaseContextMiddleware } from 'core/middlewares/database-context.middleware'
 import { RedisAccessor } from 'core/redis/redis.provider'
 
 import { DatabaseModule } from '../database/database.module'
@@ -10,6 +11,7 @@ import { AuthModule } from './auth/auth.module'
 import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
 import { SettingModule } from './setting/setting.module'
+import { TenantModule } from './tenant/tenant.module'
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import { SettingModule } from './setting/setting.module'
     SettingModule,
     OnboardingModule,
     PhotoModule,
+    TenantModule,
     EventModule.forRootAsync({
       useFactory: async (redis: RedisAccessor) => {
         return {
@@ -30,8 +33,12 @@ import { SettingModule } from './setting/setting.module'
   ],
   providers: [
     {
-      provide: APP_INTERCEPTOR,
-      useClass: TransactionInterceptor,
+      provide: APP_MIDDLEWARE,
+      useClass: TenantResolverMiddleware,
+    },
+    {
+      provide: APP_MIDDLEWARE,
+      useClass: DatabaseContextMiddleware,
     },
     {
       provide: APP_MIDDLEWARE,

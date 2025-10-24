@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { Drawer } from 'vaul'
 
 import { gallerySettingAtom } from '~/atoms/app'
-import { Button } from '~/components/ui/button'
+import { Button } from '@afilmory/ui'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu'
+} from '@afilmory/ui'
 import { useMobile } from '~/hooks/useMobile'
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 
 // 通用的操作按钮组件
 export const ActionButton = ({

@@ -1,8 +1,8 @@
 import { photoLoader } from '@afilmory/data'
 import { useMemo, useState } from 'react'
 
-import { Button } from '~/components/ui/button'
-import { ScrollArea } from '~/components/ui/scroll-areas/ScrollArea'
+import { Button } from '@afilmory/ui'
+import { ScrollArea } from '@afilmory/ui'
 
 // JSON 语法高亮组件
 const JsonHighlight = ({ data }: { data: any }) => {

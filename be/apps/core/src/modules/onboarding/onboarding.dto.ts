@@ -6,7 +6,10 @@ import { SETTING_SCHEMAS, SettingKeys } from '../setting/setting.constant'
 const adminSchema = z.object({
   email: z.email(),
   password: z.string().min(8),
-  name: z.string().min(1),
+  name: z
+    .string()
+    .min(1)
+    .regex(/^(?!root$)/i, { message: 'Name "root" is reserved' }),
 })
 
 const keySchema = z.enum(SettingKeys)
@@ -29,6 +32,18 @@ const normalizeEntries = z
 export class OnboardingInitDto extends createZodDto(
   z.object({
     admin: adminSchema,
+    tenant: z.object({
+      name: z.string().min(1),
+      slug: z
+        .string()
+        .min(1)
+        .regex(/^[a-z0-9-]+$/, { message: 'Slug should be lowercase alphanumeric with hyphen' }),
+      domain: z
+        .string()
+        .min(1)
+        .regex(/^[a-z0-9.-]+$/, { message: 'Domain should be lowercase letters, numbers, dot or hyphen' })
+        .optional(),
+    }),
     settings: normalizeEntries.optional().transform((entries) => entries ?? []),
   }),
 ) {}

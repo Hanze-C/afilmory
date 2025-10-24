@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react'
 
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 import type { ImageLoaderManager } from '~/lib/image-loader-manager'
 
 import type { LoadingIndicatorRef } from './LoadingIndicator'

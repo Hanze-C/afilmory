@@ -4,7 +4,7 @@ import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { useTranslation } from 'react-i18next'
 
 import { usePhotos } from '~/hooks/usePhotoViewer'
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 
 import { ActionGroup } from './ActionGroup'
 

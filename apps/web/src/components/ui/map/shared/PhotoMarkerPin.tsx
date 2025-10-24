@@ -2,13 +2,9 @@ import { m } from 'motion/react'
 import { Marker } from 'react-map-gl/maplibre'
 import { Link } from 'react-router'
 
-import { GlassButton } from '~/components/ui/button/GlassButton'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '~/components/ui/hover-card'
-import { LazyImage } from '~/components/ui/lazy-image'
+import { GlassButton } from '@afilmory/ui'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@afilmory/ui'
+import { LazyImage } from '@afilmory/ui'
 
 import type { PhotoMarkerPinProps } from './types'
 

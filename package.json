@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "@afilmory/builder": "workspace:*",
+    "@afilmory/hooks": "workspace:*",
+    "@afilmory/ui": "workspace:*",
     "@t3-oss/env-core": "catalog:",
     "dotenv": "17.2.3",
     "es-toolkit": "1.40.0",

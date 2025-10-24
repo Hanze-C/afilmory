@@ -9,7 +9,7 @@ import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { isExiftoolLoadedAtom } from '~/atoms/app'
-import { ScrollArea } from '~/components/ui/scroll-areas/ScrollArea'
+import { ScrollArea } from '@afilmory/ui'
 import { useMobile } from '~/hooks/useMobile'
 import {
   CarbonIsoOutline,
@@ -20,7 +20,7 @@ import {
 } from '~/icons'
 import { getImageFormat } from '~/lib/image-utils'
 import { convertExifGPSToDecimal } from '~/lib/map-utils'
-import { Spring } from '~/lib/spring'
+import { Spring } from '@afilmory/utils'
 
 import { MotionButtonBase } from '../button'
 import { formatExifData, Row } from './formatExifData'

@@ -3,26 +3,29 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { settings } from '@afilmory/db'
 import { env } from '@afilmory/env'
 import { EventEmitterService } from '@afilmory/framework'
-import { eq, inArray } from 'drizzle-orm'
+import { BizException, ErrorCode } from 'core/errors'
+import { and, eq, inArray } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
+import { getTenantContext } from '../tenant/tenant.context'
 import { AES_ALGORITHM, AUTH_TAG_LENGTH, DEFAULT_SETTING_METADATA, IV_LENGTH } from './setting.constant'
 import type { SettingKeyType, SettingRecord, SettingUiSchemaResponse, SettingValueMap } from './setting.type'
 import { SETTING_UI_SCHEMA, SETTING_UI_SCHEMA_KEYS } from './setting.ui-schema'
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type SettingOption = {}
+export type SettingOption = {
+  tenantId?: string
+}
 
 export type SetSettingOptions = {
   isSensitive?: boolean
   description?: string | null
-}
+} & SettingOption
 
 declare module '@afilmory/framework' {
   interface Events {
-    'setting.updated': { key: string; value: string }
-    'setting.deleted': { key: string }
+    'setting.updated': { tenantId: string; key: string; value: string }
+    'setting.deleted': { tenantId: string; key: string }
   }
 }
 type SettingEntryInput = {
@@ -45,8 +48,9 @@ export class SettingService {
   }
 
   async get<K extends SettingKeyType>(key: K, options: SettingOption): Promise<SettingValueMap[K] | null>
-  async get(key: string, _options?: SettingOption): Promise<string | null> {
-    const record = await this.findSettingRecord(key)
+  async get(key: string, options?: SettingOption): Promise<string | null> {
+    const tenantId = this.resolveTenantId(options)
+    const record = await this.findSettingRecord(key, tenantId)
     if (!record) {
       return null
     }
@@ -58,15 +62,19 @@ export class SettingService {
     keys: K,
     options?: SettingOption,
   ): Promise<{ [P in K[number]]: SettingValueMap[P] | null }>
-  async getMany(keys: readonly string[], _options?: SettingOption): Promise<Record<string, string | null>> {
+  async getMany(keys: readonly string[], options?: SettingOption): Promise<Record<string, string | null>> {
     if (keys.length === 0) {
       return {}
     }
 
     const uniqueKeys = Array.from(new Set(keys))
+    const tenantId = this.resolveTenantId(options)
 
     const db = this.dbAccessor.get()
-    const records = await db.select().from(settings).where(inArray(settings.key, uniqueKeys))
+    const records = await db
+      .select()
+      .from(settings)
+      .where(and(eq(settings.tenantId, tenantId), inArray(settings.key, uniqueKeys)))
 
     const recordMap = new Map(records.map((record) => [record.key, record]))
 
@@ -84,13 +92,15 @@ export class SettingService {
   async set<K extends SettingKeyType>(key: K, value: SettingValueMap[K], options: SetSettingOptions): Promise<void>
   async set(key: string, value: string, options: SetSettingOptions): Promise<void>
   async set(key: string, value: string, options: SetSettingOptions): Promise<void> {
-    const existing = await this.findSettingRecord(key)
+    const tenantId = this.resolveTenantId(options)
+    const existing = await this.findSettingRecord(key, tenantId)
     const defaultMetadata = isSettingKey(key) ? DEFAULT_SETTING_METADATA[key] : undefined
     const isSensitive = options.isSensitive ?? defaultMetadata?.isSensitive ?? existing?.isSensitive ?? false
     const payload = isSensitive ? this.encrypt(value) : value
     const db = this.dbAccessor.get()
 
     const insertPayload: typeof settings.$inferInsert = {
+      tenantId,
       key,
       value: payload,
       isSensitive,
@@ -106,11 +116,11 @@ export class SettingService {
       .insert(settings)
       .values(insertPayload)
       .onConflictDoUpdate({
-        target: [settings.key],
+        target: [settings.tenantId, settings.key],
         set: updatePayload,
       })
 
-    await this.eventEmitter.emit('setting.updated', { key, value })
+    await this.eventEmitter.emit('setting.updated', { tenantId, key, value })
   }
 
   async setMany(entries: readonly SettingEntryInput[]): Promise<void> {
@@ -119,20 +129,29 @@ export class SettingService {
     }
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(key: string, options?: SettingOption): Promise<void> {
+    const tenantId = this.resolveTenantId(options)
     const db = this.dbAccessor.get()
-    await db.delete(settings).where(eq(settings.key, key))
+    await db.delete(settings).where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)))
 
-    await this.eventEmitter.emit('setting.deleted', { key })
+    await this.eventEmitter.emit('setting.deleted', { tenantId, key })
   }
 
-  async deleteMany(keys: readonly string[]): Promise<void> {
+  async deleteMany(keys: readonly string[], options?: SettingOption): Promise<void> {
     if (keys.length === 0) {
       return
     }
 
+    const tenantId = this.resolveTenantId(options)
     const db = this.dbAccessor.get()
-    await db.delete(settings).where(inArray(settings.key, Array.from(new Set(keys))))
+    const uniqueKeys = Array.from(new Set(keys))
+    await db
+      .delete(settings)
+      .where(and(eq(settings.tenantId, tenantId), inArray(settings.key, uniqueKeys)))
+
+    for (const key of uniqueKeys) {
+      await this.eventEmitter.emit('setting.deleted', { tenantId, key })
+    }
   }
 
   async getUiSchema(): Promise<SettingUiSchemaResponse> {
@@ -157,11 +176,28 @@ export class SettingService {
     }
   }
 
-  private async findSettingRecord(key: string): Promise<SettingRecord | null> {
+  private async findSettingRecord(key: string, tenantId: string): Promise<SettingRecord | null> {
     const db = this.dbAccessor.get()
-    const [record] = await db.select().from(settings).where(eq(settings.key, key)).limit(1)
+    const [record] = await db
+      .select()
+      .from(settings)
+      .where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)))
+      .limit(1)
 
     return record ?? null
+  }
+
+  private resolveTenantId(options?: SettingOption): string {
+    if (options?.tenantId) {
+      return options.tenantId
+    }
+
+    const tenant = getTenantContext()
+    if (!tenant) {
+      throw new BizException(ErrorCode.TENANT_NOT_FOUND)
+    }
+
+    return tenant.tenant.id
   }
 
   private encrypt(value: string): string {

@@ -19,7 +19,7 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 
 import { injectConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
-import { Spring } from '~/lib/spring'
+import { Spring } from '@afilmory/utils'
 import type { PhotoManifest } from '~/types/photo'
 
 import { Thumbhash } from '../thumbhash'

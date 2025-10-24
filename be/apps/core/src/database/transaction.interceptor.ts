@@ -3,7 +3,8 @@ import { createLogger } from '@afilmory/framework'
 import type { PoolClient } from 'pg'
 import { injectable } from 'tsyringe'
 
-import { getOptionalDbContext, PgPoolProvider, runWithDbContext } from './database.provider'
+import { applyTenantIsolationContext, getOptionalDbContext, PgPoolProvider, runWithDbContext } from './database.provider'
+import { getTenantContext } from 'core/modules/tenant/tenant.context'
 
 const logger = createLogger('DB')
 
@@ -12,21 +13,19 @@ export class TransactionInterceptor implements Interceptor {
   constructor(private readonly poolProvider: PgPoolProvider) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<FrameworkResponse> {
-    const store = context.getContext()
-    const method = store.hono.req.method.toUpperCase()
-    const isMutating = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE'
-
     // Ensure db context exists per request lifecycle
     return await runWithDbContext(async () => {
-      if (!isMutating) {
-        return await next.handle()
-      }
-
       const client: PoolClient = await this.poolProvider.getPool().connect()
       const store = getOptionalDbContext()!
       store.transaction = { client }
       try {
         await client.query('BEGIN')
+
+        const tenant = getTenantContext()
+        if (tenant) {
+          await applyTenantIsolationContext({ tenantId: tenant.tenant.id, isSuperAdmin: false })
+        }
+
         const result = await next.handle()
         await client.query('COMMIT')
         return result

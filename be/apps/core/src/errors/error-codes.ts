@@ -9,6 +9,11 @@ export enum ErrorCode {
   // Auth
   AUTH_UNAUTHORIZED = 10,
   AUTH_FORBIDDEN = 11,
+
+  // Tenant
+  TENANT_NOT_FOUND = 20,
+  TENANT_SUSPENDED = 21,
+  TENANT_INACTIVE = 22,
 }
 
 export interface ErrorDescriptor {
@@ -44,5 +49,17 @@ export const ERROR_CODE_DESCRIPTORS: Record<ErrorCode, ErrorDescriptor> = {
   [ErrorCode.AUTH_FORBIDDEN]: {
     httpStatus: 403,
     message: 'Forbidden',
+  },
+  [ErrorCode.TENANT_NOT_FOUND]: {
+    httpStatus: 404,
+    message: 'Tenant not found',
+  },
+  [ErrorCode.TENANT_SUSPENDED]: {
+    httpStatus: 403,
+    message: 'Tenant is suspended',
+  },
+  [ErrorCode.TENANT_INACTIVE]: {
+    httpStatus: 403,
+    message: 'Tenant is not active',
   },
 }

@@ -1,11 +1,19 @@
+import { randomBytes } from 'node:crypto'
+
 import { authUsers } from '@afilmory/db'
+import { env } from '@afilmory/env'
+import { createLogger } from '@afilmory/framework'
+import { BizException, ErrorCode } from 'core/errors'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
 import { AuthProvider } from '../auth/auth.provider'
 import { SettingService } from '../setting/setting.service'
+import { TenantService } from '../tenant/tenant.service'
 import type { NormalizedSettingEntry, OnboardingInitDto } from './onboarding.dto'
+
+const log = createLogger('Onboarding')
 
 @injectable()
 export class OnboardingService {
@@ -13,6 +21,7 @@ export class OnboardingService {
     private readonly db: DbAccessor,
     private readonly auth: AuthProvider,
     private readonly settings: SettingService,
+    private readonly tenantService: TenantService,
   ) {}
 
   async isInitialized(): Promise<boolean> {
@@ -21,35 +30,92 @@ export class OnboardingService {
     return Boolean(user)
   }
 
-  async initialize(payload: OnboardingInitDto): Promise<{ adminUserId: string }> {
+  async initialize(
+    payload: OnboardingInitDto,
+  ): Promise<{ adminUserId: string; superAdminUserId: string; tenantId: string }> {
     const already = await this.isInitialized()
     if (already) {
-      return { adminUserId: 'already-initialized' }
+      throw new BizException(ErrorCode.COMMON_CONFLICT, { message: 'Application already initialized' })
+    }
+    const db = this.db.get()
+
+    // Create first tenant
+    const tenantAggregate = await this.tenantService.createTenant({
+      name: payload.tenant.name,
+      slug: payload.tenant.slug,
+      domain: payload.tenant.domain,
+    })
+
+    log.info('Created tenant %s (%s)', tenantAggregate.tenant.slug, tenantAggregate.tenant.id)
+
+    // Apply initial settings to tenant
+    const entries = (payload.settings as unknown as NormalizedSettingEntry[]) ?? []
+    if (entries.length > 0) {
+      const entriesWithTenant = entries.map((entry) => ({
+        key: entry.key,
+        value: entry.value,
+        options: { tenantId: tenantAggregate.tenant.id },
+      })) as Parameters<SettingService['setMany']>[0]
+      await this.settings.setMany(entriesWithTenant)
     }
 
     const auth = this.auth.getAuth()
 
-    // Create admin via better-auth email/password
-    const result = await auth.api.signUpEmail({
+    // Create initial admin for this tenant
+    const adminResult = await auth.api.signUpEmail({
       body: {
         email: payload.admin.email,
         password: payload.admin.password,
         name: payload.admin.name,
+        // @ts-expect-error - tenantId is not part of the signUpEmail body
+        tenantId: tenantAggregate.tenant.id,
       },
     })
 
-    const userId = result.user.id
+    const adminUserId = adminResult.user.id
 
-    // Promote to admin if not already
-    const db = this.db.get()
-    await db.update(authUsers).set({ role: 'admin' }).where(eq(authUsers.id, userId))
+    await db
+      .update(authUsers)
+      .set({ role: 'admin', tenantId: tenantAggregate.tenant.id })
+      .where(eq(authUsers.id, adminUserId))
 
-    // Apply initial settings
-    const entries = (payload.settings as unknown as NormalizedSettingEntry[]) ?? []
-    if (entries.length > 0) {
-      await this.settings.setMany(entries as any)
-    }
+    log.info('Provisioned tenant admin %s for tenant %s', adminUserId, tenantAggregate.tenant.slug)
 
-    return { adminUserId: userId }
+    // Create global superadmin account
+    const superPassword = this.generatePassword()
+    const superEmail = env.DEFAULT_SUPERADMIN_EMAIL
+    const superUsername = env.DEFAULT_SUPERADMIN_USERNAME
+
+    const superResult = await auth.api.signUpEmail({
+      body: {
+        email: superEmail,
+        password: superPassword,
+        name: superUsername,
+      },
+    })
+
+    const superAdminId = superResult.user.id
+
+    await db
+      .update(authUsers)
+      .set({
+        role: 'superadmin',
+        tenantId: null,
+        name: superUsername,
+        username: superUsername,
+        displayUsername: superUsername,
+      })
+      .where(eq(authUsers.id, superAdminId))
+
+    log.info('Superadmin account created: %s (%s)', superUsername, superAdminId)
+    process.stdout.write(
+      `Superadmin credentials -> email: ${superEmail} username: ${superUsername} password: ${superPassword}\n`,
+    )
+
+    return { adminUserId, superAdminUserId: superAdminId, tenantId: tenantAggregate.tenant.id }
+  }
+
+  private generatePassword(): string {
+    return randomBytes(16).toString('base64url')
   }
 }

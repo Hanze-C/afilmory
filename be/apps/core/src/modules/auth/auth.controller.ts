@@ -11,7 +11,14 @@ export class AuthController {
   @Get('/session')
   async getSession(@ContextParam() context: Context) {
     const auth = this.auth.getAuth()
-    const session = await auth.api.getSession({ headers: context.req.raw.headers })
+    // forward tenant headers so Better Auth can persist tenantId via databaseHooks
+    const headers = new Headers(context.req.raw.headers)
+    const tenant = (context as any).var?.tenant
+    if (tenant?.tenant?.id) {
+      headers.set('x-tenant-id', tenant.tenant.id)
+      if (tenant.tenant.slug) headers.set('x-tenant-slug', tenant.tenant.slug)
+    }
+    const session = await auth.api.getSession({ headers })
     if (!session) {
       throw new UnauthorizedException()
     }
@@ -19,14 +26,21 @@ export class AuthController {
   }
 
   @Post('/sign-in/email')
-  async signInEmail(@ContextParam() _context: Context, @Body() body: { email: string; password: string }) {
+  async signInEmail(@ContextParam() context: Context, @Body() body: { email: string; password: string }) {
     const auth = this.auth.getAuth()
+    const headers = new Headers(context.req.raw.headers)
+    const tenant = (context as any).var?.tenant
+    if (tenant?.tenant?.id) {
+      headers.set('x-tenant-id', tenant.tenant.id)
+      if (tenant.tenant.slug) headers.set('x-tenant-slug', tenant.tenant.slug)
+    }
     const response = await auth.api.signInEmail({
       body: {
         email: body.email,
         password: body.password,
       },
       asResponse: true,
+      headers,
     })
     return response
   }

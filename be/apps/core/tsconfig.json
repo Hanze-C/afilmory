@@ -14,6 +14,8 @@
       "core/*": ["./src/*"],
       "@afilmory/db": ["../../packages/db/src"],
       "@afilmory/db/*": ["../../packages/db/src/*"],
+      "@afilmory/be-utils": ["../../packages/utils/src"],
+      "@afilmory/be-utils/*": ["../../packages/utils/src/*"],
       "@afilmory/websocket": ["../../packages/websocket/src"],
       "@afilmory/websocket/*": ["../../packages/websocket/src/*"]
     },

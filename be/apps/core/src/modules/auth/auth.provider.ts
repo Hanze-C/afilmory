@@ -1,7 +1,7 @@
 import { generateId } from '@afilmory/be-utils'
 import { authAccounts, authSessions, authUsers } from '@afilmory/db'
 import type { OnModuleInit } from '@afilmory/framework'
-import { createLogger } from '@afilmory/framework'
+import { HttpContext, createLogger } from '@afilmory/framework'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin } from 'better-auth/plugins'
@@ -42,6 +42,29 @@ export class AuthProvider implements OnModuleInit {
       }),
       socialProviders: options.socialProviders,
       emailAndPassword: { enabled: true },
+      user: {
+        // Ensure tenantId and role are part of the typed/session payload
+        additionalFields: {
+          tenantId: { type: 'string', input: false },
+          role: { type: 'string', input: false },
+        },
+      },
+      databaseHooks: {
+        session: {
+          create: {
+            before: async (session) => {
+              // Attach tenantId from our request-scoped context to the auth session record
+              const tenant = HttpContext.getValue('tenant') as { tenant: { id: string } } | undefined
+              return {
+                data: {
+                  ...session,
+                  tenantId: tenant?.tenant.id ?? null,
+                },
+              }
+            },
+          },
+        },
+      },
       advanced: {
         database: {
           generateId: () => generateId(),

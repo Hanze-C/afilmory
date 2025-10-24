@@ -1,7 +1,7 @@
 import { m } from 'motion/react'
 
-import { Thumbhash } from '~/components/ui/thumbhash'
-import { Spring } from '~/lib/spring'
+import { Thumbhash } from '@afilmory/ui'
+import { Spring } from '@afilmory/utils'
 
 import type { PhotoViewerTransition } from './types'
 

@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { gallerySettingAtom } from '~/atoms/app'
-import { usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { usePhotoViewer } from '@afilmory/hooks/usePhotoViewer'
 import { MageLens } from '~/icons'
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 
 // Command types
 type CommandType = 'search' | 'filter' | 'action' | 'photo'

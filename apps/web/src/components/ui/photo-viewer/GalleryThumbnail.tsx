@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
 import { useMobile } from '~/hooks/useMobile'
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 import { nextFrame } from '~/lib/dom'
-import { Spring } from '~/lib/spring'
+import { Spring } from '@afilmory/utils'
 import type { PhotoManifest } from '~/types/photo'
 
 import { Thumbhash } from '../thumbhash'

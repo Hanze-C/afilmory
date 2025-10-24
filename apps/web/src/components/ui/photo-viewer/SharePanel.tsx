@@ -6,8 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { injectConfig } from '~/config'
-import { clsxm } from '~/lib/cn'
-import { Spring } from '~/lib/spring'
+import { clsxm } from '@afilmory/utils'
+import { Spring } from '@afilmory/utils'
 import type { PhotoManifest } from '~/types/photo'
 
 import { RootPortal } from '../portal'

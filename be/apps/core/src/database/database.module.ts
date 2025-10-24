@@ -3,7 +3,6 @@ import { injectable } from 'tsyringe'
 
 import { DatabaseConfig } from './database.config'
 import { DbAccessor, DrizzleProvider, PgPoolProvider } from './database.provider'
-import { TransactionInterceptor } from './transaction.interceptor'
 
 @injectable()
 class PgPoolTokenProvider {
@@ -29,7 +28,6 @@ class DrizzleTokenProvider {
     DbAccessor,
     PgPoolTokenProvider,
     DrizzleTokenProvider,
-    TransactionInterceptor,
   ],
 })
 export class DatabaseModule {}

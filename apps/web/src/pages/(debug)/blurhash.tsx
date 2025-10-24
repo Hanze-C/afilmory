@@ -1,7 +1,7 @@
 import { photoLoader } from '@afilmory/data'
 
-import { ScrollArea } from '~/components/ui/scroll-areas/ScrollArea'
-import { Thumbhash } from '~/components/ui/thumbhash'
+import { ScrollArea } from '@afilmory/ui'
+import { Thumbhash } from '@afilmory/ui'
 
 export const Component = () => {
   const photos = photoLoader.getPhotos()

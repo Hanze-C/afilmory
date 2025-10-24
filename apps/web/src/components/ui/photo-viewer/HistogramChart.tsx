@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cx } from '~/lib/cn'
+import { cx } from '@afilmory/utils'
 
 interface CompressedHistogramData {
   red: number[]

@@ -1,10 +1,9 @@
+import { Button } from '@afilmory/ui'
 import { repository } from '@pkg'
 import { useEffect, useRef } from 'react'
 import { isRouteErrorResponse, useRouteError } from 'react-router'
 
 import { attachOpenInEditor } from '~/lib/dev'
-
-import { Button } from '../ui/button'
 
 export function ErrorElement() {
   const error = useRouteError()

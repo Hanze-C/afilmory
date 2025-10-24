@@ -6,7 +6,7 @@ import type {
 } from 'react-zoom-pan-pinch'
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'
 
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 
 import type { DOMImageViewerProps } from './types'
 

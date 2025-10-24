@@ -10,7 +10,38 @@ const snowflakeId = createSnowflakeId('id').primaryKey()
 // Better Auth custom schema
 // =========================
 
-export const userRoleEnum = pgEnum('user_role', ['user', 'admin'])
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin', 'superadmin'])
+
+export const tenantStatusEnum = pgEnum('tenant_status', ['active', 'inactive', 'suspended'])
+
+export const tenants = pgTable(
+  'tenant',
+  {
+    id: snowflakeId,
+    slug: text('slug').notNull(),
+    name: text('name').notNull(),
+    status: tenantStatusEnum('status').notNull().default('inactive'),
+    primaryDomain: text('primary_domain'),
+    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+  },
+  (t) => [unique('uq_tenant_slug').on(t.slug)],
+)
+
+export const tenantDomains = pgTable(
+  'tenant_domain',
+  {
+    id: snowflakeId,
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    domain: text('domain').notNull(),
+    isPrimary: boolean('is_primary').notNull().default(false),
+    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+  },
+  (t) => [unique('uq_tenant_domain_domain').on(t.domain)],
+)
 
 // Custom users table (Better Auth: user)
 export const authUsers = pgTable('auth_user', {
@@ -20,6 +51,7 @@ export const authUsers = pgTable('auth_user', {
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
   role: userRoleEnum('role').notNull().default('user'),
+  tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
@@ -39,6 +71,7 @@ export const authSessions = pgTable('auth_session', {
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
   userId: text('user_id')
     .notNull()
     .references(() => authUsers.id, { onDelete: 'cascade' }),
@@ -68,6 +101,9 @@ export const settings = pgTable(
   {
     id: snowflakeId,
 
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
     key: text('key').notNull(),
     value: text('value').notNull(),
 
@@ -75,10 +111,12 @@ export const settings = pgTable(
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   },
-  (t) => [unique('uq_settings_key').on(t.key)],
+  (t) => [unique('uq_settings_tenant_key').on(t.tenantId, t.key)],
 )
 
 export const dbSchema = {
+  tenants,
+  tenantDomains,
   authUsers,
   authSessions,
   authAccounts,

@@ -2,9 +2,9 @@ import { Provider } from 'jotai'
 import { domMax, LazyMotion, MotionConfig } from 'motion/react'
 import type { FC, PropsWithChildren } from 'react'
 
-import { Toaster } from '~/components/ui/sonner'
-import { jotaiStore } from '~/lib/jotai'
-import { Spring } from '~/lib/spring'
+import { Toaster } from '@afilmory/ui/sonner'
+import { jotaiStore } from '@afilmory/utils'
+import { Spring } from '@afilmory/utils/spring'
 
 import { ContextMenuProvider } from './context-menu-provider'
 import { EventProvider } from './event-provider'

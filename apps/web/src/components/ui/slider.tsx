@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 
 interface SliderProps {
   value: number | 'auto'

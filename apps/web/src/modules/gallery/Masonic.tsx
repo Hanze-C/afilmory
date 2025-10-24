@@ -20,7 +20,7 @@ import {
 import { useForceUpdate } from 'motion/react'
 import * as React from 'react'
 
-import { useScrollViewElement } from '~/components/ui/scroll-areas/hooks'
+import { useScrollViewElement } from '@afilmory/ui'
 
 export interface MasonryRef {
   reposition: () => void

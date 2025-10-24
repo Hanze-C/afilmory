@@ -6,12 +6,17 @@ export enum RoleBit {
   GUEST = 0,
   USER = 1 << 0,
   ADMIN = 1 << 1,
+  SUPERADMIN = 1 << 2,
 }
 
-export type RoleName = 'user' | 'admin' | (string & {})
+export type RoleName = 'user' | 'admin' | 'superadmin' | (string & {})
 
 export function roleNameToBit(name?: RoleName): RoleBit {
   switch (name) {
+    case 'superadmin': {
+      return RoleBit.SUPERADMIN | RoleBit.ADMIN | RoleBit.USER | RoleBit.GUEST
+    }
+
     case 'admin': {
       return RoleBit.ADMIN | RoleBit.USER | RoleBit.GUEST
     }

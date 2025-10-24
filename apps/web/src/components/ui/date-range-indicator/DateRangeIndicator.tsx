@@ -2,9 +2,9 @@ import { AnimatePresence, m } from 'motion/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useMobile } from '~/hooks/useMobile'
-import { clsxm } from '~/lib/cn'
-import { Spring } from '~/lib/spring'
+import { useMobile } from '@afilmory/hooks'
+import { clsxm } from '@afilmory/utils'
+import { Spring } from '@afilmory/utils'
 
 interface DateRangeIndicatorProps {
   dateRange: string

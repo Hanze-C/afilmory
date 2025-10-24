@@ -9,8 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '~/components/ui/dialog'
-import { ScrollArea } from '~/components/ui/scroll-areas/ScrollArea'
+} from '@afilmory/ui'
+import { ScrollArea } from '@afilmory/ui'
 import { ExifToolManager } from '~/lib/exiftool'
 import type { PhotoManifest } from '~/types/photo'
 

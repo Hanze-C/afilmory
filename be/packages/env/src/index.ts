@@ -11,7 +11,7 @@ export const env = createEnv({
     HOSTNAME: z.string().default('0.0.0.0'),
     API_KEY: z.string().min(1).optional(),
     DATABASE_URL: z.url(),
-    REDIS_URL: z.string().url(),
+    REDIS_URL: z.url(),
     PG_POOL_MAX: z.string().regex(/^\d+$/).transform(Number).optional(),
     PG_IDLE_TIMEOUT: z.string().regex(/^\d+$/).transform(Number).optional(),
     PG_CONN_TIMEOUT: z.string().regex(/^\d+$/).transform(Number).optional(),
@@ -22,6 +22,13 @@ export const env = createEnv({
     GITHUB_CLIENT_SECRET: z.string().optional(),
 
     CONFIG_ENCRYPTION_KEY: z.string().min(1),
+    DEFAULT_TENANT_SLUG: z.string().min(1).default('default'),
+    DEFAULT_SUPERADMIN_EMAIL: z.string().email().default('root@local.host'),
+    DEFAULT_SUPERADMIN_USERNAME: z
+      .string()
+      .min(1)
+      .regex(/^[\w-]+$/)
+      .default('root'),
 
     // INTERNAL
     TEST: z.any().default(false),

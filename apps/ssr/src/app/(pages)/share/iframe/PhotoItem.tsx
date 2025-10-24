@@ -9,7 +9,7 @@ import {
 } from '@afilmory/components/icons/index.tsx'
 import { thumbHashToDataURL } from 'thumbhash'
 
-import { cn } from '~/lib/cn'
+import { cn } from '@afilmory/utils'
 
 import { url } from '../../../../../../../config.json'
 

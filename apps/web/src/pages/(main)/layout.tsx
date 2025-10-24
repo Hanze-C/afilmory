@@ -10,15 +10,15 @@ import {
   useSearchParams,
 } from 'react-router'
 
-import { gallerySettingAtom } from '~/atoms/app'
-import { ScrollElementContext } from '~/components/ui/scroll-areas/ctx'
-import { ScrollArea } from '~/components/ui/scroll-areas/ScrollArea'
-import { useMobile } from '~/hooks/useMobile'
+import { ScrollArea, ScrollElementContext } from '@afilmory/ui/scroll-area'
+import { useMobile } from '@afilmory/hooks/useMobile'
 import {
   getFilteredPhotos,
   usePhotos,
   usePhotoViewer,
-} from '~/hooks/usePhotoViewer'
+} from '@afilmory/hooks/usePhotoViewer'
+
+import { gallerySettingAtom } from '~/atoms/app'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
 

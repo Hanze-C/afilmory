@@ -21,6 +21,11 @@ export class OnboardingController {
       throw new BizException(ErrorCode.COMMON_CONFLICT, { message: 'Already initialized' })
     }
     const result = await this.service.initialize(dto)
-    return { ok: true, adminUserId: result.adminUserId }
+    return {
+      ok: true,
+      adminUserId: result.adminUserId,
+      tenantId: result.tenantId,
+      superAdminUserId: result.superAdminUserId,
+    }
   }
 }

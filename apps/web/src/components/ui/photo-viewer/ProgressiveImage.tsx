@@ -6,7 +6,7 @@ import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
 import { useMediaQuery } from 'usehooks-ts'
 
 import { useShowContextMenu } from '~/atoms/context-menu'
-import { clsxm } from '~/lib/cn'
+import { clsxm } from '@afilmory/utils'
 import { canUseWebGL } from '~/lib/feature'
 
 import { SlidingNumber } from '../number/SlidingNumber'

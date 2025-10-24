@@ -6,6 +6,8 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import { injectable } from 'tsyringe'
 
+import { BizException, ErrorCode } from 'core/errors'
+import { getTenantContext } from 'core/modules/tenant/tenant.context'
 import { DatabaseConfig } from './database.config'
 import type { DatabaseContextStore, DrizzleDb } from './tokens'
 
@@ -22,6 +24,51 @@ export function runWithDbContext<T>(fn: () => Promise<T> | T) {
 
 export function getOptionalDbContext(): DatabaseContextStore | undefined {
   return dbContext.getStore()
+}
+
+export async function applyTenantIsolationContext(options?: {
+  tenantId?: string | null
+  isSuperAdmin?: boolean
+}): Promise<void> {
+  const store = getOptionalDbContext()
+  if (!store?.transaction) {
+    return
+  }
+
+  const tenantContext = options?.tenantId
+    ? { id: options.tenantId }
+    : (() => {
+        const context = getTenantContext()
+        return context ? { id: context.tenant.id } : null
+      })()
+
+  const isSuperAdmin = options?.isSuperAdmin ?? false
+
+  if (!tenantContext && !isSuperAdmin) {
+    throw new BizException(ErrorCode.TENANT_NOT_FOUND)
+  }
+
+  const current = store.tenantIsolation
+  const tenantId = tenantContext?.id ?? null
+
+  if (current && current.tenantId === tenantId && current.isSuperAdmin === isSuperAdmin) {
+    return
+  }
+
+  const client = store.transaction.client
+
+  await client.query('SET LOCAL afilmory.is_superadmin = $1', [isSuperAdmin ? 'true' : 'false'])
+
+  if (isSuperAdmin) {
+    await client.query('RESET afilmory.tenant_id')
+  } else if (tenantId) {
+    await client.query('SET LOCAL afilmory.tenant_id = $1', [tenantId])
+  }
+
+  store.tenantIsolation = {
+    tenantId,
+    isSuperAdmin,
+  }
 }
 
 @injectable()

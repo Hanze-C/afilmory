@@ -1,12 +1,10 @@
 'use client'
 
+import { clsxm, Spring } from '@afilmory/utils'
 import type { MotionValue, SpringOptions, UseInViewOptions } from 'motion/react'
 import { m as motion, useInView, useSpring, useTransform } from 'motion/react'
 import * as React from 'react'
 import useMeasure from 'react-use-measure'
-
-import { clsxm } from '~/lib/cn'
-import { Spring } from '~/lib/spring'
 
 type SlidingNumberRollerProps = {
   prevValue: number

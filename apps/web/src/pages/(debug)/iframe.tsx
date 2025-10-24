@@ -1,4 +1,4 @@
-import { ScrollArea } from '~/components/ui/scroll-areas/ScrollArea'
+import { ScrollArea } from '@afilmory/ui'
 
 export const Component = () => {
   return (
