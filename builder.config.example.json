@@ -4,11 +4,10 @@
     "url": "https://github.com/Hanze-C/gallery-public"
   },
   "storage": {
-    "provider": "s3",
-    "bucket": "image",
-    "region": "apac",
-    "prefix": "photos/",
-    "endpoint": "https://c4caffd14913c96c70fc10dda126447c.r2.cloudflarestorage.com/",
-    "customDomain": "https://image.hanze.icu"
+    "provider": "github",
+    "owner": "Hanze-C",
+    "repo": "static",
+    "branch": "main",
+    "path": "photos/"
   }
 }
