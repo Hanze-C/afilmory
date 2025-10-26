@@ -1,10 +1,14 @@
 {
+  "repo": {
+    "enable": false,
+    "url": "https://github.com/Hanze-C/gallery-public"
+  },
   "storage": {
     "provider": "s3",
-    "bucket": "my-photos",
-    "region": "us-east-1",
+    "bucket": "image",
+    "region": "apac",
     "prefix": "photos/",
-    "customDomain": "https://cdn.example.com",
-    "endpoint": "https://s3.amazonaws.com"
+    "endpoint": "https://c4caffd14913c96c70fc10dda126447c.r2.cloudflarestorage.com/",
+    "customDomain": "https://image.hanze.icu"
   }
 }

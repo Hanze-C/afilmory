@@ -1,13 +1,19 @@
 {
-  "name": "Innei's Afilmory",
-  "title": "Innei's Afilmory",
-  "description": "Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.",
-  "url": "https://afilmory.innei.in/",
-  "accentColor": "#007bff",
+  "name": "Hanze's Photo Gallery",
+  "title": "Hanze's Photo Gallery", 
+  "description": "Capturing beautiful moments in life",
+  "url": "https://oplist.hanze.icu",
+  "accentColor": "#fb7185",
   "author": {
-    "name": "Innei",
-    "url": "https://innei.in/",
-    "avatar": "https://cdn.jsdelivr.net/gh/Innei/static@master/avatar.png"
+    "name": "C.Hanze",
+    "url": "https://hanze.icu/",
+    "avatar": "https://q.qlogo.cn/headimg_dl?dst_uin=1522829644&spec=640&img_type=jpg"
+  },
+  "social": {
+    "twitter": "@C_Hanze_X"
+  },
+  "extra": {
+    "accessRepo": true
   },
   "map": [
     "maplibre"
