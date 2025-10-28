@@ -14,7 +14,6 @@ import {
 } from '../hooks'
 import type { StorageProvider } from '../types'
 import { createEmptyProvider, reorderProvidersByActive } from '../utils'
-import { AddProviderCard } from './AddProviderCard'
 import { ProviderCard } from './ProviderCard'
 import { ProviderEditModal } from './ProviderEditModal'
 
@@ -54,7 +53,6 @@ export const StorageProvidersManager = () => {
       activeProviderId,
       onSave: handleSaveProvider,
       onSetActive: handleSetActive,
-      onDelete: handleDeleteProvider,
     })
   }
 
@@ -82,20 +80,6 @@ export const StorageProvidersManager = () => {
     markDirty()
   }
 
-  const handleDeleteProvider = (providerId: string) => {
-    setProviders((prev) => {
-      const next = prev.filter((provider) => provider.id !== providerId)
-      const nextActive = next.some(
-        (provider) => provider.id === activeProviderId,
-      )
-        ? activeProviderId
-        : (next[0]?.id ?? null)
-      setActiveProviderId(nextActive)
-      return next
-    })
-    markDirty()
-  }
-
   const handleSetActive = (providerId: string) => {
     setActiveProviderId(providerId)
     markDirty()
@@ -106,7 +90,7 @@ export const StorageProvidersManager = () => {
       activeProviderId &&
       providers.some((provider) => provider.id === activeProviderId)
         ? activeProviderId
-        : (providers[0]?.id ?? null)
+        : null
 
     updateMutation.mutate(
       {
@@ -146,6 +130,14 @@ export const StorageProvidersManager = () => {
 
   const headerActionPortal = (
     <MainPageLayout.Actions>
+      <Button
+        type="button"
+        onClick={handleAddProvider}
+        size="sm"
+        variant="secondary"
+      >
+        新增提供商
+      </Button>
       <Button
         type="button"
         onClick={handleSave}
@@ -216,20 +208,16 @@ export const StorageProvidersManager = () => {
             <ProviderCard
               provider={provider}
               isActive={provider.id === activeProviderId}
-              onClick={() => handleEditProvider(provider)}
+              onEdit={() => handleEditProvider(provider)}
+              onToggleActive={() => {
+                setActiveProviderId((prev) =>
+                  prev === provider.id ? null : provider.id,
+                )
+                markDirty()
+              }}
             />
           </m.div>
         ))}
-        <m.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            ...Spring.presets.smooth,
-            delay: orderedProviders.length * 0.05,
-          }}
-        >
-          <AddProviderCard onClick={handleAddProvider} />
-        </m.div>
       </m.div>
 
       {/* Status Message */}

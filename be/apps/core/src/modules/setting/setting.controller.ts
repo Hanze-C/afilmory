@@ -18,12 +18,14 @@ export class SettingController {
   }
 
   @Get('/:key')
+  @BypassResponseTransform()
   async get(@Param() { key }: GetSettingDto) {
     const value = await this.settingService.get(key, {})
     return { key, value }
   }
 
   @Get('/')
+  @BypassResponseTransform()
   async getMany(@Query() query: GetSettingsQueryDto) {
     const keys = query?.keys ?? []
     const targetKeys = keys.length > 0 ? keys : Array.from(SettingKeys)

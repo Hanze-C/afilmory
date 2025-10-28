@@ -15,6 +15,7 @@ import {
 import { clsxm, Spring } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { m } from 'motion/react'
+import { nanoid } from 'nanoid'
 import { useEffect, useMemo, useState } from 'react'
 
 import {
@@ -28,15 +29,13 @@ type ProviderEditModalProps = ModalComponentProps & {
   activeProviderId: string | null
   onSave: (provider: StorageProvider) => void
   onSetActive: (id: string) => void
-  onDelete: (id: string) => void
 }
 
 export const ProviderEditModal = ({
   provider,
-  activeProviderId,
+
   onSave,
-  onSetActive,
-  onDelete,
+
   dismiss,
 }: ProviderEditModalProps) => {
   const [formData, setFormData] = useState<StorageProvider | null>(provider)
@@ -50,7 +49,6 @@ export const ProviderEditModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerKey])
 
-  const isActive = provider?.id === activeProviderId
   const isNewProvider = !provider?.id
 
   const selectedFields = useMemo(() => {
@@ -88,21 +86,9 @@ export const ProviderEditModal = ({
 
   const handleSave = () => {
     if (!formData) return
+    formData.id = formData.id ?? nanoid()
     onSave(formData)
     dismiss()
-  }
-
-  const handleDelete = () => {
-    if (!formData?.id) return
-    if (window.confirm('确定要删除这个存储提供商吗？此操作无法撤销。')) {
-      onDelete(formData.id)
-      dismiss()
-    }
-  }
-
-  const handleSetActive = () => {
-    if (!formData?.id) return
-    onSetActive(formData.id)
   }
 
   if (!formData) return null
@@ -261,10 +247,7 @@ export const ProviderEditModal = ({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-6 pt-4 pb-6">
-        {/* Horizontal divider */}
-        <div className="via-text/20 mb-4 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-
+      <div className="shrink-0 px-6 pt-4 pb-6 border-t">
         {isNewProvider ? (
           // Add mode: Simple cancel + create actions
           <div className="flex items-center justify-end gap-2">
@@ -283,64 +266,23 @@ export const ProviderEditModal = ({
               variant="primary"
               size="sm"
             >
-              <DynamicIcon name="plus" className="h-3.5 w-3.5" />
+              <DynamicIcon name="plus" className="h-3.5 w-3.5 mr-2" />
               <span>Create Provider</span>
             </Button>
           </div>
         ) : (
           // Edit mode: Delete + cancel + set active + save
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-end gap-3">
             <Button
               type="button"
-              onClick={handleDelete}
-              variant="ghost"
+              onClick={handleSave}
+              disabled={!isDirty}
+              variant="primary"
               size="sm"
-              className="text-red hover:bg-red/10"
             >
-              <DynamicIcon name="trash-2" className="h-3.5 w-3.5" />
-              <span>Delete</span>
+              <DynamicIcon name="save" className="h-3.5 w-3.5 mr-2" />
+              <span>Save Changes</span>
             </Button>
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={dismiss}
-                variant="ghost"
-                size="sm"
-                className="text-text-secondary hover:text-text"
-              >
-                Cancel
-              </Button>
-
-              {isActive ? (
-                <span className="bg-accent inline-flex items-center gap-1.5 rounded px-4 py-2 text-xs font-semibold text-white uppercase">
-                  <DynamicIcon name="check-circle" className="h-3.5 w-3.5" />
-                  Active
-                </span>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={handleSetActive}
-                  variant="ghost"
-                  size="sm"
-                  className="border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 border"
-                >
-                  <DynamicIcon name="check" className="h-3.5 w-3.5" />
-                  <span>Set Active</span>
-                </Button>
-              )}
-
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={!isDirty}
-                variant="primary"
-                size="sm"
-              >
-                <DynamicIcon name="save" className="h-3.5 w-3.5" />
-                <span>Save Changes</span>
-              </Button>
-            </div>
           </div>
         )}
       </div>

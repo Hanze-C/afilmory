@@ -1,0 +1,2 @@
+export const STORAGE_PROVIDER_SECRET_PLACEHOLDER =
+  '__afilmory_secret__preserved__'

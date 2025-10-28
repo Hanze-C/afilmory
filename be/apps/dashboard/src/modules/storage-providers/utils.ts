@@ -104,6 +104,15 @@ export const serializeStorageProviders = (
   )
 }
 
+export const normalizeStorageProviderConfig = (
+  provider: StorageProvider,
+): StorageProvider => {
+  return {
+    ...provider,
+    config: normaliseConfigForType(provider.type, provider.config),
+  }
+}
+
 export const getDefaultConfigForType = (
   type: StorageProviderType,
 ): Record<string, string> => {

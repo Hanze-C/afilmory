@@ -162,8 +162,8 @@ const SelectItem = ({
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'cursor-menu focus:bg-theme-selection-active focus:text-theme-selection-foreground relative flex items-center rounded px-2.5 py-1 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      'data-[highlighted]:bg-theme-selection-hover focus-within:outline-transparent',
+      'cursor-menu data-[highlighted]:text-accent-foreground relative flex items-center rounded px-2.5 py-1 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'data-[highlighted]:bg-accent/20 focus-within:outline-transparent',
       'h-[28px] w-full',
       inset && 'pl-8',
       className,
