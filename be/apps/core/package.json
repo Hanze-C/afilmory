@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "packageManager": "pnpm@10.18.0",
   "author": "Innei",
-  "license": "MIT",
   "main": "index.ts",
   "scripts": {
     "build": "vite build",

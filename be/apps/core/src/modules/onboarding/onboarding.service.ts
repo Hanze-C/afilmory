@@ -44,9 +44,10 @@ export class OnboardingService {
       name: payload.tenant.name,
       slug: payload.tenant.slug,
       domain: payload.tenant.domain,
+      isPrimary: true,
     })
 
-    log.info('Created tenant %s (%s)', tenantAggregate.tenant.slug, tenantAggregate.tenant.id)
+    log.info(`Created tenant ${tenantAggregate.tenant.slug} (${tenantAggregate.tenant.id})`)
 
     // Apply initial settings to tenant
     const entries = (payload.settings as unknown as NormalizedSettingEntry[]) ?? []
@@ -79,7 +80,7 @@ export class OnboardingService {
       .set({ role: 'admin', tenantId: tenantAggregate.tenant.id })
       .where(eq(authUsers.id, adminUserId))
 
-    log.info('Provisioned tenant admin %s for tenant %s', adminUserId, tenantAggregate.tenant.slug)
+    log.info(`Provisioned tenant admin ${adminUserId} for tenant ${tenantAggregate.tenant.slug}`)
 
     // Create global superadmin account
     const superPassword = this.generatePassword()
@@ -107,7 +108,7 @@ export class OnboardingService {
       })
       .where(eq(authUsers.id, superAdminId))
 
-    log.info('Superadmin account created: %s (%s)', superUsername, superAdminId)
+    log.info(`Superadmin account created: ${superUsername} (${superAdminId})`)
     process.stdout.write(
       `Superadmin credentials -> email: ${superEmail} username: ${superUsername} password: ${superPassword}\n`,
     )

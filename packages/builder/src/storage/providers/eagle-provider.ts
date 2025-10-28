@@ -203,6 +203,10 @@ export class EagleStorageProvider implements StorageProvider {
     await Promise.all(
       keys.map(async (key) => {
         const meta = await readImageMetadata(this.config.libraryPath, key)
+        if (meta.isDeleted) {
+          // Skip deleted images
+          return
+        }
         const include =
           this.config.include.length === 0
             ? true
@@ -260,7 +264,7 @@ export class EagleStorageProvider implements StorageProvider {
       logger.main.log(
         `EagleStorageProvider: 发布目录已存在文件，跳过复制： ${imageName} -> ${distFile}`,
       )
-      return imageName
+      return distName
     }
     await fs.copyFile(sourceImage, distFile)
     logger.main.log(

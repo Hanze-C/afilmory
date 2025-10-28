@@ -1,6 +1,5 @@
 import path from 'node:path'
-
-import { builderConfig } from '@builder'
+import { deserialize as v8Deserialize, serialize as v8Serialize } from 'node:v8'
 
 import { thumbnailExists } from '../image/thumbnail.js'
 import { logger } from '../logger/index.js'
@@ -44,42 +43,19 @@ export class AfilmoryBuilder {
   private storageManager: StorageManager
   private config: BuilderConfig
 
-  constructor(config?: Partial<BuilderConfig>) {
-    // 合并用户配置和默认配置
-    this.config = this.mergeConfig(builderConfig, config)
+  constructor(config: BuilderConfig) {
+    // 创建配置副本，避免外部修改
+    this.config = cloneConfig(config)
 
     // 创建存储管理器
     this.storageManager = new StorageManager(this.config.storage)
 
-    // 配置日志级别
+    // 配置日志级别（保留接口以便未来扩展）
     this.configureLogging()
   }
 
-  private mergeConfig(
-    baseConfig: BuilderConfig,
-    userConfig?: Partial<BuilderConfig>,
-  ): BuilderConfig {
-    if (!userConfig) return baseConfig
-
-    return {
-      repo: { ...baseConfig.repo, ...userConfig.repo },
-      storage: { ...baseConfig.storage, ...userConfig.storage },
-      options: { ...baseConfig.options, ...userConfig.options },
-      logging: { ...baseConfig.logging, ...userConfig.logging },
-      performance: {
-        ...baseConfig.performance,
-        ...userConfig.performance,
-        worker: {
-          ...baseConfig.performance.worker,
-          ...userConfig.performance?.worker,
-        },
-      },
-    }
-  }
-
   private configureLogging(): void {
-    // 这里可以根据配置调整日志设置
-    // 目前日志配置在 logger 模块中处理
+    // 日志配置在 logger 模块中处理，保留方法以兼容未来扩展
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {
@@ -214,6 +190,7 @@ export class AfilmoryBuilder {
             existingManifestMap,
             livePhotoMap,
             imageObjects: tasksToProcess,
+            builderConfig: this.getConfig(),
           },
         })
 
@@ -257,6 +234,7 @@ export class AfilmoryBuilder {
             existingManifestMap,
             legacyLivePhotoMap,
             processorOptions,
+            this,
           )
         })
       }
@@ -416,7 +394,7 @@ export class AfilmoryBuilder {
    * 获取当前配置
    */
   getConfig(): BuilderConfig {
-    return { ...this.config }
+    return cloneConfig(this.config)
   }
 
   /**
@@ -542,5 +520,16 @@ export class AfilmoryBuilder {
   }
 }
 
-// 导出默认的构建器实例
-export const defaultBuilder = new AfilmoryBuilder()
+function cloneConfig<T>(value: T): T {
+  const maybeStructuredClone = (
+    globalThis as typeof globalThis & {
+      structuredClone?: <U>(input: U) => U
+    }
+  ).structuredClone
+
+  if (typeof maybeStructuredClone === 'function') {
+    return maybeStructuredClone(value)
+  }
+
+  return v8Deserialize(v8Serialize(value))
+}

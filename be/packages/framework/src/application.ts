@@ -7,7 +7,11 @@ import type { ClassProvider, DependencyContainer, InjectionToken, TokenProvider,
 import { container as rootContainer } from 'tsyringe'
 
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_MIDDLEWARE, APP_PIPE, isDebugEnabled } from './constants'
-import { HttpContext } from './context/http-context'
+import {
+  HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE,
+  HTTP_CONTEXT_MIDDLEWARE_PRIORITY,
+  HttpContext,
+} from './context/http-context'
 import { getControllerMetadata } from './decorators/controller'
 import { getRoutesMetadata } from './decorators/http-methods'
 import { getMiddlewareMetadata } from './decorators/middleware'
@@ -176,7 +180,21 @@ export class HonoHttpApplication {
       this.useGlobalFilters(...this.pendingGlobalFilterResolvers.map((r) => r()))
     }
     if (this.pendingGlobalMiddlewareResolvers.length > 0) {
-      this.useGlobalMiddlewares(...this.pendingGlobalMiddlewareResolvers.map((r) => r()))
+      const middlewares = this.pendingGlobalMiddlewareResolvers.map((r) => r())
+
+      const hasHttpContextMiddleware = middlewares.some(
+        (definition) => definition.handler === HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE,
+      )
+
+      if (!hasHttpContextMiddleware) {
+        middlewares.unshift({
+          handler: HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE,
+          path: '/*',
+          priority: HTTP_CONTEXT_MIDDLEWARE_PRIORITY,
+        })
+      }
+
+      this.useGlobalMiddlewares(...middlewares)
     }
 
     // Then, register controllers (instantiates them and maps routes)
@@ -198,6 +216,14 @@ export class HonoHttpApplication {
 
   getInstance(): Hono {
     return this.app
+  }
+
+  getRouter(): Hono['router'] {
+    return this.app.router
+  }
+
+  getRoutes(): Hono['routes'] {
+    return this.app.routes
   }
 
   getContainer(): DependencyContainer {
@@ -495,16 +521,18 @@ export class HonoHttpApplication {
   }
 
   private normalizeMiddlewareDefinition(definition: MiddlewareDefinition): MiddlewareDefinition {
-    const path = definition.path ?? '/*'
     const priority = definition.priority ?? 0
     return {
       handler: definition.handler,
-      path,
+      path: definition.path,
       priority,
     }
   }
 
-  private describeMiddlewarePath(path: MiddlewarePath): string {
+  private describeMiddlewarePath(path: MiddlewarePath | undefined): string {
+    if (path == null) {
+      return 'Global'
+    }
     if (Array.isArray(path)) {
       return path.map((entry) => (typeof entry === 'string' ? entry : entry.toString())).join(', ')
     }
@@ -517,13 +545,15 @@ export class HonoHttpApplication {
 
     for (const definition of normalized) {
       this.globalEnhancers.middlewares.push(definition)
-      const path = definition.path ?? '/*'
+      const { path } = definition
       const handlerName = definition.handler.constructor.name || 'AnonymousMiddleware'
       const middlewareFn = async (context: Context, next: Next) => {
         return await definition.handler.use(context, next)
       }
 
-      if (Array.isArray(path)) {
+      if (path == null) {
+        this.app.use(middlewareFn)
+      } else if (Array.isArray(path)) {
         for (const entry of path) {
           this.app.use(entry as any, middlewareFn)
         }
@@ -531,7 +561,7 @@ export class HonoHttpApplication {
         this.app.use(path as any, middlewareFn)
       }
 
-      this.middlewareLogger.verbose(
+      this.middlewareLogger.info(
         `Registered middleware ${handlerName} on ${this.describeMiddlewarePath(path)}`,
         colors.green(`+${performance.now().toFixed(2)}ms`),
       )

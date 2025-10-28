@@ -16,13 +16,12 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@afilmory/utils": "workspace:*",
     "drizzle-orm": "^0.44.7",
+    "nodejs-snowflake": "^2.0.1",
     "pg": "^8.16.3",
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@afilmory/env": "workspace:*",
     "drizzle-kit": "0.31.5"
   }
 }

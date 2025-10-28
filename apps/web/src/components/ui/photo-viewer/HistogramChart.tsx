@@ -270,41 +270,22 @@ export const HistogramChart: FC<{
     const startAt = performance.now()
     const prev = previousHistogramRef.current
 
-    // Spring parameters (critically damped for smooth deceleration)
-    const stiffness = 100 // Spring stiffness
-    const damping = 20 // Critical damping for no oscillation
-    const mass = 1
-    const restDelta = 0.0001
-    const maxMs = 1500
+    // Spring parameters (slightly underdamped for natural feel)
+    const frequency = 8 // rad/s, controls oscillation speed (lower = smoother)
+    const damping = 7 // higher = faster decay, tuned for subtle bounce
+    const restDelta = 0.001
+    const maxMs = 1200
 
     const springProgress = (tSec: number) => {
-      // Critically damped spring: smooth approach with no oscillation
-      // Using exponential decay with linear term for natural deceleration feel
-      const dampingRatio = damping / (2 * Math.sqrt(stiffness * mass))
-
-      if (dampingRatio >= 1) {
-        // Overdamped or critically damped
-        const w0 = Math.sqrt(stiffness / mass)
-        const zeta = dampingRatio
-        const wd = w0 * Math.sqrt(Math.abs(zeta * zeta - 1))
-
-        if (dampingRatio === 1) {
-          // Critically damped (fastest approach without overshoot)
-          const value = 1 - (1 + w0 * tSec) * Math.exp(-w0 * tSec)
-          return Math.max(0, Math.min(1, value))
-        } else {
-          // Overdamped (slower, more damped)
-          const exp = Math.exp(-zeta * w0 * tSec)
-          const value =
-            1 -
-            exp *
-              (Math.cosh(wd * tSec) + ((zeta * w0) / wd) * Math.sinh(wd * tSec))
-          return Math.max(0, Math.min(1, value))
-        }
-      }
-
-      // Fallback to simple exponential ease-out
-      return 1 - Math.exp(-5 * tSec)
+      // Analytic solution for underdamped second-order system step response
+      // y(t) = 1 - e^{-d t} (cos(w t) + (d/w) sin(w t))
+      const w = frequency
+      const d = damping
+      const exp = Math.exp(-d * tSec)
+      const value =
+        1 - exp * (Math.cos(w * tSec) + (d / w) * Math.sin(w * tSec))
+      // Clamp to [0, 1] to avoid overshoot drawing artifacts
+      return Math.max(0, Math.min(1, value))
     }
 
     const lerpArray = (from: number[], to: number[], p: number) =>

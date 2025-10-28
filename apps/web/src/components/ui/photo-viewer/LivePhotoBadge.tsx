@@ -1,9 +1,9 @@
+import { clsxm } from '@afilmory/utils'
 import { AnimatePresence, m } from 'motion/react'
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { clsxm } from '@afilmory/utils'
 import { isMobileDevice } from '~/lib/device-viewport'
 
 import type { LivePhotoBadgeProps } from './types'

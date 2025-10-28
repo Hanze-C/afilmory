@@ -1,6 +1,5 @@
-import { generateId } from '@afilmory/be-utils'
-import { tenantDomains, tenants } from '@afilmory/db'
-import { eq } from 'drizzle-orm'
+import { generateId, tenantDomains, tenants } from '@afilmory/db'
+import { and, eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
@@ -23,6 +22,20 @@ export class TenantRepository {
   async findBySlug(slug: string): Promise<TenantAggregate | null> {
     const db = this.dbAccessor.get()
     const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1)
+    if (!tenant) {
+      return null
+    }
+    const domains = await db.select().from(tenantDomains).where(eq(tenantDomains.tenantId, tenant.id))
+    return { tenant, domains }
+  }
+
+  async findPrimary(): Promise<TenantAggregate | null> {
+    const db = this.dbAccessor.get()
+    const [tenant] = await db
+      .select()
+      .from(tenants)
+      .where(and(eq(tenants.isPrimary, true), eq(tenants.status, 'active')))
+      .limit(1)
     if (!tenant) {
       return null
     }
@@ -54,7 +67,12 @@ export class TenantRepository {
     }
   }
 
-  async createTenant(payload: { name: string; slug: string; domain?: string | null }): Promise<TenantAggregate> {
+  async createTenant(payload: {
+    name: string
+    slug: string
+    domain?: string | null
+    isPrimary?: boolean
+  }): Promise<TenantAggregate> {
     const db = this.dbAccessor.get()
     const tenantId = generateId()
     const tenantRecord: typeof tenants.$inferInsert = {
@@ -63,6 +81,14 @@ export class TenantRepository {
       slug: payload.slug,
       status: 'active',
       primaryDomain: payload.domain ?? null,
+      isPrimary: payload.isPrimary ?? false,
+    }
+
+    if (tenantRecord.isPrimary) {
+      await db
+        .update(tenants)
+        .set({ isPrimary: false })
+        .where(and(eq(tenants.isPrimary, true), eq(tenants.status, 'active')))
     }
 
     await db.insert(tenants).values(tenantRecord)

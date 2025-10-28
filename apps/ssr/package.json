@@ -5,7 +5,6 @@
   "packageManager": "pnpm@10.18.1",
   "description": "",
   "author": "Innei",
-  "license": "ISC",
   "main": "index.js",
   "scripts": {
     "build": "sh scripts/build.sh",

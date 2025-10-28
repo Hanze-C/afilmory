@@ -4,6 +4,8 @@ import { HttpContext } from '@afilmory/framework'
 import type { Session } from 'better-auth'
 import { applyTenantIsolationContext, DbAccessor } from 'core/database/database.provider'
 import { BizException, ErrorCode } from 'core/errors'
+import { getTenantContext } from 'core/modules/tenant/tenant.context'
+import { TenantService } from 'core/modules/tenant/tenant.service'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
@@ -25,6 +27,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly authProvider: AuthProvider,
     private readonly dbAccessor: DbAccessor,
+    private readonly tenantService: TenantService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,7 +38,15 @@ export class AuthGuard implements CanActivate {
 
     const session = await auth.api.getSession({ headers: hono.req.raw.headers })
 
-    const tenantContext = HttpContext.getValue('tenant')
+    let tenantContext = getTenantContext()
+    if (!tenantContext) {
+      tenantContext = await this.tenantService.resolve({ fallbackToDefault: true })
+      HttpContext.assign({ tenant: tenantContext })
+    }
+
+    if (!tenantContext) {
+      throw new BizException(ErrorCode.TENANT_NOT_FOUND)
+    }
 
     if (session) {
       HttpContext.assign({
@@ -50,10 +61,6 @@ export class AuthGuard implements CanActivate {
       let sessionTenantId = session.user?.tenantId
 
       if (!isSuperAdmin) {
-        if (!tenantContext) {
-          throw new BizException(ErrorCode.TENANT_NOT_FOUND)
-        }
-
         if (!sessionTenantId) {
           const db = this.dbAccessor.get()
           const [record] = await db
@@ -75,7 +82,7 @@ export class AuthGuard implements CanActivate {
       }
 
       await applyTenantIsolationContext({
-        tenantId: tenantContext?.tenant.id ?? sessionTenantId ?? null,
+        tenantId: tenantContext.tenant.id,
         isSuperAdmin,
       })
 

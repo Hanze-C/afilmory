@@ -24,9 +24,12 @@ declare global {
   } & {}
 
   const APP_NAME: string
-}
 
-export {}
+  /**
+   * This function is a macro, will replace in the build stage.
+   */
+  export function tw(strings: TemplateStringsArray, ...values: any[]): string
+}
 
 declare global {
   export type Component<P = object> = FC<Prettify<ComponentType & P>>

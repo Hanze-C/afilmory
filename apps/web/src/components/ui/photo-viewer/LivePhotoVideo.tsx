@@ -1,3 +1,4 @@
+import { clsxm } from '@afilmory/utils'
 import { m, useAnimationControls } from 'motion/react'
 import {
   useCallback,
@@ -7,7 +8,6 @@ import {
   useState,
 } from 'react'
 
-import { clsxm } from '@afilmory/utils'
 import type { ImageLoaderManager } from '~/lib/image-loader-manager'
 
 import type { LoadingIndicatorRef } from './LoadingIndicator'

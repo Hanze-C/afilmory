@@ -1,9 +1,9 @@
+import { Button } from '@afilmory/ui'
 import { useAtom, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { gallerySettingAtom, isCommandPaletteOpenAtom } from '~/atoms/app'
-import { Button } from '@afilmory/ui'
 
 import { ResponsiveActionButton } from './components/ActionButton'
 import { ViewPanel } from './panels/ViewPanel'

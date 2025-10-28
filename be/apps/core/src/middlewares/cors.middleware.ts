@@ -1,5 +1,6 @@
 import type { HttpMiddleware, OnModuleDestroy, OnModuleInit } from '@afilmory/framework'
 import { EventEmitterService, Middleware } from '@afilmory/framework'
+import { OnboardingService } from 'core/modules/onboarding/onboarding.service'
 import type { Context, Next } from 'hono'
 import { cors } from 'hono/cors'
 import { injectable } from 'tsyringe'
@@ -42,26 +43,25 @@ function parseAllowedOrigins(raw: string | null): AllowedOrigins {
   return Array.from(new Set(entries))
 }
 
-@Middleware({ path: '/*', priority: -100 })
+@Middleware()
 @injectable()
 export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDestroy {
   private readonly allowedOrigins = new Map<string, AllowedOrigins>()
   private defaultTenantId?: string
   private readonly logger = logger.extend('CorsMiddleware')
+  constructor(
+    private readonly eventEmitter: EventEmitterService,
+    private readonly settingService: SettingService,
+    private readonly tenantService: TenantService,
+    private readonly onboardingService: OnboardingService,
+  ) {}
+
   private readonly corsMiddleware = cors({
     origin: (origin) => this.resolveOrigin(origin),
     credentials: true,
   })
 
-  private readonly handleSettingUpdated = ({
-    tenantId,
-    key,
-    value,
-  }: {
-    tenantId: string
-    key: string
-    value: string
-  }) => {
+  private readonly handleSettingUpdated = ({ tenantId, key }: { tenantId: string; key: string }) => {
     if (key !== 'http.cors.allowedOrigins') {
       return
     }
@@ -74,12 +74,6 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     }
     this.allowedOrigins.delete(tenantId)
   }
-
-  constructor(
-    private readonly eventEmitter: EventEmitterService,
-    private readonly settingService: SettingService,
-    private readonly tenantService: TenantService,
-  ) {}
 
   async onModuleInit(): Promise<void> {
     try {
@@ -98,14 +92,61 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     this.eventEmitter.off('setting.deleted', this.handleSettingDeleted)
   }
 
+  private addAllCorsHeaders(context: Context): void {
+    context.res.headers.set('Access-Control-Allow-Origin', context.req.header('Origin') ?? '*')
+    context.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    context.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    context.res.headers.set('Access-Control-Allow-Credentials', 'true')
+  }
+
+  private handleOptionsPreflight(context: Context): Response {
+    const origin = context.req.header('Origin')
+
+    if (origin) {
+      context.res.headers.append('Vary', 'Origin')
+    }
+
+    // Align with typical CORS preflight behavior
+    const requestHeaders = context.req.header('Access-Control-Request-Headers')
+    if (requestHeaders) {
+      context.res.headers.set('Access-Control-Allow-Headers', requestHeaders)
+      context.res.headers.append('Vary', 'Access-Control-Request-Headers')
+    }
+
+    context.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    context.res.headers.set('Access-Control-Allow-Credentials', 'true')
+    context.res.headers.set('Access-Control-Allow-Origin', origin ?? '*')
+
+    // Ensure no body-related headers on 204
+    context.res.headers.delete('Content-Length')
+    context.res.headers.delete('Content-Type')
+
+    return new Response(null, {
+      headers: context.res.headers,
+      status: 204,
+      statusText: 'No Content',
+    })
+  }
+
   async use(context: Context, next: Next): Promise<Response | void> {
+    const initialized = await this.onboardingService.isInitialized()
+
+    if (!initialized) {
+      this.logger.info(`Application not initialized yet, skip CORS middleware for ${context.req.path}`)
+      if (context.req.method === 'OPTIONS') {
+        return this.handleOptionsPreflight(context)
+      }
+      this.addAllCorsHeaders(context)
+      return await next()
+    }
+
     const tenantContext = getTenantContext()
     const tenantId = tenantContext?.tenant.id ?? this.defaultTenantId
 
     if (tenantId) {
       await this.ensureTenantOriginsLoaded(tenantId)
     } else {
-      this.logger.warn('Tenant context missing for request %s %s', context.req.method, context.req.path)
+      this.logger.warn(`Tenant context missing for request ${context.req.method} ${context.req.path}`)
     }
 
     return await this.corsMiddleware(context, next)
@@ -125,7 +166,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     try {
       raw = await this.settingService.get('http.cors.allowedOrigins', { tenantId })
     } catch (error) {
-      this.logger.warn('Failed to load CORS configuration from settings for tenant %s', tenantId, error)
+      this.logger.warn('Failed to load CORS configuration from settings for tenant', tenantId, error)
     }
 
     this.updateAllowedOrigins(tenantId, raw)
@@ -134,11 +175,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   private updateAllowedOrigins(tenantId: string, next: string | null): void {
     const parsed = parseAllowedOrigins(next)
     this.allowedOrigins.set(tenantId, parsed)
-    this.logger.info(
-      'Updated CORS allowed origins for tenant %s %s',
-      tenantId,
-      parsed === '*' ? '*' : JSON.stringify(parsed),
-    )
+    this.logger.info('Updated CORS allowed origins for tenant', tenantId, parsed === '*' ? '*' : JSON.stringify(parsed))
   }
 
   private resolveOrigin(origin: string | undefined): string | null {

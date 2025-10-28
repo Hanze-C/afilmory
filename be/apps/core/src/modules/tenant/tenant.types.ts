@@ -1,4 +1,4 @@
-import type { tenantDomains, tenantStatusEnum, tenants } from '@afilmory/db'
+import type { tenantDomains, tenants, tenantStatusEnum } from '@afilmory/db'
 
 export type TenantRecord = typeof tenants.$inferSelect
 export type TenantDomainRecord = typeof tenantDomains.$inferSelect

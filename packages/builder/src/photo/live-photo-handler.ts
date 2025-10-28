@@ -1,6 +1,6 @@
 import type { _Object } from '@aws-sdk/client-s3'
 
-import { defaultBuilder } from '../builder/builder.js'
+import type { StorageManager } from '../storage/index.js'
 import type { StorageObject } from '../storage/interfaces.js'
 import { getGlobalLoggers } from './logger-adapter.js'
 
@@ -14,11 +14,13 @@ export interface LivePhotoResult {
  * 检测并处理 Live Photo
  * @param photoKey 照片的 S3 key
  * @param livePhotoMap Live Photo 映射表
+ * @param storageManager 存储管理器，用于生成公共访问链接
  * @returns Live Photo 处理结果
  */
 export async function processLivePhoto(
   photoKey: string,
   livePhotoMap: Map<string, _Object | StorageObject>,
+  storageManager: StorageManager,
 ): Promise<LivePhotoResult> {
   const loggers = getGlobalLoggers()
   const livePhotoVideo = livePhotoMap.get(photoKey)
@@ -40,9 +42,7 @@ export async function processLivePhoto(
     return { isLivePhoto: false }
   }
 
-  const livePhotoVideoUrl = await defaultBuilder
-    .getStorageManager()
-    .generatePublicUrl(videoKey)
+  const livePhotoVideoUrl = await storageManager.generatePublicUrl(videoKey)
 
   loggers.image.info(`📱 检测到 Live Photo：${photoKey} -> ${videoKey}`)
 

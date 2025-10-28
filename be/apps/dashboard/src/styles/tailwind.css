@@ -8,7 +8,8 @@
 
 @import '@pastel-palette/tailwindcss/dist/theme-oklch.css';
 
-@source "./src/**/*.{js,jsx,ts,tsx}";
+@source "../**/*.{js,jsx,ts,tsx}";
+@source "../../node_modules/@afilmory/ui/src/**/*.tsx";
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 [data-hand-cursor='true'] {

@@ -4,19 +4,32 @@ import type { Context, Next } from 'hono'
 import { injectable } from 'tsyringe'
 
 import { logger } from '../helpers/logger.helper'
+import { OnboardingService } from '../modules/onboarding/onboarding.service'
 import { TenantService } from '../modules/tenant/tenant.service'
 
 const HEADER_TENANT_ID = 'x-tenant-id'
 const HEADER_TENANT_SLUG = 'x-tenant-slug'
 
-@Middleware({ path: '/*', priority: -200 })
+@Middleware()
 @injectable()
 export class TenantResolverMiddleware implements HttpMiddleware {
   private readonly log = logger.extend('TenantResolver')
 
-  constructor(private readonly tenantService: TenantService) {}
+  constructor(
+    private readonly tenantService: TenantService,
+    private readonly onboardingService: OnboardingService,
+  ) {}
 
   async use(context: Context, next: Next): Promise<Response | void> {
+    const { path } = context.req
+
+    // During onboarding (before any user/tenant exists), skip tenant resolution entirely
+    const initialized = await this.onboardingService.isInitialized()
+    if (!initialized) {
+      this.log.info(`Application not initialized yet, skip tenant resolution for ${path}`)
+      return await next()
+    }
+
     const tenantContext = await this.resolveTenantContext(context)
     HttpContext.assign({ tenant: tenantContext })
 
@@ -34,12 +47,7 @@ export class TenantResolverMiddleware implements HttpMiddleware {
     const tenantSlug = context.req.header(HEADER_TENANT_SLUG)
 
     this.log.debug(
-      'Resolve tenant for request %s %s (host=%s, id=%s, slug=%s)',
-      context.req.method,
-      context.req.path,
-      host ?? 'n/a',
-      tenantId ?? 'n/a',
-      tenantSlug ?? 'n/a',
+      `Resolve tenant for request ${context.req.method} ${context.req.path} (host=${host ?? 'n/a'}, id=${tenantId ?? 'n/a'}, slug=${tenantSlug ?? 'n/a'})`,
     )
 
     return await this.tenantService.resolve({

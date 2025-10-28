@@ -18,31 +18,40 @@ export function ErrorElement() {
     console.error('Error handled by React Router default ErrorBoundary:', error)
   }, [error])
 
-  const reloadRef = useRef(false)
-  if (
+  const reloadTriggeredRef = useRef(false)
+  const hasWindow = typeof window !== 'undefined'
+  const shouldAttemptReload =
+    hasWindow &&
     message.startsWith('Failed to fetch dynamically imported module') &&
     window.sessionStorage.getItem('reload') !== '1'
-  ) {
-    if (reloadRef.current) return null
+
+  useEffect(() => {
+    if (!shouldAttemptReload || reloadTriggeredRef.current || !hasWindow) {
+      return
+    }
+
+    reloadTriggeredRef.current = true
     window.sessionStorage.setItem('reload', '1')
     window.location.reload()
-    reloadRef.current = true
+  }, [hasWindow, shouldAttemptReload])
+
+  if (shouldAttemptReload) {
     return null
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       {/* Header spacer */}
       <div className="h-16" />
 
       {/* Main content */}
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="max-w-lg w-full">
+      <div className="flex flex-1 items-center justify-center px-6">
+        <div className="w-full max-w-lg">
           {/* Error icon and status */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-background-secondary mb-4">
+          <div className="mb-8 text-center">
+            <div className="bg-background-secondary mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
               <svg
-                className="w-8 h-8 text-red"
+                className="text-red h-8 w-8"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth={1.5}
@@ -55,7 +64,7 @@ export function ErrorElement() {
                 />
               </svg>
             </div>
-            <h1 className="text-3xl font-medium text-text mb-2">
+            <h1 className="text-text mb-2 text-3xl font-medium">
               Something went wrong
             </h1>
             <p className="text-text-secondary text-lg">
@@ -64,8 +73,8 @@ export function ErrorElement() {
           </div>
 
           {/* Error message */}
-          <div className="bg-material-medium rounded-lg border border-fill-tertiary p-4 mb-6">
-            <p className="text-sm font-mono text-text-secondary break-words">
+          <div className="bg-material-medium border-fill-tertiary mb-6 rounded-lg border p-4">
+            <p className="text-text-secondary font-mono text-sm break-words">
               {message}
             </p>
           </div>
@@ -73,8 +82,8 @@ export function ErrorElement() {
           {/* Stack trace in development */}
           {import.meta.env.DEV && stack && (
             <div className="mb-6">
-              <div className="bg-material-medium rounded-lg border border-fill-tertiary p-4 overflow-auto">
-                <pre className="text-xs font-mono text-red whitespace-pre-wrap break-words">
+              <div className="bg-material-medium border-fill-tertiary overflow-auto rounded-lg border p-4">
+                <pre className="text-red font-mono text-xs break-words whitespace-pre-wrap">
                   {attachOpenInEditor(stack)}
                 </pre>
               </div>
@@ -82,16 +91,16 @@ export function ErrorElement() {
           )}
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row">
             <Button
               onClick={() => (window.location.href = '/')}
-              className="flex-1 bg-material-opaque text-text-vibrant hover:bg-control-enabled/90 border-0 h-10 font-medium transition-colors"
+              className="bg-material-opaque text-text-vibrant hover:bg-control-enabled/90 h-10 flex-1 border-0 font-medium transition-colors"
             >
               Reload Application
             </Button>
             <Button
               onClick={() => window.history.back()}
-              className="flex-1 bg-material-thin text-text border border-fill-tertiary hover:bg-fill-tertiary h-10 font-medium transition-colors"
+              className="bg-material-thin text-text border-fill-tertiary hover:bg-fill-tertiary h-10 flex-1 border font-medium transition-colors"
             >
               Go Back
             </Button>
@@ -99,7 +108,7 @@ export function ErrorElement() {
 
           {/* Help text */}
           <div className="text-center">
-            <p className="text-sm text-text-secondary mb-3">
+            <p className="text-text-secondary mb-3 text-sm">
               If this problem persists, please report it to our team.
             </p>
             <a
@@ -110,10 +119,10 @@ export function ErrorElement() {
               )}&label=bug`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center text-sm text-text-secondary hover:text-text transition-colors"
+              className="text-text-secondary hover:text-text inline-flex items-center text-sm transition-colors"
             >
               <svg
-                className="w-4 h-4 mr-2"
+                className="mr-2 h-4 w-4"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >

@@ -3,18 +3,18 @@ import { z } from 'zod'
 import type { SettingDefinition, SettingMetadata } from './setting.type'
 
 export const DEFAULT_SETTING_DEFINITIONS = {
-  'ai.openai.apiKey': {
-    isSensitive: true,
-    schema: z.string().min(1, 'OpenAI API key cannot be empty'),
-  },
-  'ai.openai.baseUrl': {
-    isSensitive: false,
-    schema: z.url('OpenAI Base URL cannot be empty'),
-  },
-  'ai.embedding.model': {
-    isSensitive: false,
-    schema: z.string().min(1, 'AI Model name cannot be empty'),
-  },
+  // 'ai.openai.apiKey': {
+  //   isSensitive: true,
+  //   schema: z.string().min(1, 'OpenAI API key cannot be empty'),
+  // },
+  // 'ai.openai.baseUrl': {
+  //   isSensitive: false,
+  //   schema: z.url('OpenAI Base URL cannot be empty'),
+  // },
+  // 'ai.embedding.model': {
+  //   isSensitive: false,
+  //   schema: z.string().min(1, 'AI Model name cannot be empty'),
+  // },
   'auth.google.clientId': {
     isSensitive: false,
     schema: z.string().min(1, 'Google Client ID cannot be empty'),
@@ -31,16 +31,43 @@ export const DEFAULT_SETTING_DEFINITIONS = {
     isSensitive: true,
     schema: z.string().min(1, 'GitHub Client secret cannot be empty'),
   },
+  'builder.storage.providers': {
+    isSensitive: false,
+    schema: z.string().transform((value, ctx) => {
+      const normalized = value.trim()
+      if (normalized.length === 0) {
+        return '[]'
+      }
+
+      try {
+        const parsed = JSON.parse(normalized)
+        if (!Array.isArray(parsed)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Builder storage providers must be a JSON array',
+          })
+          return z.NEVER
+        }
+        return JSON.stringify(parsed)
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Builder storage providers must be valid JSON',
+        })
+        return z.NEVER
+      }
+    }),
+  },
+  'builder.storage.activeProvider': {
+    isSensitive: false,
+    schema: z.string().transform((value) => value.trim()),
+  },
   'http.cors.allowedOrigins': {
     isSensitive: false,
     schema: z
       .string()
       .min(1, 'CORS allowed origins cannot be empty')
       .transform((value) => value.trim()),
-  },
-  'services.amap.apiKey': {
-    isSensitive: true,
-    schema: z.string().min(1, 'Gaode Map API key cannot be empty'),
   },
 } as const satisfies Record<string, SettingDefinition>
 

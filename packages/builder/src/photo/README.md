@@ -67,7 +67,16 @@ const loggers = createPhotoProcessingLoggers(workerId, baseLogger)
 setGlobalLoggers(loggers)
 
 // 处理照片
-const result = await processPhoto(obj, index, workerId, totalImages, existingManifestMap, livePhotoMap, options)
+const result = await processPhoto(
+  obj,
+  index,
+  workerId,
+  totalImages,
+  existingManifestMap,
+  livePhotoMap,
+  options,
+  builder,
+)
 ```
 
 #### 单独使用各个模块
@@ -80,7 +89,11 @@ import {
 } from './index.js'
 
 // Live Photo 处理
-const livePhotoResult = processLivePhoto(photoKey, livePhotoMap)
+const livePhotoResult = processLivePhoto(
+  photoKey,
+  livePhotoMap,
+  builder.getStorageManager(),
+)
 
 // 缩略图处理
 const thumbnailResult = await processThumbnailAndBlurhash(imageBuffer, photoId, width, height, existingItem, options)

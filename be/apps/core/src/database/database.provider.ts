@@ -2,12 +2,12 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 
 import { dbSchema } from '@afilmory/db'
 import { createLogger } from '@afilmory/framework'
+import { BizException, ErrorCode } from 'core/errors'
+import { getTenantContext } from 'core/modules/tenant/tenant.context'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import { injectable } from 'tsyringe'
 
-import { BizException, ErrorCode } from 'core/errors'
-import { getTenantContext } from 'core/modules/tenant/tenant.context'
 import { DatabaseConfig } from './database.config'
 import type { DatabaseContextStore, DrizzleDb } from './tokens'
 
@@ -55,14 +55,14 @@ export async function applyTenantIsolationContext(options?: {
     return
   }
 
-  const client = store.transaction.client
+  const { client } = store.transaction
 
-  await client.query('SET LOCAL afilmory.is_superadmin = $1', [isSuperAdmin ? 'true' : 'false'])
+  await client.query("SELECT set_config('afilmory.is_superadmin', $1, true)", [isSuperAdmin ? 'true' : 'false'])
 
   if (isSuperAdmin) {
     await client.query('RESET afilmory.tenant_id')
   } else if (tenantId) {
-    await client.query('SET LOCAL afilmory.tenant_id = $1', [tenantId])
+    await client.query("SELECT set_config('afilmory.tenant_id', $1, true)", [tenantId])
   }
 
   store.tenantIsolation = {

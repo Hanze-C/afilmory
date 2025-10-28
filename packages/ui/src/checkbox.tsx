@@ -1,6 +1,5 @@
-import * as React from 'react'
-
 import { clsxm } from '@afilmory/utils'
+import * as React from 'react'
 
 export interface CheckboxProps {
   checked?: boolean
