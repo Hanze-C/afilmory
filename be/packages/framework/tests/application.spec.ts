@@ -1027,7 +1027,7 @@ describe('HonoHttpApplication internals', () => {
       }
     ).ensureResponse.bind(app)
 
-    const result = ensureResponse(context, undefined)
+    const result = ensureResponse(context)
     expect(result).toBe(baseResponse)
     await app.close('undefined-payload')
   })
@@ -1143,11 +1143,11 @@ describe('HonoHttpApplication internals', () => {
     const instance = new InlineMiddleware()
     const definition = { handler: instance, path: '/explicit', priority: 2 }
 
-    expect(internals.extractMiddlewareLifecycleTarget(undefined)).toBeUndefined()
+    expect(internals.extractMiddlewareLifecycleTarget()).toBeUndefined()
     expect(internals.extractMiddlewareLifecycleTarget(instance)).toBe(instance)
     expect(internals.extractMiddlewareLifecycleTarget(definition)).toBe(instance)
 
-    expect(internals.extractMiddlewareMetadata(undefined)).toEqual({})
+    expect(internals.extractMiddlewareMetadata()).toEqual({})
     const suppliedMetadata = { path: '/supplied', priority: 4 }
     expect(internals.extractMiddlewareMetadata(suppliedMetadata)).toBe(suppliedMetadata)
     expect(internals.extractMiddlewareMetadata(InlineMiddleware)).toEqual({ path: '/decorated-inline', priority: 7 })

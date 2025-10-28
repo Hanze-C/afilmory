@@ -1,11 +1,10 @@
 'use client'
 
+import { clsxm } from '@afilmory/utils'
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
 import type { HTMLMotionProps } from 'motion/react'
 import { m as motion } from 'motion/react'
 import * as React from 'react'
-
-import { clsxm } from '@afilmory/utils'
 
 type CheckboxProps = React.ComponentProps<typeof CheckboxPrimitive.Root> &
   HTMLMotionProps<'button'> & {

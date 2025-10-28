@@ -1,4 +1,5 @@
 // @copy internal masonic hooks
+import { useScrollViewElement } from '@afilmory/ui'
 import {
   clearRequestTimeout,
   requestTimeout,
@@ -19,8 +20,6 @@ import {
 } from 'masonic'
 import { useForceUpdate } from 'motion/react'
 import * as React from 'react'
-
-import { useScrollViewElement } from '@afilmory/ui'
 
 export interface MasonryRef {
   reposition: () => void

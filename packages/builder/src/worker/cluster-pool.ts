@@ -7,6 +7,7 @@ import { serialize } from 'node:v8'
 
 import type { Logger } from '../logger/index.js'
 import { logger } from '../logger/index.js'
+import type { BuilderConfig } from '../types/config.js'
 
 export interface ClusterPoolOptions {
   concurrency: number
@@ -18,6 +19,7 @@ export interface ClusterPoolOptions {
     existingManifestMap: Map<string, any>
     livePhotoMap: Map<string, any>
     imageObjects: any[]
+    builderConfig: BuilderConfig
   }
 }
 
@@ -283,6 +285,7 @@ export class ClusterPool<T> extends EventEmitter {
           existingManifestMap: this.sharedData.existingManifestMap,
           livePhotoMap: this.sharedData.livePhotoMap,
           imageObjects: this.sharedData.imageObjects,
+          builderConfig: this.sharedData.builderConfig,
         })
 
         // 将 Buffer 转换为数组以通过 IPC 传输

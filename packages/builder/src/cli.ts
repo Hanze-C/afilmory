@@ -10,10 +10,12 @@ import process from 'node:process'
 import { builderConfig } from '@builder'
 import { $ } from 'execa'
 
-import { defaultBuilder } from './builder/index.js'
+import { AfilmoryBuilder } from './builder/index.js'
 import { logger } from './logger/index.js'
 import { workdir } from './path.js'
 import { runAsWorker } from './runAsWorker.js'
+
+const cliBuilder = new AfilmoryBuilder(builderConfig)
 
 /**
  * 推送更新后的 manifest 到远程仓库
@@ -262,7 +264,7 @@ async function main() {
 
   // 显示配置信息
   if (args.has('--config')) {
-    const config = defaultBuilder.getConfig()
+    const config = cliBuilder.getConfig()
     logger.main.info('🔧 当前配置：')
     logger.main.info(`   存储提供商：${config.storage.provider}`)
 
@@ -322,7 +324,7 @@ async function main() {
     runMode = '强制刷新缩略图'
   }
 
-  const config = defaultBuilder.getConfig()
+  const config = cliBuilder.getConfig()
   const concurrencyLimit = config.performance.worker.workerCount
   const finalConcurrency = concurrencyLimit ?? config.options.defaultConcurrency
   const processingMode = config.performance.worker.useClusterMode
@@ -337,7 +339,7 @@ async function main() {
   environmentCheck()
 
   // 启动构建过程
-  const buildResult = await defaultBuilder.buildManifest({
+  const buildResult = await cliBuilder.buildManifest({
     isForceMode,
     isForceManifest,
     isForceThumbnails,

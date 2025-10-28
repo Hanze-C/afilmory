@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "private": true,
   "author": "Innei",
-  "license": "MIT",
   "main": "index.js",
   "scripts": {
     "db:generate": "pnpm --filter core db:generate",

@@ -1,17 +1,16 @@
+import { ModalContainer } from '@afilmory/ui'
+import { Toaster } from '@afilmory/ui/sonner.jsx'
+import { Spring } from '@afilmory/utils'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { Provider } from 'jotai'
 import { LazyMotion, MotionConfig } from 'motion/react'
 import type { FC, PropsWithChildren } from 'react'
 
-import { ModalContainer } from '@afilmory/ui'
-import { Toaster } from '@afilmory/ui'
 import { jotaiStore } from '~/lib/jotai'
 import { queryClient } from '~/lib/query-client'
-import { Spring } from '@afilmory/utils'
 
 import { ContextMenuProvider } from './context-menu-provider'
 import { EventProvider } from './event-provider'
-import { SettingSync } from './setting-sync'
 import { StableRouterProvider } from './stable-router-provider'
 
 const loadFeatures = () =>
@@ -23,7 +22,7 @@ export const RootProviders: FC<PropsWithChildren> = ({ children }) => (
         <Provider store={jotaiStore}>
           <EventProvider />
           <StableRouterProvider />
-          <SettingSync />
+
           <ContextMenuProvider />
           <ModalContainer />
           {children}

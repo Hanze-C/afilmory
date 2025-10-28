@@ -1,11 +1,9 @@
+import { Button } from '@afilmory/ui'
+import { clsxm, Spring } from '@afilmory/utils'
 import type en from '@locales/app/en.json'
 import { AnimatePresence, m, useAnimation } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { Button } from '@afilmory/ui'
-import { clsxm } from '@afilmory/utils'
-import { Spring } from '@afilmory/utils'
 
 type TranslationKeys = keyof typeof en
 

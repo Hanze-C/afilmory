@@ -3,12 +3,12 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { settings } from '@afilmory/db'
 import { env } from '@afilmory/env'
 import { EventEmitterService } from '@afilmory/framework'
-import { BizException, ErrorCode } from 'core/errors'
 import { and, eq, inArray } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
 import { getTenantContext } from '../tenant/tenant.context'
+import { TenantService } from '../tenant/tenant.service'
 import { AES_ALGORITHM, AUTH_TAG_LENGTH, DEFAULT_SETTING_METADATA, IV_LENGTH } from './setting.constant'
 import type { SettingKeyType, SettingRecord, SettingUiSchemaResponse, SettingValueMap } from './setting.type'
 import { SETTING_UI_SCHEMA, SETTING_UI_SCHEMA_KEYS } from './setting.ui-schema'
@@ -43,13 +43,14 @@ export class SettingService {
   constructor(
     private readonly dbAccessor: DbAccessor,
     private readonly eventEmitter: EventEmitterService,
+    private readonly tenantService: TenantService,
   ) {
     this.encryptionKey = createHash('sha256').update(env.CONFIG_ENCRYPTION_KEY).digest()
   }
 
   async get<K extends SettingKeyType>(key: K, options: SettingOption): Promise<SettingValueMap[K] | null>
   async get(key: string, options?: SettingOption): Promise<string | null> {
-    const tenantId = this.resolveTenantId(options)
+    const tenantId = await this.resolveTenantId(options)
     const record = await this.findSettingRecord(key, tenantId)
     if (!record) {
       return null
@@ -68,7 +69,7 @@ export class SettingService {
     }
 
     const uniqueKeys = Array.from(new Set(keys))
-    const tenantId = this.resolveTenantId(options)
+    const tenantId = await this.resolveTenantId(options)
 
     const db = this.dbAccessor.get()
     const records = await db
@@ -92,7 +93,7 @@ export class SettingService {
   async set<K extends SettingKeyType>(key: K, value: SettingValueMap[K], options: SetSettingOptions): Promise<void>
   async set(key: string, value: string, options: SetSettingOptions): Promise<void>
   async set(key: string, value: string, options: SetSettingOptions): Promise<void> {
-    const tenantId = this.resolveTenantId(options)
+    const tenantId = await this.resolveTenantId(options)
     const existing = await this.findSettingRecord(key, tenantId)
     const defaultMetadata = isSettingKey(key) ? DEFAULT_SETTING_METADATA[key] : undefined
     const isSensitive = options.isSensitive ?? defaultMetadata?.isSensitive ?? existing?.isSensitive ?? false
@@ -130,7 +131,7 @@ export class SettingService {
   }
 
   async delete(key: string, options?: SettingOption): Promise<void> {
-    const tenantId = this.resolveTenantId(options)
+    const tenantId = await this.resolveTenantId(options)
     const db = this.dbAccessor.get()
     await db.delete(settings).where(and(eq(settings.tenantId, tenantId), eq(settings.key, key)))
 
@@ -142,12 +143,10 @@ export class SettingService {
       return
     }
 
-    const tenantId = this.resolveTenantId(options)
+    const tenantId = await this.resolveTenantId(options)
     const db = this.dbAccessor.get()
     const uniqueKeys = Array.from(new Set(keys))
-    await db
-      .delete(settings)
-      .where(and(eq(settings.tenantId, tenantId), inArray(settings.key, uniqueKeys)))
+    await db.delete(settings).where(and(eq(settings.tenantId, tenantId), inArray(settings.key, uniqueKeys)))
 
     for (const key of uniqueKeys) {
       await this.eventEmitter.emit('setting.deleted', { tenantId, key })
@@ -187,17 +186,18 @@ export class SettingService {
     return record ?? null
   }
 
-  private resolveTenantId(options?: SettingOption): string {
+  private async resolveTenantId(options?: SettingOption): Promise<string> {
     if (options?.tenantId) {
       return options.tenantId
     }
 
     const tenant = getTenantContext()
-    if (!tenant) {
-      throw new BizException(ErrorCode.TENANT_NOT_FOUND)
+    if (tenant) {
+      return tenant.tenant.id
     }
 
-    return tenant.tenant.id
+    const fallback = await this.tenantService.resolve({ fallbackToDefault: true })
+    return fallback.tenant.id
   }
 
   private encrypt(value: string): string {

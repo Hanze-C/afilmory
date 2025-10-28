@@ -22,21 +22,12 @@ export type ProcessPhotoOptions = {
   livePhotoMap?: Map<string, StorageObject>
   processorOptions?: Partial<PhotoProcessorOptions>
   builder?: AfilmoryBuilder
+  builderConfig?: BuilderConfig
 }
 
 @injectable()
 export class PhotoBuilderService {
-  private readonly defaultBuilder: AfilmoryBuilder
-
-  constructor() {
-    this.defaultBuilder = new AfilmoryBuilder()
-  }
-
-  getDefaultBuilder(): AfilmoryBuilder {
-    return this.defaultBuilder
-  }
-
-  createBuilder(config?: Partial<BuilderConfig>): AfilmoryBuilder {
+  createBuilder(config: BuilderConfig): AfilmoryBuilder {
     return new AfilmoryBuilder(config)
   }
 
@@ -56,8 +47,8 @@ export class PhotoBuilderService {
     object: StorageObject,
     options?: ProcessPhotoOptions,
   ): Promise<Awaited<ReturnType<typeof processPhotoWithPipeline>>> {
-    const { existingItem, livePhotoMap, processorOptions, builder } = options ?? {}
-    const activeBuilder = builder ?? this.defaultBuilder
+    const { existingItem, livePhotoMap, processorOptions, builder, builderConfig } = options ?? {}
+    const activeBuilder = this.resolveBuilder(builder, builderConfig)
 
     const mergedOptions: PhotoProcessorOptions = {
       ...DEFAULT_PROCESSOR_OPTIONS,
@@ -73,6 +64,20 @@ export class PhotoBuilderService {
     }
 
     return await processPhotoWithPipeline(context, activeBuilder)
+  }
+
+  private resolveBuilder(builder?: AfilmoryBuilder, builderConfig?: BuilderConfig): AfilmoryBuilder {
+    if (builder) {
+      return builder
+    }
+
+    if (builderConfig) {
+      return this.createBuilder(builderConfig)
+    }
+
+    throw new Error(
+      'PhotoBuilderService requires a builder instance or configuration. Pass builder or builderConfig in ProcessPhotoOptions.',
+    )
   }
 
   private toLegacyObject(object: StorageObject): _Object {

@@ -1,12 +1,21 @@
+import { authUsers } from '@afilmory/db'
 import { Body, ContextParam, Controller, Get, Post, UnauthorizedException } from '@afilmory/framework'
+import { BizException, ErrorCode } from 'core/errors'
+import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
 
+import { DbAccessor } from '../../database/database.provider'
 import { RoleBit, Roles } from '../../guards/roles.decorator'
+import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
 import { AuthProvider } from './auth.provider'
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthProvider) {}
+  constructor(
+    private readonly auth: AuthProvider,
+    private readonly dbAccessor: DbAccessor,
+    private readonly superAdminSettings: SuperAdminSettingService,
+  ) {}
 
   @Get('/session')
   async getSession(@ContextParam() context: Context) {
@@ -27,6 +36,27 @@ export class AuthController {
 
   @Post('/sign-in/email')
   async signInEmail(@ContextParam() context: Context, @Body() body: { email: string; password: string }) {
+    const email = body.email.trim()
+    if (email.length === 0) {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '邮箱不能为空' })
+    }
+    const settings = await this.superAdminSettings.getSettings()
+    if (!settings.localProviderEnabled) {
+      const db = this.dbAccessor.get()
+      const [record] = await db
+        .select({ role: authUsers.role })
+        .from(authUsers)
+        .where(eq(authUsers.email, email))
+        .limit(1)
+
+      const isSuperAdmin = record?.role === 'superadmin'
+      if (!isSuperAdmin) {
+        throw new BizException(ErrorCode.AUTH_FORBIDDEN, {
+          message: '邮箱密码登录已禁用，请联系管理员开启本地登录。',
+        })
+      }
+    }
+
     const auth = this.auth.getAuth()
     const headers = new Headers(context.req.raw.headers)
     const tenant = (context as any).var?.tenant
@@ -36,7 +66,7 @@ export class AuthController {
     }
     const response = await auth.api.signInEmail({
       body: {
-        email: body.email,
+        email,
         password: body.password,
       },
       asResponse: true,

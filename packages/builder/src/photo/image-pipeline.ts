@@ -6,7 +6,6 @@ import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
 import type { AfilmoryBuilder } from '../builder/builder.js'
-import { defaultBuilder } from '../builder/builder.js'
 import {
   convertBmpToJpegSharpInstance,
   getImageMetadataWithSharp,
@@ -43,22 +42,15 @@ export interface PhotoProcessingContext {
  * 预处理图片数据
  * 包括获取原始数据、格式转换、BMP 处理等
  */
-function resolveBuilder(builder?: AfilmoryBuilder): AfilmoryBuilder {
-  return builder ?? defaultBuilder
-}
-
 export async function preprocessImage(
   photoKey: string,
-  builder?: AfilmoryBuilder,
+  builder: AfilmoryBuilder,
 ): Promise<{ rawBuffer: Buffer; processedBuffer: Buffer } | null> {
   const loggers = getGlobalLoggers()
-  const activeBuilder = resolveBuilder(builder)
 
   try {
     // 获取图片数据
-    const rawImageBuffer = await activeBuilder
-      .getStorageManager()
-      .getFile(photoKey)
+    const rawImageBuffer = await builder.getStorageManager().getFile(photoKey)
     if (!rawImageBuffer) {
       loggers.image.error(`无法获取图片数据：${photoKey}`)
       return null
@@ -136,15 +128,15 @@ export async function processImageWithSharp(
 }
 
 /**
- * 生成带摘要后缀的ID
- * @param s3Key S3键
- * @returns 带摘要后缀的ID
+ * 生成带摘要后缀的 ID
+ * @param s3Key S3 键
+ * @returns 带摘要后缀的 ID
  */
 async function generatePhotoId(
   s3Key: string,
-  builder?: AfilmoryBuilder,
+  builder: AfilmoryBuilder,
 ): Promise<string> {
-  const { options } = resolveBuilder(builder).getConfig()
+  const { options } = builder.getConfig()
   const { digestSuffixLength } = options
   if (!digestSuffixLength || digestSuffixLength <= 0) {
     return path.basename(s3Key, path.extname(s3Key))
@@ -162,18 +154,17 @@ async function generatePhotoId(
  */
 export async function executePhotoProcessingPipeline(
   context: PhotoProcessingContext,
-  builder?: AfilmoryBuilder,
+  builder: AfilmoryBuilder,
 ): Promise<PhotoManifestItem | null> {
   const { photoKey, obj, existingItem, livePhotoMap, options } = context
   const loggers = getGlobalLoggers()
-  const activeBuilder = resolveBuilder(builder)
-
   // Generate the actual photo ID with digest suffix
-  const photoId = await generatePhotoId(photoKey, activeBuilder)
+  const photoId = await generatePhotoId(photoKey, builder)
+  const storageManager = builder.getStorageManager()
 
   try {
     // 1. 预处理图片
-    const imageData = await preprocessImage(photoKey, activeBuilder)
+    const imageData = await preprocessImage(photoKey, builder)
     if (!imageData) return null
 
     // 2. 处理图片并创建 Sharp 实例
@@ -214,7 +205,11 @@ export async function executePhotoProcessingPipeline(
     const photoInfo = extractPhotoInfo(photoKey, exifData)
 
     // 7. 处理 Live Photo
-    const livePhotoResult = await processLivePhoto(photoKey, livePhotoMap)
+    const livePhotoResult = await processLivePhoto(
+      photoKey,
+      livePhotoMap,
+      storageManager,
+    )
 
     // 8. 构建照片清单项
     const aspectRatio = metadata.width / metadata.height
@@ -225,9 +220,7 @@ export async function executePhotoProcessingPipeline(
       description: photoInfo.description,
       dateTaken: photoInfo.dateTaken,
       tags: photoInfo.tags,
-      originalUrl: await activeBuilder
-        .getStorageManager()
-        .generatePublicUrl(photoKey),
+      originalUrl: await storageManager.generatePublicUrl(photoKey),
       thumbnailUrl: thumbnailResult.thumbnailUrl,
       thumbHash: thumbnailResult.thumbHash
         ? compressUint8Array(thumbnailResult.thumbHash)
@@ -261,7 +254,7 @@ export async function executePhotoProcessingPipeline(
  */
 export async function processPhotoWithPipeline(
   context: PhotoProcessingContext,
-  builder?: AfilmoryBuilder,
+  builder: AfilmoryBuilder,
 ): Promise<{
   item: PhotoManifestItem | null
   type: 'new' | 'processed' | 'skipped' | 'failed'
@@ -269,8 +262,7 @@ export async function processPhotoWithPipeline(
   const { photoKey, existingItem, obj, options } = context
   const loggers = getGlobalLoggers()
 
-  const activeBuilder = resolveBuilder(builder)
-  const photoId = await generatePhotoId(photoKey, activeBuilder)
+  const photoId = await generatePhotoId(photoKey, builder)
 
   // 检查是否需要处理
   const { shouldProcess, reason } = await shouldProcessPhoto(
@@ -294,10 +286,7 @@ export async function processPhotoWithPipeline(
   }
 
   // 执行处理管道
-  const processedItem = await executePhotoProcessingPipeline(
-    context,
-    activeBuilder,
-  )
+  const processedItem = await executePhotoProcessingPipeline(context, builder)
 
   if (!processedItem) {
     return { item: null, type: 'failed' }

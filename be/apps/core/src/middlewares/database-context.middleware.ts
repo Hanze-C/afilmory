@@ -1,13 +1,18 @@
 import type { HttpMiddleware } from '@afilmory/framework'
 import { Middleware } from '@afilmory/framework'
+import {
+  applyTenantIsolationContext,
+  getOptionalDbContext,
+  PgPoolProvider,
+  runWithDbContext,
+} from 'core/database/database.provider'
+import { getTenantContext } from 'core/modules/tenant/tenant.context'
 import type { Context, Next } from 'hono'
 import { injectable } from 'tsyringe'
 
-import { applyTenantIsolationContext, getOptionalDbContext, PgPoolProvider, runWithDbContext } from 'core/database/database.provider'
-import { getTenantContext } from 'core/modules/tenant/tenant.context'
 import { logger } from '../helpers/logger.helper'
 
-@Middleware({ path: '/*', priority: -180 })
+@Middleware()
 @injectable()
 export class DatabaseContextMiddleware implements HttpMiddleware {
   private readonly log = logger.extend('DatabaseContext')

@@ -1,17 +1,24 @@
 import { env } from '@afilmory/env'
+import { createLogger } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { injectable } from 'tsyringe'
 
-import type { TenantAggregate, TenantContext, TenantDomainMatch, TenantResolutionInput } from './tenant.types'
 import { TenantRepository } from './tenant.repository'
+import type { TenantAggregate, TenantContext, TenantDomainMatch, TenantResolutionInput } from './tenant.types'
 
 @injectable()
 export class TenantService {
   private readonly defaultTenantSlug = env.DEFAULT_TENANT_SLUG
+  private readonly logger = createLogger('TenantService')
 
   constructor(private readonly repository: TenantRepository) {}
 
-  async createTenant(payload: { name: string; slug: string; domain?: string | null }): Promise<TenantAggregate> {
+  async createTenant(payload: {
+    name: string
+    slug: string
+    domain?: string | null
+    isPrimary?: boolean
+  }): Promise<TenantAggregate> {
     return await this.repository.createTenant(payload)
   }
 
@@ -36,7 +43,37 @@ export class TenantService {
     }
 
     if (!aggregate && fallbackToDefault) {
+      aggregate = await this.repository.findPrimary()
+
+      if (aggregate) {
+        this.logger.warn('Tenant resolution fallback to primary tenant', {
+          fallback: 'primary',
+          requested: {
+            tenantId: tenantId ?? undefined,
+            slug: slug ?? undefined,
+            domain: domain ?? undefined,
+          },
+          resolvedTenantId: aggregate.tenant.id,
+          resolvedTenantSlug: aggregate.tenant.slug,
+        })
+      }
+    }
+
+    if (!aggregate && fallbackToDefault) {
       aggregate = await this.repository.findBySlug(this.defaultTenantSlug)
+
+      if (aggregate) {
+        this.logger.warn('Tenant resolution fallback to default tenant slug', {
+          fallback: 'defaultSlug',
+          requested: {
+            tenantId: tenantId ?? undefined,
+            slug: slug ?? undefined,
+            domain: domain ?? undefined,
+          },
+          defaultTenantSlug: this.defaultTenantSlug,
+          resolvedTenantId: aggregate.tenant.id,
+        })
+      }
     }
 
     if (!aggregate) {

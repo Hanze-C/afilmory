@@ -1,7 +1,6 @@
+import { clsxm } from '@afilmory/utils'
 import type { PropsWithChildren } from 'react'
 import { useEffect, useState } from 'react'
-
-import { clsxm } from '@afilmory/utils'
 
 import {
   Tooltip,

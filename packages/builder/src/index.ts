@@ -1,6 +1,6 @@
 export * from '../../utils/src/u8array.js'
 export type { BuilderOptions, BuilderResult } from './builder/index.js'
-export { AfilmoryBuilder, defaultBuilder } from './builder/index.js'
+export { AfilmoryBuilder } from './builder/index.js'
 export type {
   PhotoProcessingContext,
   ProcessedImageData,

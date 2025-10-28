@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
-import type { Context } from 'hono'
+import type { Context, Next } from 'hono'
+
+import type { HttpMiddleware } from '../interfaces'
 
 export interface HttpContextValues {
   hono: Context
@@ -49,3 +51,15 @@ export const HttpContext = {
     this.setValue('hono', context)
   },
 }
+
+class HttpContextInitializationMiddleware implements HttpMiddleware {
+  async use(context: Context, next: Next): Promise<Response | void> {
+    return await HttpContext.run(context, async () => {
+      return await next()
+    })
+  }
+}
+
+export const HTTP_CONTEXT_MIDDLEWARE_PRIORITY = Number.MIN_SAFE_INTEGER
+
+export const HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE = new HttpContextInitializationMiddleware()
