@@ -88,7 +88,7 @@ const builderConfigSchema = z
 
 export const runDataSyncSchema = z
   .object({
-    builderConfig: builderConfigSchema,
+    builderConfig: builderConfigSchema.optional(),
     storageConfig: storageConfigSchema.optional(),
     dryRun: z.boolean().optional().default(false),
   })
@@ -105,15 +105,6 @@ export const resolveConflictSchema = z
     builderConfig: builderConfigSchema.optional(),
     storageConfig: storageConfigSchema.optional(),
     dryRun: z.boolean().optional().default(false),
-  })
-  .superRefine((payload, ctx) => {
-    if (payload.strategy === ConflictResolutionStrategy.PREFER_STORAGE && !payload.builderConfig) {
-      ctx.addIssue({
-        path: ['builderConfig'],
-        code: z.ZodIssueCode.custom,
-        message: 'builderConfig is required when preferring storage.',
-      })
-    }
   })
 
 export type RunDataSyncInput = z.infer<typeof runDataSyncSchema>

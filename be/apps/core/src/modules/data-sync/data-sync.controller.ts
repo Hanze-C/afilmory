@@ -15,7 +15,7 @@ export class DataSyncController {
   async run(@Body() body: RunDataSyncDto): Promise<DataSyncResult> {
     const payload = body as unknown as RunDataSyncInput
     return await this.dataSyncService.runSync({
-      builderConfig: payload.builderConfig as BuilderConfig,
+      builderConfig: payload.builderConfig as BuilderConfig | undefined,
       storageConfig: payload.storageConfig as StorageConfig | undefined,
       dryRun: payload.dryRun ?? false,
     })
