@@ -13,7 +13,12 @@ import { AES_ALGORITHM, AUTH_TAG_LENGTH, DEFAULT_SETTING_METADATA, IV_LENGTH } f
 import type { SettingKeyType, SettingRecord, SettingUiSchemaResponse, SettingValueMap } from './setting.type'
 import { SETTING_UI_SCHEMA, SETTING_UI_SCHEMA_KEYS } from './setting.ui-schema'
 import { STORAGE_PROVIDERS_SETTING_KEY } from './storage-provider.constants'
-import { prepareStorageProvidersForPersist, sanitizeStorageProviders } from './storage-provider.utils'
+import {
+  parseStorageProviders,
+  prepareStorageProvidersForPersist,
+  sanitizeStorageProviders,
+  type BuilderStorageProvider,
+} from './storage-provider.utils'
 
 export type SettingOption = {
   tenantId?: string
@@ -102,6 +107,30 @@ export class SettingService {
       acc[key] = rawValue
       return acc
     }, {})
+  }
+
+  async getStorageProvidersRaw(options?: SettingOption): Promise<BuilderStorageProvider[]> {
+    const tenantId = await this.resolveTenantId(options)
+    const record = await this.findSettingRecord(STORAGE_PROVIDERS_SETTING_KEY, tenantId)
+    if (!record) {
+      return []
+    }
+
+    const rawValue = record.isSensitive ? this.decrypt(record.value) : record.value
+    return parseStorageProviders(rawValue)
+  }
+
+  async getActiveStorageProvider(options?: SettingOption): Promise<BuilderStorageProvider | null> {
+    const providers = await this.getStorageProvidersRaw(options)
+    const activeIdRaw = await this.get('builder.storage.activeProvider', options)
+    const activeId =
+      typeof activeIdRaw === 'string' && activeIdRaw.trim().length > 0 ? activeIdRaw.trim() : null
+
+    if (!activeId) {
+      return null
+    }
+
+    return providers.find((provider) => provider.id === activeId) ?? null
   }
 
   async set<K extends SettingKeyType>(key: K, value: SettingValueMap[K], options: SetSettingOptions): Promise<void>

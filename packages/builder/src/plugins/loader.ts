@@ -5,10 +5,11 @@ import { pathToFileURL } from 'node:url'
 import type {
   BuilderPlugin,
   BuilderPluginConfigEntry,
+  BuilderPluginESMImporter,
   BuilderPluginHooks,
   BuilderPluginReference,
 } from './types.js'
-import { isPluginReferenceObject } from './types.js'
+import { isPluginESMImporter } from './types.js'
 
 const requireResolver = createRequire(import.meta.url)
 
@@ -26,16 +27,12 @@ interface NormalizedDescriptor {
 
 function normalizeDescriptor(
   ref: BuilderPluginReference,
-): NormalizedDescriptor {
+): NormalizedDescriptor | BuilderPluginESMImporter {
   if (typeof ref === 'string') {
     return { specifier: ref }
   }
 
-  return {
-    specifier: ref.resolve,
-    name: ref.name,
-    options: ref.options,
-  }
+  return ref
 }
 
 function resolveSpecifier(
@@ -127,8 +124,23 @@ export async function loadPlugins(
   const results: LoadedPluginDefinition[] = []
 
   for (const entry of entries) {
-    if (typeof entry === 'string' || isPluginReferenceObject(entry)) {
+    if (typeof entry === 'string') {
       const descriptor = normalizeDescriptor(entry)
+
+      if (isPluginESMImporter(descriptor)) {
+        const { default: pluginFactoryOrPlugin } = await descriptor()
+        const plugin = await instantiatePlugin(pluginFactoryOrPlugin)
+        const hooks = normalizeHooks(plugin)
+        const name = plugin.name || `lazy-loaded-plugin-${results.length}`
+
+        results.push({
+          name,
+          hooks,
+          pluginOptions: undefined,
+        })
+        continue
+      }
+
       const { resolvedPath } = resolveSpecifier(descriptor.specifier, baseDir)
 
       const mod = await importModule(resolvedPath)

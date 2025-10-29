@@ -51,7 +51,7 @@ export interface DataSyncResult {
 }
 
 export interface DataSyncOptions {
-  builderConfig: BuilderConfig
+  builderConfig?: BuilderConfig
   storageConfig?: StorageConfig
   dryRun: boolean
 }
