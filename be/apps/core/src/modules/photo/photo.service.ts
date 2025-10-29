@@ -1,5 +1,6 @@
 import type {
   BuilderConfig,
+  BuilderOptions,
   PhotoManifestItem,
   PhotoProcessingContext,
   PhotoProcessorOptions,
@@ -60,6 +61,7 @@ export class PhotoBuilderService {
     const { existingItem, livePhotoMap, processorOptions, builder, builderConfig } = options ?? {}
     this.ensureGlobalPhotoLoggers()
     const activeBuilder = this.resolveBuilder(builder, builderConfig)
+    await activeBuilder.ensurePluginsReady()
 
     const mergedOptions: PhotoProcessorOptions = {
       ...DEFAULT_PROCESSOR_OPTIONS,
@@ -72,9 +74,14 @@ export class PhotoBuilderService {
       existingItem,
       livePhotoMap: this.toLegacyLivePhotoMap(livePhotoMap),
       options: mergedOptions,
+      pluginData: {},
     }
 
-    return await processPhotoWithPipeline(context, activeBuilder)
+    return await processPhotoWithPipeline(
+      context,
+      activeBuilder,
+      this.createPluginRuntime(activeBuilder, mergedOptions, builderConfig),
+    )
   }
 
   private ensureGlobalPhotoLoggers(): void {
@@ -97,6 +104,26 @@ export class PhotoBuilderService {
     throw new Error(
       'PhotoBuilderService requires a builder instance or configuration. Pass builder or builderConfig in ProcessPhotoOptions.',
     )
+  }
+
+  private createPluginRuntime(
+    builder: AfilmoryBuilder,
+    processorOptions: PhotoProcessorOptions,
+    builderConfig?: BuilderConfig,
+  ): { runState: ReturnType<AfilmoryBuilder['createPluginRunState']>; builderOptions: BuilderOptions } {
+    const config = builderConfig ?? builder.getConfig()
+
+    const builderOptions: BuilderOptions = {
+      isForceMode: processorOptions.isForceMode,
+      isForceManifest: processorOptions.isForceManifest,
+      isForceThumbnails: processorOptions.isForceThumbnails,
+      concurrencyLimit: config.options.defaultConcurrency,
+    }
+
+    return {
+      runState: builder.createPluginRunState(),
+      builderOptions,
+    }
   }
 
   private toLegacyObject(object: StorageObject): _Object {
