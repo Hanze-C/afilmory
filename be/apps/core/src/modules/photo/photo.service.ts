@@ -6,12 +6,11 @@ import type {
   PhotoProcessorOptions,
   StorageConfig,
   StorageObject,
-  StorageProvider,
 } from '@afilmory/builder'
-import { AfilmoryBuilder, processPhotoWithPipeline, StorageFactory, StorageManager } from '@afilmory/builder'
-import type { Logger as BuilderLogger } from '@afilmory/builder/logger'
-import type { PhotoProcessingLoggers } from '@afilmory/builder/photo'
-import { createPhotoProcessingLoggers, setGlobalLoggers } from '@afilmory/builder/photo'
+import { AfilmoryBuilder, processPhotoWithPipeline } from '@afilmory/builder'
+import type { Logger as BuilderLogger } from '@afilmory/builder/logger/index.js'
+import type { PhotoProcessingLoggers } from '@afilmory/builder/photo/index.js'
+import { createPhotoProcessingLoggers, setGlobalLoggers } from '@afilmory/builder/photo/index.js'
 import type { _Object } from '@aws-sdk/client-s3'
 import { injectable } from 'tsyringe'
 
@@ -40,14 +39,6 @@ export class PhotoBuilderService {
 
   createBuilder(config: BuilderConfig): AfilmoryBuilder {
     return new AfilmoryBuilder(config)
-  }
-
-  createStorageManager(config: StorageConfig): StorageManager {
-    return new StorageManager(config)
-  }
-
-  resolveStorageProvider(config: StorageConfig): StorageProvider {
-    return StorageFactory.createProvider(config)
   }
 
   applyStorageConfig(builder: AfilmoryBuilder, config: StorageConfig): void {

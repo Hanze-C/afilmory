@@ -14,6 +14,9 @@ export enum ErrorCode {
   TENANT_NOT_FOUND = 20,
   TENANT_SUSPENDED = 21,
   TENANT_INACTIVE = 22,
+
+  // Image Processing
+  IMAGE_PROCESSING_FAILED = 30,
 }
 
 export interface ErrorDescriptor {
@@ -61,5 +64,10 @@ export const ERROR_CODE_DESCRIPTORS: Record<ErrorCode, ErrorDescriptor> = {
   [ErrorCode.TENANT_INACTIVE]: {
     httpStatus: 403,
     message: 'Tenant is not active',
+  },
+
+  [ErrorCode.IMAGE_PROCESSING_FAILED]: {
+    httpStatus: 500,
+    message: 'Image processing failed',
   },
 }

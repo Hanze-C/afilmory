@@ -96,10 +96,7 @@ export async function processImageWithSharp(
     if (isBitmap(imageBuffer)) {
       try {
         // Convert the BMP image to JPEG format and create a new Sharp instance for the converted image.
-        sharpInstance = await convertBmpToJpegSharpInstance(
-          imageBuffer,
-          loggers.image.originalLogger,
-        )
+        sharpInstance = await convertBmpToJpegSharpInstance(imageBuffer)
         // Update the image buffer to reflect the new JPEG data from the Sharp instance.
         processedBuffer = await sharpInstance.toBuffer()
       } catch (error) {
@@ -109,10 +106,7 @@ export async function processImageWithSharp(
     }
 
     // 获取图片元数据（复用 Sharp 实例）
-    const metadata = await getImageMetadataWithSharp(
-      sharpInstance,
-      loggers.image.originalLogger,
-    )
+    const metadata = await getImageMetadataWithSharp(sharpInstance)
     if (!metadata) {
       loggers.image.error(`获取图片元数据失败：${photoKey}`)
       return null

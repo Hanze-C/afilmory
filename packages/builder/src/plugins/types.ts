@@ -15,19 +15,10 @@ import type {
 } from '../types/manifest.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 
-export type BuilderPluginReference =
-  | string
-  | {
-      resolve: string
-      /**
-       * Optional name override for the plugin. Falls back to the resolved name.
-       */
-      name?: string
-      /**
-       * Arbitrary configuration passed to the plugin factory.
-       */
-      options?: unknown
-    }
+export type BuilderPluginESMImporter = () => Promise<{
+  default: (() => BuilderPlugin | Promise<BuilderPlugin>) | BuilderPlugin
+}>
+export type BuilderPluginReference = string | BuilderPluginESMImporter
 
 export type BuilderPluginConfigEntry = BuilderPluginReference | BuilderPlugin
 
@@ -185,8 +176,8 @@ export type BuilderPluginFactory =
   | (() => BuilderPlugin | Promise<BuilderPlugin>)
   | ((options: unknown) => BuilderPlugin | Promise<BuilderPlugin>)
 
-export function isPluginReferenceObject(
+export function isPluginESMImporter(
   value: BuilderPluginConfigEntry,
-): value is Exclude<BuilderPluginReference, string> {
-  return typeof value === 'object' && value !== null && 'resolve' in value
+): value is BuilderPluginESMImporter {
+  return typeof value === 'function' && value.length === 0
 }

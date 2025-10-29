@@ -15,9 +15,9 @@ import type { PluginRunState } from '../plugins/manager.js'
 import { PluginManager } from '../plugins/manager.js'
 import type {
   BuilderPluginConfigEntry,
+  BuilderPluginESMImporter,
   BuilderPluginEventPayloads,
 } from '../plugins/types.js'
-import { isPluginReferenceObject } from '../plugins/types.js'
 import type { StorageProviderFactory } from '../storage/factory.js'
 import { StorageFactory, StorageManager } from '../storage/index.js'
 import type { BuilderConfig } from '../types/config.js'
@@ -555,14 +555,6 @@ export class AfilmoryBuilder {
         return
       }
 
-      if (isPluginReferenceObject(ref)) {
-        const key = ref.resolve
-        if (seen.has(key)) return
-        seen.add(key)
-        references.push(ref)
-        return
-      }
-
       const pluginName = ref.name
       if (pluginName) {
         const key = `plugin:${pluginName}`
@@ -576,7 +568,7 @@ export class AfilmoryBuilder {
 
     const hasPluginWithName = (name: string): boolean => {
       return references.some((ref) => {
-        if (typeof ref === 'string' || isPluginReferenceObject(ref)) {
+        if (typeof ref === 'string') {
           return false
         }
         return ref.name === name
@@ -591,14 +583,16 @@ export class AfilmoryBuilder {
       this.config.repo.enable &&
       !hasPluginWithName('afilmory:github-repo-sync')
     ) {
-      addReference('@afilmory/builder/plugins/github-repo-sync')
+      addReference(
+        () => import('@afilmory/builder/plugins/github-repo-sync.js'),
+      )
     }
 
-    const storagePluginByProvider: Record<string, string> = {
-      s3: '@afilmory/builder/plugins/storage/s3',
-      github: '@afilmory/builder/plugins/storage/github',
-      eagle: '@afilmory/builder/plugins/storage/eagle',
-      local: '@afilmory/builder/plugins/storage/local',
+    const storagePluginByProvider: Record<string, BuilderPluginESMImporter> = {
+      s3: () => import('@afilmory/builder/plugins/storage/s3.js'),
+      github: () => import('@afilmory/builder/plugins/storage/github.js'),
+      eagle: () => import('@afilmory/builder/plugins/storage/eagle.js'),
+      local: () => import('@afilmory/builder/plugins/storage/local.js'),
     }
 
     const storageProvider = this.config.storage.provider

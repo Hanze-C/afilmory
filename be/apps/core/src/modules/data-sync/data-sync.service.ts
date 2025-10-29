@@ -1,17 +1,21 @@
-import type {BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject} from '@afilmory/builder';
-import {
-  createDefaultBuilderConfig,
-  StorageFactory
-} from '@afilmory/builder'
+import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject } from '@afilmory/builder'
+import { createDefaultBuilderConfig, StorageFactory } from '@afilmory/builder'
 import {
   EagleStorageProvider,
   GitHubStorageProvider,
   LocalStorageProvider,
   S3StorageProvider,
-} from '@afilmory/builder/storage'
-import type { EagleConfig, EagleRule, GitHubConfig, LocalConfig, S3Config } from '@afilmory/builder/storage/interfaces'
+} from '@afilmory/builder/storage/index.js'
+import type {
+  EagleConfig,
+  EagleRule,
+  GitHubConfig,
+  LocalConfig,
+  S3Config,
+} from '@afilmory/builder/storage/interfaces.js'
 import type { PhotoAssetConflictPayload, PhotoAssetConflictSnapshot, PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
+import { createLogger } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/photo/photo.service'
 import { and, eq } from 'drizzle-orm'
@@ -68,6 +72,7 @@ interface SyncPreparation {
 
 @injectable()
 export class DataSyncService {
+  private readonly logger = createLogger('DataSyncService')
   constructor(
     private readonly dbAccessor: DbAccessor,
     private readonly photoBuilderService: PhotoBuilderService,
@@ -143,6 +148,8 @@ export class DataSyncService {
   ): Promise<SyncPreparation> {
     const builder = this.photoBuilderService.createBuilder(builderConfig)
     const effectiveStorageConfig = storageConfig ?? builderConfig.storage
+
+    this.logger.verbose('effectiveStorageConfig', effectiveStorageConfig)
     this.registerStorageProviderPlugin(builder, effectiveStorageConfig)
     if (storageConfig) {
       this.photoBuilderService.applyStorageConfig(builder, storageConfig)
@@ -222,7 +229,7 @@ export class DataSyncService {
         break
       }
       default: {
-        const provider = storageConfig.provider as string
+        const provider = (storageConfig as StorageConfig)?.provider as string
         const registered = StorageFactory.getRegisteredProviders()
         if (!registered.includes(provider)) {
           throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
@@ -777,7 +784,8 @@ export class DataSyncService {
         },
         builder,
       })
-    } catch {
+    } catch (err) {
+      this.logger.error('Failed to process storage object', err)
       return null
     }
   }
@@ -964,7 +972,7 @@ export class DataSyncService {
     const storageObject = storageObjects.find((object) => object.key === record.storageKey)
 
     if (!storageObject) {
-      throw new BizException(ErrorCode.COMMON_CONFLICT, {
+      throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
         message: 'Storage object no longer exists; rerun data sync before resolving.',
       })
     }
@@ -973,7 +981,7 @@ export class DataSyncService {
       existing: record.manifest?.data as PhotoManifestItem | undefined,
     })
     if (!processResult?.item) {
-      throw new BizException(ErrorCode.COMMON_CONFLICT, { message: 'Failed to reprocess storage object.' })
+      throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, { message: 'Failed to reprocess storage object.' })
     }
 
     const storageSnapshot = this.createStorageSnapshot(storageObject)
