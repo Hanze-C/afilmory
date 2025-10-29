@@ -8,8 +8,14 @@ import type {
   StorageProvider,
 } from '@afilmory/builder'
 import { AfilmoryBuilder, processPhotoWithPipeline, StorageFactory, StorageManager } from '@afilmory/builder'
+import type { Logger as BuilderLogger } from '@afilmory/builder/logger'
+import type { PhotoProcessingLoggers } from '@afilmory/builder/photo'
+import { createPhotoProcessingLoggers, setGlobalLoggers } from '@afilmory/builder/photo'
 import type { _Object } from '@aws-sdk/client-s3'
 import { injectable } from 'tsyringe'
+
+import { logger as coreLogger } from '../../helpers/logger.helper'
+import { createBuilderLoggerAdapter } from './builder-logger.adapter'
 
 const DEFAULT_PROCESSOR_OPTIONS: PhotoProcessorOptions = {
   isForceMode: false,
@@ -27,6 +33,10 @@ export type ProcessPhotoOptions = {
 
 @injectable()
 export class PhotoBuilderService {
+  private readonly baseLogger = coreLogger.extend('PhotoBuilder')
+  private readonly builderLogger: BuilderLogger = createBuilderLoggerAdapter(this.baseLogger)
+  private photoLoggers: PhotoProcessingLoggers | null = null
+
   createBuilder(config: BuilderConfig): AfilmoryBuilder {
     return new AfilmoryBuilder(config)
   }
@@ -48,6 +58,7 @@ export class PhotoBuilderService {
     options?: ProcessPhotoOptions,
   ): Promise<Awaited<ReturnType<typeof processPhotoWithPipeline>>> {
     const { existingItem, livePhotoMap, processorOptions, builder, builderConfig } = options ?? {}
+    this.ensureGlobalPhotoLoggers()
     const activeBuilder = this.resolveBuilder(builder, builderConfig)
 
     const mergedOptions: PhotoProcessorOptions = {
@@ -64,6 +75,14 @@ export class PhotoBuilderService {
     }
 
     return await processPhotoWithPipeline(context, activeBuilder)
+  }
+
+  private ensureGlobalPhotoLoggers(): void {
+    if (!this.photoLoggers) {
+      this.photoLoggers = createPhotoProcessingLoggers(0, this.builderLogger)
+    }
+
+    setGlobalLoggers(this.photoLoggers)
   }
 
   private resolveBuilder(builder?: AfilmoryBuilder, builderConfig?: BuilderConfig): AfilmoryBuilder {
