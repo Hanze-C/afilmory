@@ -9,8 +9,8 @@ import {
   MainPageLayout,
   useMainPageLayout,
 } from '~/components/layouts/MainPageLayout'
-import { runPhotoSync } from '~/modules/photos'
 import type { PhotoSyncAction, PhotoSyncResult } from '~/modules/photos'
+import { runPhotoSync } from '~/modules/photos'
 
 type PhotoSyncActionsProps = {
   onCompleted: (result: PhotoSyncResult, context: { dryRun: boolean }) => void
@@ -18,7 +18,9 @@ type PhotoSyncActionsProps = {
 
 const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
   const { setHeaderActionState } = useMainPageLayout()
-  const [pendingMode, setPendingMode] = useState<'dry-run' | 'apply' | null>(null)
+  const [pendingMode, setPendingMode] = useState<'dry-run' | 'apply' | null>(
+    null,
+  )
 
   const mutation = useMutation({
     mutationFn: async (variables: { dryRun: boolean }) => {
@@ -37,7 +39,8 @@ const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
       })
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : '照片同步失败，请稍后重试。'
+      const message =
+        error instanceof Error ? error.message : '照片同步失败，请稍后重试。'
       toast.error('同步失败', { description: message })
     },
     onSettled: () => {
@@ -52,7 +55,7 @@ const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
     }
   }, [setHeaderActionState])
 
-  const isPending = mutation.isPending
+  const { isPending } = mutation
 
   const handleSync = (dryRun: boolean) => {
     mutation.mutate({ dryRun })
@@ -62,7 +65,7 @@ const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
     <div className="flex items-center gap-2">
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
         disabled={isPending}
         isLoading={isPending && pendingMode === 'dry-run'}
@@ -112,13 +115,18 @@ const SummaryCard = ({ label, value, tone }: SummaryCardProps) => {
   return (
     <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-5">
       <BorderOverlay />
-      <p className="text-text-tertiary text-xs uppercase tracking-wide">{label}</p>
+      <p className="text-text-tertiary text-xs uppercase tracking-wide">
+        {label}
+      </p>
       <p className={`mt-2 text-2xl font-semibold ${toneClass}`}>{value}</p>
     </div>
   )
 }
 
-const actionTypeConfig: Record<PhotoSyncAction['type'], { label: string; badgeClass: string }> = {
+const actionTypeConfig: Record<
+  PhotoSyncAction['type'],
+  { label: string; badgeClass: string }
+> = {
   insert: { label: '新增', badgeClass: 'bg-emerald-500/10 text-emerald-400' },
   update: { label: '更新', badgeClass: 'bg-sky-500/10 text-sky-400' },
   delete: { label: '删除', badgeClass: 'bg-rose-500/10 text-rose-400' },
@@ -145,7 +153,9 @@ const ActionRow = ({ action }: { action: PhotoSyncAction }) => {
           >
             {config.label}
           </span>
-          <code className="text-text-secondary text-xs">{action.storageKey}</code>
+          <code className="text-text-secondary text-xs">
+            {action.storageKey}
+          </code>
         </div>
         <span className="text-text-tertiary text-xs">
           {action.applied ? '已应用' : '未应用'}
@@ -164,7 +174,40 @@ type PhotoSyncResultPanelProps = {
   lastWasDryRun: boolean | null
 }
 
-const PhotoSyncResultPanel = ({ result, lastWasDryRun }: PhotoSyncResultPanelProps) => {
+const PhotoSyncResultPanel = ({
+  result,
+  lastWasDryRun,
+}: PhotoSyncResultPanelProps) => {
+  const summaryItems = useMemo(
+    () =>
+      result
+        ? [
+            { label: '存储对象', value: result.summary.storageObjects },
+            { label: '数据库记录', value: result.summary.databaseRecords },
+            {
+              label: '新增照片',
+              value: result.summary.inserted,
+              tone: 'accent' as const,
+            },
+            { label: '更新记录', value: result.summary.updated },
+            { label: '删除记录', value: result.summary.deleted },
+            {
+              label: '冲突条目',
+              value: result.summary.conflicts,
+              tone:
+                result.summary.conflicts > 0
+                  ? ('warning' as const)
+                  : ('muted' as const),
+            },
+            {
+              label: '跳过条目',
+              value: result.summary.skipped,
+              tone: 'muted' as const,
+            },
+          ]
+        : [],
+    [result],
+  )
   if (!result) {
     return (
       <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-6">
@@ -179,23 +222,6 @@ const PhotoSyncResultPanel = ({ result, lastWasDryRun }: PhotoSyncResultPanelPro
     )
   }
 
-  const summaryItems = useMemo(
-    () => [
-      { label: '存储对象', value: result.summary.storageObjects },
-      { label: '数据库记录', value: result.summary.databaseRecords },
-      { label: '新增照片', value: result.summary.inserted, tone: 'accent' as const },
-      { label: '更新记录', value: result.summary.updated },
-      { label: '删除记录', value: result.summary.deleted },
-      {
-        label: '冲突条目',
-        value: result.summary.conflicts,
-        tone: result.summary.conflicts > 0 ? ('warning' as const) : ('muted' as const),
-      },
-      { label: '跳过条目', value: result.summary.skipped, tone: 'muted' as const },
-    ],
-    [result.summary],
-  )
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -209,7 +235,9 @@ const PhotoSyncResultPanel = ({ result, lastWasDryRun }: PhotoSyncResultPanelPro
                 : '最近一次同步结果已写入数据库。'}
           </p>
         </div>
-        <p className="text-text-tertiary text-xs">操作总数：{result.actions.length}</p>
+        <p className="text-text-tertiary text-xs">
+          操作总数：{result.actions.length}
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
@@ -220,7 +248,11 @@ const PhotoSyncResultPanel = ({ result, lastWasDryRun }: PhotoSyncResultPanelPro
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...Spring.presets.smooth, delay: index * 0.04 }}
           >
-            <SummaryCard label={item.label} value={item.value} tone={item.tone} />
+            <SummaryCard
+              label={item.label}
+              value={item.value}
+              tone={item.tone}
+            />
           </m.div>
         ))}
       </div>
@@ -231,12 +263,16 @@ const PhotoSyncResultPanel = ({ result, lastWasDryRun }: PhotoSyncResultPanelPro
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-text text-base font-semibold">同步操作明细</h3>
             <span className="text-text-tertiary text-xs">
-              {lastWasDryRun ? '预览模式 · 未应用变更' : '实时模式 · 结果已写入'}
+              {lastWasDryRun
+                ? '预览模式 · 未应用变更'
+                : '实时模式 · 结果已写入'}
             </span>
           </div>
 
           {result.actions.length === 0 ? (
-            <p className="text-text-tertiary mt-4 text-sm">同步完成，未检测到需要处理的对象。</p>
+            <p className="text-text-tertiary mt-4 text-sm">
+              同步完成，未检测到需要处理的对象。
+            </p>
           ) : (
             <div className="mt-4 space-y-3">
               {result.actions.slice(0, 20).map((action, index) => (
@@ -250,7 +286,9 @@ const PhotoSyncResultPanel = ({ result, lastWasDryRun }: PhotoSyncResultPanelPro
                 </m.div>
               ))}
               {result.actions.length > 20 ? (
-                <p className="text-text-tertiary text-xs">仅展示前 20 条操作，更多详情请使用核心 API 查询。</p>
+                <p className="text-text-tertiary text-xs">
+                  仅展示前 20 条操作，更多详情请使用核心 API 查询。
+                </p>
               ) : null}
             </div>
           )}
@@ -282,4 +320,3 @@ export const Component = () => {
     </MainPageLayout>
   )
 }
-

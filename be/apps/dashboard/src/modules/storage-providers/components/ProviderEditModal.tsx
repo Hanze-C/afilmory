@@ -4,6 +4,7 @@ import {
   FormHelperText,
   Input,
   Label,
+  LinearDivider,
   ScrollArea,
   Select,
   SelectContent,
@@ -96,7 +97,7 @@ export const ProviderEditModal = ({
   return (
     <div className="flex h-full max-h-[85vh] flex-col">
       {/* Header */}
-      <div className="shrink-0 space-y-3 px-6 pt-6">
+      <div className="shrink-0 space-y-3 px-6 pt-6 relative">
         <div className="flex items-start gap-3">
           <div
             className={clsxm(
@@ -120,9 +121,7 @@ export const ProviderEditModal = ({
             </p>
           </div>
         </div>
-
-        {/* Horizontal divider */}
-        <div className="via-text/20 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+        <LinearDivider className="absolute bottom-0 right-0 left-0" />
       </div>
 
       {/* Scrollable Content */}
@@ -247,7 +246,8 @@ export const ProviderEditModal = ({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-6 pt-4 pb-6 border-t">
+      <div className="shrink-0 px-6 pt-4 pb-6 relative">
+        <LinearDivider className="absolute top-0 right-0 left-0" />
         {isNewProvider ? (
           // Add mode: Simple cancel + create actions
           <div className="flex items-center justify-end gap-2">

@@ -1,6 +1,5 @@
 import { Button, ScrollArea } from '@afilmory/ui'
-import { Spring } from '@afilmory/utils'
-import { m } from 'motion/react'
+import { clsxm } from '@afilmory/utils'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 
@@ -36,7 +35,7 @@ export const Component = () => {
       {/* Top Navigation - Sharp Edges Design */}
       <nav className="bg-background-tertiary relative shrink-0 px-6 py-3">
         {/* Bottom border with gradient */}
-        <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
+        <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
 
         <div className="flex items-center gap-6">
           {/* Logo/Brand */}
@@ -47,20 +46,11 @@ export const Component = () => {
             {navigationTabs.map((tab) => (
               <NavLink key={tab.path} to={tab.path} end={tab.path === '/'}>
                 {({ isActive }) => (
-                  <m.div
-                    className="relative overflow-hidden rounded-lg px-3 py-1.5"
-                    initial={false}
-                    animate={{
-                      backgroundColor: isActive
-                        ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
-                        : 'transparent',
-                    }}
-                    whileHover={{
-                      backgroundColor: isActive
-                        ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)'
-                        : 'color-mix(in srgb, var(--color-fill) 60%, transparent)',
-                    }}
-                    transition={Spring.presets.snappy}
+                  <div
+                    className={clsxm(
+                      'relative overflow-hidden rounded-lg px-3 py-1.5',
+                      isActive ? 'bg-accent/10' : 'bg-transparent',
+                    )}
                   >
                     <span
                       className="relative z-10 text-[13px] font-medium transition-colors"
@@ -72,7 +62,7 @@ export const Component = () => {
                     >
                       {tab.label}
                     </span>
-                  </m.div>
+                  </div>
                 )}
               </NavLink>
             ))}
