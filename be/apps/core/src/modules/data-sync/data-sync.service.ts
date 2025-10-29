@@ -1,11 +1,14 @@
+import type {BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject} from '@afilmory/builder';
 import {
   createDefaultBuilderConfig,
-  type BuilderConfig,
-  type PhotoManifestItem,
-  type StorageConfig,
-  type StorageManager,
-  type StorageObject,
+  StorageFactory
 } from '@afilmory/builder'
+import {
+  EagleStorageProvider,
+  GitHubStorageProvider,
+  LocalStorageProvider,
+  S3StorageProvider,
+} from '@afilmory/builder/storage'
 import type { EagleConfig, EagleRule, GitHubConfig, LocalConfig, S3Config } from '@afilmory/builder/storage/interfaces'
 import type { PhotoAssetConflictPayload, PhotoAssetConflictSnapshot, PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
@@ -15,9 +18,9 @@ import { and, eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
-import { requireTenantContext } from '../tenant/tenant.context'
 import { SettingService } from '../setting/setting.service'
 import type { BuilderStorageProvider } from '../setting/storage-provider.utils'
+import { requireTenantContext } from '../tenant/tenant.context'
 import type {
   ConflictPayload,
   DataSyncAction,
@@ -73,10 +76,7 @@ export class DataSyncService {
 
   async runSync(options: DataSyncOptions): Promise<DataSyncResult> {
     const tenant = requireTenantContext()
-    const { builderConfig, storageConfig } = await this.resolveBuilderConfigForTenant(
-      tenant.tenant.id,
-      options,
-    )
+    const { builderConfig, storageConfig } = await this.resolveBuilderConfigForTenant(tenant.tenant.id, options)
     const context = await this.prepareSyncContext(tenant.tenant.id, builderConfig, storageConfig)
     const summary = this.createSummary(context)
     const actions: DataSyncAction[] = []
@@ -143,6 +143,7 @@ export class DataSyncService {
   ): Promise<SyncPreparation> {
     const builder = this.photoBuilderService.createBuilder(builderConfig)
     const effectiveStorageConfig = storageConfig ?? builderConfig.storage
+    this.registerStorageProviderPlugin(builder, effectiveStorageConfig)
     if (storageConfig) {
       this.photoBuilderService.applyStorageConfig(builder, storageConfig)
     }
@@ -196,6 +197,39 @@ export class DataSyncService {
       conflictCandidates,
       statusReconciliation,
       db,
+    }
+  }
+
+  private registerStorageProviderPlugin(
+    builder: ReturnType<PhotoBuilderService['createBuilder']>,
+    storageConfig: StorageConfig,
+  ): void {
+    switch (storageConfig.provider) {
+      case 's3': {
+        builder.registerStorageProvider('s3', (config) => new S3StorageProvider(config as S3Config))
+        break
+      }
+      case 'github': {
+        builder.registerStorageProvider('github', (config) => new GitHubStorageProvider(config as GitHubConfig))
+        break
+      }
+      case 'local': {
+        builder.registerStorageProvider('local', (config) => new LocalStorageProvider(config as LocalConfig))
+        break
+      }
+      case 'eagle': {
+        builder.registerStorageProvider('eagle', (config) => new EagleStorageProvider(config as EagleConfig))
+        break
+      }
+      default: {
+        const provider = storageConfig.provider as string
+        const registered = StorageFactory.getRegisteredProviders()
+        if (!registered.includes(provider)) {
+          throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+            message: `Unsupported storage provider type: ${provider}`,
+          })
+        }
+      }
     }
   }
 
@@ -294,13 +328,12 @@ export class DataSyncService {
         return result
       }
       case 'local': {
-        const basePath =
-          this.normalizeString(config.basePath) ?? this.normalizeString(config.path)
+        const basePath = this.normalizeString(config.basePath) ?? this.normalizeString(config.path)
 
         const resolvedBasePath = this.requireString(
           basePath,
-          'Active local storage provider is missing `basePath`. '
-            + 'Please provide a valid path to your photo directory.',
+          'Active local storage provider is missing `basePath`. ' +
+            'Please provide a valid path to your photo directory.',
         )
 
         const result: LocalConfig = {
@@ -408,7 +441,9 @@ export class DataSyncService {
       if (Array.isArray(parsed)) {
         return parsed as T[]
       }
-    } catch {}
+    } catch {
+      /* ignore parse errors */
+    }
 
     return undefined
   }
