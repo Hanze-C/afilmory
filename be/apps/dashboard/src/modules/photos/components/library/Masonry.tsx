@@ -1,6 +1,13 @@
 /* eslint-disable react-hooks/purity */
 /* eslint-disable react-hooks/immutability */
-// @copy internal masonic hooks
+/**
+ * Portions of this file are adapted from the internal hooks of the "masonic" library.
+ *
+ * Reason for copying: We required customizations and/or integration that were not possible using the library directly.
+ * Modifications: The code has been adapted to fit our project's requirements, including integration with our own hooks and utilities.
+ * Licensing: The original "masonic" library is licensed under the MIT License. This file includes code in compliance with that license.
+ * See: https://github.com/jaredLunde/masonic/blob/master/LICENSE
+ */
 import { useScrollViewElement } from '@afilmory/ui'
 import {
   clearRequestTimeout,
