@@ -1,35 +1,21 @@
-import {
-  STORAGE_PROVIDER_FIELD_DEFINITIONS,
-  STORAGE_PROVIDER_TYPES,
-} from './constants'
+import { STORAGE_PROVIDER_FIELD_DEFINITIONS, STORAGE_PROVIDER_TYPES } from './constants'
 import type { StorageProvider, StorageProviderType } from './types'
 
 const generateId = () => {
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof crypto.randomUUID === 'function'
-  ) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
   return Math.random().toString(36).slice(2, 10)
 }
 
-export const isStorageProviderType = (
-  value: unknown,
-): value is StorageProviderType => {
+export const isStorageProviderType = (value: unknown): value is StorageProviderType => {
   return STORAGE_PROVIDER_TYPES.includes(value as StorageProviderType)
 }
 
-const normaliseConfigForType = (
-  type: StorageProviderType,
-  config: Record<string, unknown>,
-): Record<string, string> => {
-  return STORAGE_PROVIDER_FIELD_DEFINITIONS[type].reduce<
-    Record<string, string>
-  >((acc, field) => {
+const normaliseConfigForType = (type: StorageProviderType, config: Record<string, unknown>): Record<string, string> => {
+  return STORAGE_PROVIDER_FIELD_DEFINITIONS[type].reduce<Record<string, string>>((acc, field) => {
     const raw = config[field.key]
-    acc[field.key] =
-      typeof raw === 'string' ? raw : raw == null ? '' : String(raw)
+    acc[field.key] = typeof raw === 'string' ? raw : raw == null ? '' : String(raw)
     return acc
   }, {})
 }
@@ -42,21 +28,13 @@ const coerceProvider = (input: unknown): StorageProvider | null => {
   const record = input as Record<string, unknown>
   const type = isStorageProviderType(record.type) ? record.type : 'local'
   const configInput =
-    record.config &&
-    typeof record.config === 'object' &&
-    !Array.isArray(record.config)
+    record.config && typeof record.config === 'object' && !Array.isArray(record.config)
       ? (record.config as Record<string, unknown>)
       : {}
 
   const provider: StorageProvider = {
-    id:
-      typeof record.id === 'string' && record.id.trim().length > 0
-        ? record.id.trim()
-        : generateId(),
-    name:
-      typeof record.name === 'string' && record.name.trim().length > 0
-        ? record.name.trim()
-        : '未命名存储',
+    id: typeof record.id === 'string' && record.id.trim().length > 0 ? record.id.trim() : generateId(),
+    name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : '未命名存储',
     type,
     config: normaliseConfigForType(type, configInput),
   }
@@ -72,9 +50,7 @@ const coerceProvider = (input: unknown): StorageProvider | null => {
   return provider
 }
 
-export const parseStorageProviders = (
-  raw: string | null,
-): StorageProvider[] => {
+export const parseStorageProviders = (raw: string | null): StorageProvider[] => {
   if (!raw) {
     return []
   }
@@ -85,17 +61,13 @@ export const parseStorageProviders = (
       return []
     }
 
-    return parsed
-      .map((item) => coerceProvider(item))
-      .filter((item): item is StorageProvider => item !== null)
+    return parsed.map((item) => coerceProvider(item)).filter((item): item is StorageProvider => item !== null)
   } catch {
     return []
   }
 }
 
-export const serializeStorageProviders = (
-  providers: ReadonlyArray<StorageProvider>,
-): string => {
+export const serializeStorageProviders = (providers: ReadonlyArray<StorageProvider>): string => {
   return JSON.stringify(
     providers.map((provider) => ({
       ...provider,
@@ -104,29 +76,21 @@ export const serializeStorageProviders = (
   )
 }
 
-export const normalizeStorageProviderConfig = (
-  provider: StorageProvider,
-): StorageProvider => {
+export const normalizeStorageProviderConfig = (provider: StorageProvider): StorageProvider => {
   return {
     ...provider,
     config: normaliseConfigForType(provider.type, provider.config),
   }
 }
 
-export const getDefaultConfigForType = (
-  type: StorageProviderType,
-): Record<string, string> => {
-  return STORAGE_PROVIDER_FIELD_DEFINITIONS[type].reduce<
-    Record<string, string>
-  >((acc, field) => {
+export const getDefaultConfigForType = (type: StorageProviderType): Record<string, string> => {
+  return STORAGE_PROVIDER_FIELD_DEFINITIONS[type].reduce<Record<string, string>>((acc, field) => {
     acc[field.key] = ''
     return acc
   }, {})
 }
 
-export const createEmptyProvider = (
-  type: StorageProviderType,
-): StorageProvider => {
+export const createEmptyProvider = (type: StorageProviderType): StorageProvider => {
   const timestamp = new Date().toISOString()
   return {
     id: '',
@@ -146,9 +110,7 @@ export const ensureActiveProviderId = (
     return null
   }
 
-  return providers.some((provider) => provider.id === activeId)
-    ? activeId
-    : null
+  return providers.some((provider) => provider.id === activeId) ? activeId : null
 }
 
 export const reorderProvidersByActive = (

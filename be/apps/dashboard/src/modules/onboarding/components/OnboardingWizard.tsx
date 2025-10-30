@@ -60,9 +60,7 @@ export const OnboardingWizard: FC = () => {
         '[tabindex]:not([tabindex="-1"])',
       ].join(',')
 
-      const candidates = Array.from(
-        root.querySelectorAll<HTMLElement>(selector),
-      )
+      const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector))
       const firstVisible = candidates.find((el) => {
         // Skip elements that are aria-hidden or not rendered
         if (el.getAttribute('aria-hidden') === 'true') return false
@@ -83,8 +81,7 @@ export const OnboardingWizard: FC = () => {
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       if (event.key !== 'Enter') return
-      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey)
-        return
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return
       // Avoid while IME composing
       const nativeEvent = event.nativeEvent as unknown as {
         isComposing?: boolean
@@ -133,9 +130,7 @@ export const OnboardingWizard: FC = () => {
         onDomainChange={updateTenantDomain}
       />
     ),
-    admin: (
-      <AdminStep admin={admin} errors={errors} onChange={updateAdminField} />
-    ),
+    admin: <AdminStep admin={admin} errors={errors} onChange={updateAdminField} />,
     settings: (
       <SettingsStep
         settingsState={settingsState}
@@ -187,11 +182,7 @@ export const OnboardingWizard: FC = () => {
             {/* Scrollable content area */}
             <div className="relative flex h-0 flex-1">
               <ScrollArea rootClassName="absolute! inset-0 h-full w-full">
-                <section
-                  ref={contentRef}
-                  className="p-12"
-                  onKeyDown={handleKeyDown}
-                >
+                <section ref={contentRef} className="p-12" onKeyDown={handleKeyDown}>
                   {stepContent[currentStep.id]}
                 </section>
               </ScrollArea>

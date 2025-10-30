@@ -6,9 +6,7 @@ export interface EagleStoragePluginOptions {
   provider?: string
 }
 
-export default function eagleStoragePlugin(
-  options: EagleStoragePluginOptions = {},
-): BuilderPlugin {
+export default function eagleStoragePlugin(options: EagleStoragePluginOptions = {}): BuilderPlugin {
   const providerName = options.provider ?? 'eagle'
 
   return {

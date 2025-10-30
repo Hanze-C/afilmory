@@ -6,9 +6,7 @@ export interface S3StoragePluginOptions {
   provider?: string
 }
 
-export default function s3StoragePlugin(
-  options: S3StoragePluginOptions = {},
-): BuilderPlugin {
+export default function s3StoragePlugin(options: S3StoragePluginOptions = {}): BuilderPlugin {
   const providerName = options.provider ?? 's3'
 
   return {

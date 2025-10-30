@@ -20,7 +20,9 @@ export const useUpdateSettingsMutation = () => {
       await updateSettings(entries)
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: SETTING_UI_SCHEMA_QUERY_KEY })
+      void queryClient.invalidateQueries({
+        queryKey: SETTING_UI_SCHEMA_QUERY_KEY,
+      })
     },
   })
 }

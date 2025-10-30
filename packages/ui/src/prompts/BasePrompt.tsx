@@ -1,12 +1,7 @@
 import { useState } from 'react'
 
 import { Button } from '../button/Button'
-import {
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../dialog'
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../dialog'
 import { Modal } from '../modal'
 import type { ModalComponent, ModalComponentProps } from '../modal/types'
 
@@ -59,20 +54,11 @@ export const BasePrompt: ModalComponent<PromptOptions> = ({
     <div>
       <DialogHeader className="mb-2">
         <DialogTitle>{title}</DialogTitle>
-        {description ? (
-          <DialogDescription className="text-text-secondary">
-            {description}
-          </DialogDescription>
-        ) : null}
+        {description ? <DialogDescription className="text-text-secondary">{description}</DialogDescription> : null}
       </DialogHeader>
       {content && <div className="mt-4">{content}</div>}
       <DialogFooter className="mt-4">
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={handleCancel}
-          disabled={submitting}
-        >
+        <Button size="sm" variant="secondary" onClick={handleCancel} disabled={submitting}>
           {onCancelText}
         </Button>
         <Button

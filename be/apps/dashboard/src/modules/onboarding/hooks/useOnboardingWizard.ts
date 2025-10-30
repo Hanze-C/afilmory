@@ -7,19 +7,8 @@ import type { OnboardingInitPayload } from '../api'
 import { getOnboardingStatus, postOnboardingInit } from '../api'
 import type { OnboardingSettingKey, OnboardingStepId } from '../constants'
 import { ONBOARDING_STEPS } from '../constants'
-import type {
-  AdminFormState,
-  OnboardingErrors,
-  SettingFormState,
-  TenantFormState,
-} from '../types'
-import {
-  createInitialSettingsState,
-  getFieldByKey,
-  isLikelyEmail,
-  maskSecret,
-  slugify,
-} from '../utils'
+import type { AdminFormState, OnboardingErrors, SettingFormState, TenantFormState } from '../types'
+import { createInitialSettingsState, getFieldByKey, isLikelyEmail, maskSecret, slugify } from '../utils'
 
 const INITIAL_STEP_INDEX = 0
 
@@ -37,14 +26,11 @@ export const useOnboardingWizard = () => {
     password: '',
     confirmPassword: '',
   })
-  const [settingsState, setSettingsState] = useState<SettingFormState>(
-    createInitialSettingsState,
-  )
+  const [settingsState, setSettingsState] = useState<SettingFormState>(createInitialSettingsState)
   const [acknowledged, setAcknowledged] = useState(false)
   const [errors, setErrors] = useState<OnboardingErrors>({})
 
-  const currentStep =
-    ONBOARDING_STEPS[currentStepIndex] ?? ONBOARDING_STEPS[INITIAL_STEP_INDEX]
+  const currentStep = ONBOARDING_STEPS[currentStepIndex] ?? ONBOARDING_STEPS[INITIAL_STEP_INDEX]
 
   const query = useQuery({
     queryKey: ['onboarding', 'status'],
@@ -64,16 +50,13 @@ export const useOnboardingWizard = () => {
     onError: (error) => {
       if (error instanceof FetchError) {
         const message =
-          typeof error.data === 'object' &&
-          error.data &&
-          'message' in error.data
+          typeof error.data === 'object' && error.data && 'message' in error.data
             ? String(error.data.message)
             : 'Backend rejected the initialization request.'
         toast.error('Initialization failed', { description: message })
       } else {
         toast.error('Initialization failed', {
-          description:
-            'Unexpected error occurred. Please retry or inspect the logs.',
+          description: 'Unexpected error occurred. Please retry or inspect the logs.',
         })
       }
     },
@@ -106,10 +89,7 @@ export const useOnboardingWizard = () => {
       setFieldError('tenant.slug', 'Slug is required')
       valid = false
     } else if (!/^[a-z0-9-]+$/.test(slug)) {
-      setFieldError(
-        'tenant.slug',
-        'Only lowercase letters, numbers, and hyphen are allowed',
-      )
+      setFieldError('tenant.slug', 'Only lowercase letters, numbers, and hyphen are allowed')
       valid = false
     } else {
       setFieldError('tenant.slug', null)
@@ -117,10 +97,7 @@ export const useOnboardingWizard = () => {
 
     const domain = tenant.domain.trim()
     if (domain && !/^[a-z0-9.-]+$/.test(domain)) {
-      setFieldError(
-        'tenant.domain',
-        'Use lowercase letters, numbers, dot, or hyphen',
-      )
+      setFieldError('tenant.domain', 'Use lowercase letters, numbers, dot, or hyphen')
       valid = false
     } else {
       setFieldError('tenant.domain', null)
@@ -186,10 +163,7 @@ export const useOnboardingWizard = () => {
         continue
       }
       if (!entry.value.trim()) {
-        setFieldError(
-          `settings.${key}`,
-          'Value is required when the setting is enabled',
-        )
+        setFieldError(`settings.${key}`, 'Value is required when the setting is enabled')
         valid = false
       } else {
         setFieldError(`settings.${key}`, null)
@@ -200,10 +174,7 @@ export const useOnboardingWizard = () => {
 
   const validateAcknowledgement = () => {
     if (!acknowledged) {
-      setFieldError(
-        'review.ack',
-        'Please confirm you saved the super administrator credentials before continuing',
-      )
+      setFieldError('review.ack', 'Please confirm you saved the super administrator credentials before continuing')
       return false
     }
     setFieldError('review.ack', null)
@@ -258,9 +229,7 @@ export const useOnboardingWizard = () => {
       return
     }
 
-    setCurrentStepIndex((prev) =>
-      Math.min(prev + 1, ONBOARDING_STEPS.length - 1),
-    )
+    setCurrentStepIndex((prev) => Math.min(prev + 1, ONBOARDING_STEPS.length - 1))
   }
 
   const goToPrevious = () => {

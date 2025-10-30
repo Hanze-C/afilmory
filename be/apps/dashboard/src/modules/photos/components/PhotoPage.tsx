@@ -40,9 +40,7 @@ const STAGE_ORDER: PhotoSyncProgressStage[] = [
   'status-reconciliation',
 ]
 
-const createInitialStages = (
-  totals: PhotoSyncProgressState['totals'],
-): PhotoSyncProgressState['stages'] =>
+const createInitialStages = (totals: PhotoSyncProgressState['totals']): PhotoSyncProgressState['stages'] =>
   STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
     (acc, stage) => {
       const total = totals[stage]
@@ -61,11 +59,8 @@ export const PhotoPage = () => {
   const [result, setResult] = useState<PhotoSyncResult | null>(null)
   const [lastWasDryRun, setLastWasDryRun] = useState<boolean | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [resolvingConflictId, setResolvingConflictId] = useState<string | null>(
-    null,
-  )
-  const [syncProgress, setSyncProgress] =
-    useState<PhotoSyncProgressState | null>(null)
+  const [resolvingConflictId, setResolvingConflictId] = useState<string | null>(null)
+  const [syncProgress, setSyncProgress] = useState<PhotoSyncProgressState | null>(null)
 
   const summaryQuery = usePhotoAssetSummaryQuery()
   const listQuery = usePhotoAssetListQuery({ enabled: activeTab === 'library' })
@@ -139,12 +134,7 @@ export const PhotoPage = () => {
           const nextStages = {
             ...prev.stages,
             [stage]: {
-              status:
-                status === 'complete'
-                  ? 'completed'
-                  : total === 0
-                    ? 'completed'
-                    : 'running',
+              status: status === 'complete' ? 'completed' : total === 0 ? 'completed' : 'running',
               processed,
               total,
             },
@@ -214,8 +204,7 @@ export const PhotoPage = () => {
       setSelectedIds((prev) => prev.filter((item) => !ids.includes(item)))
       void listQuery.refetch()
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : '删除失败，请稍后重试。'
+      const message = error instanceof Error ? error.message : '删除失败，请稍后重试。'
       toast.error('删除失败', { description: message })
     }
   }
@@ -228,8 +217,7 @@ export const PhotoPage = () => {
       toast.success(`成功上传 ${fileArray.length} 张图片`)
       void listQuery.refetch()
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : '上传失败，请稍后重试。'
+      const message = error instanceof Error ? error.message : '上传失败，请稍后重试。'
       toast.error('上传失败', { description: message })
     }
   }
@@ -248,16 +236,13 @@ export const PhotoPage = () => {
         toast.success('冲突已处理', {
           description:
             action.reason ??
-            (strategy === 'prefer-storage'
-              ? '已以存储数据覆盖数据库记录。'
-              : '已保留数据库记录并忽略存储差异。'),
+            (strategy === 'prefer-storage' ? '已以存储数据覆盖数据库记录。' : '已保留数据库记录并忽略存储差异。'),
         })
         void conflictsQuery.refetch()
         void summaryQuery.refetch()
         void listQuery.refetch()
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : '处理冲突失败，请稍后重试。'
+        const message = error instanceof Error ? error.message : '处理冲突失败，请稍后重试。'
         toast.error('处理冲突失败', { description: message })
       } finally {
         setResolvingConflictId(null)
@@ -294,9 +279,7 @@ export const PhotoPage = () => {
       }
 
       if (processed > 0) {
-        toast.success(
-          `${strategy === 'prefer-storage' ? '以存储为准' : '以数据库为准'}处理 ${processed} 个冲突`,
-        )
+        toast.success(`${strategy === 'prefer-storage' ? '以存储为准' : '以数据库为准'}处理 ${processed} 个冲突`)
       }
 
       if (errors.length > 0) {
@@ -316,8 +299,7 @@ export const PhotoPage = () => {
 
   const handleOpenAsset = async (asset: PhotoAssetListItem) => {
     const manifest = asset.manifest?.data
-    const candidate =
-      manifest?.originalUrl ?? manifest?.thumbnailUrl ?? asset.publicUrl
+    const candidate = manifest?.originalUrl ?? manifest?.thumbnailUrl ?? asset.publicUrl
     if (candidate) {
       window.open(candidate, '_blank', 'noopener,noreferrer')
       return
@@ -327,8 +309,7 @@ export const PhotoPage = () => {
       const url = await getPhotoStorageUrl(asset.storageKey)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : '无法获取原图链接'
+      const message = error instanceof Error ? error.message : '无法获取原图链接'
       toast.error('打开失败', { description: message })
     }
   }
@@ -345,15 +326,10 @@ export const PhotoPage = () => {
   }
 
   const showConflictsPanel =
-    conflictsQuery.isLoading ||
-    conflictsQuery.isFetching ||
-    (conflictsQuery.data?.length ?? 0) > 0
+    conflictsQuery.isLoading || conflictsQuery.isFetching || (conflictsQuery.data?.length ?? 0) > 0
 
   return (
-    <MainPageLayout
-      title="照片库"
-      description="在此同步和管理服务器中的照片资产。"
-    >
+    <MainPageLayout title="照片库" description="在此同步和管理服务器中的照片资产。">
       <MainPageLayout.Actions>
         {activeTab === 'sync' ? (
           <PhotoSyncActions
@@ -391,18 +367,14 @@ export const PhotoPage = () => {
           ]}
         />
 
-        {activeTab === 'sync' && syncProgress ? (
-          <PhotoSyncProgressPanel progress={syncProgress} />
-        ) : null}
+        {activeTab === 'sync' && syncProgress ? <PhotoSyncProgressPanel progress={syncProgress} /> : null}
 
         {activeTab === 'sync' ? (
           <div className="space-y-6">
             {showConflictsPanel ? (
               <PhotoSyncConflictsPanel
                 conflicts={conflictsQuery.data}
-                isLoading={
-                  conflictsQuery.isLoading || conflictsQuery.isFetching
-                }
+                isLoading={conflictsQuery.isLoading || conflictsQuery.isFetching}
                 resolvingId={resolvingConflictId}
                 isBatchResolving={resolvingConflictId === BATCH_RESOLVING_ID}
                 onResolve={handleResolveConflict}

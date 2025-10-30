@@ -49,16 +49,11 @@ const SelectScrollUpButton = ({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton> & {
-  ref?: React.Ref<React.ElementRef<
-    typeof SelectPrimitive.ScrollUpButton
-  > | null>
+  ref?: React.Ref<React.ElementRef<typeof SelectPrimitive.ScrollUpButton> | null>
 }) => (
   <SelectPrimitive.ScrollUpButton
     ref={ref}
-    className={cn(
-      'cursor-menu flex items-center justify-center py-1',
-      className,
-    )}
+    className={cn('cursor-menu flex items-center justify-center py-1', className)}
     {...props}
   >
     <i className="i-mingcute-up-line size-3.5" />
@@ -71,23 +66,17 @@ const SelectScrollDownButton = ({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton> & {
-  ref?: React.Ref<React.ElementRef<
-    typeof SelectPrimitive.ScrollDownButton
-  > | null>
+  ref?: React.Ref<React.ElementRef<typeof SelectPrimitive.ScrollDownButton> | null>
 }) => (
   <SelectPrimitive.ScrollDownButton
     ref={ref}
-    className={cn(
-      'cursor-menu flex items-center justify-center py-1',
-      className,
-    )}
+    className={cn('cursor-menu flex items-center justify-center py-1', className)}
     {...props}
   >
     <i className="i-mingcute-down-line size-3.5" />
   </SelectPrimitive.ScrollDownButton>
 )
-SelectScrollDownButton.displayName =
-  SelectPrimitive.ScrollDownButton.displayName
+SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName
 
 const SelectContent = ({
   ref,
@@ -138,11 +127,7 @@ const SelectLabel = ({
 }) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn(
-      'text-text px-2 py-1.5 font-semibold',
-      inset && 'pl-8',
-      className,
-    )}
+    className={cn('text-text px-2 py-1.5 font-semibold', inset && 'pl-8', className)}
     {...props}
   />
 )
@@ -185,13 +170,7 @@ const SelectSeparator = ({
   ...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator> & {
   ref?: React.Ref<React.ElementRef<typeof SelectPrimitive.Separator> | null>
-}) => (
-  <SelectPrimitive.Separator
-    className="bg-border mx-2 my-1 h-px w-full"
-    ref={ref}
-    {...props}
-  />
-)
+}) => <SelectPrimitive.Separator className="bg-border mx-2 my-1 h-px w-full" ref={ref} {...props} />
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName
 
 export {

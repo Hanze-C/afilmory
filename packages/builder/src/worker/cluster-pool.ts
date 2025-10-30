@@ -83,10 +83,7 @@ export class ClusterPool<T> extends EventEmitter {
   private taskQueue: Array<{ taskIndex: number }> = []
   private workers = new Map<number, Worker>()
   private workerStats = new Map<number, WorkerStats>()
-  private pendingTasks = new Map<
-    string,
-    { resolve: (value: T) => void; reject: (error: Error) => void }
-  >()
+  private pendingTasks = new Map<string, { resolve: (value: T) => void; reject: (error: Error) => void }>()
   private results: T[] = []
   private completedTasks = 0
   private isShuttingDown = false
@@ -111,9 +108,7 @@ export class ClusterPool<T> extends EventEmitter {
   }
 
   async execute(): Promise<T[]> {
-    this.logger.main.info(
-      `开始集群模式处理任务，进程数：${this.concurrency}，总任务数：${this.totalTasks}`,
-    )
+    this.logger.main.info(`开始集群模式处理任务，进程数：${this.concurrency}，总任务数：${this.totalTasks}`)
 
     // 准备任务队列 - 只包含 taskIndex
     for (let i = 0; i < this.totalTasks; i++) {
@@ -190,22 +185,14 @@ export class ClusterPool<T> extends EventEmitter {
       }, 10_000)
 
       worker.on('online', () => {
-        workerLogger.start(
-          `Worker ${workerId} 进程启动 (PID: ${worker.process?.pid})`,
-        )
+        workerLogger.start(`Worker ${workerId} 进程启动 (PID: ${worker.process?.pid})`)
         clearTimeout(startupTimer)
         resolve()
       })
 
       worker.on(
         'message',
-        (
-          message:
-            | TaskResult
-            | BatchTaskResult
-            | WorkerReadyMessage
-            | { type: 'init-complete'; workerId: number },
-        ) => {
+        (message: TaskResult | BatchTaskResult | WorkerReadyMessage | { type: 'init-complete'; workerId: number }) => {
           switch (message.type) {
             case 'ready':
             case 'pong': {
@@ -237,9 +224,7 @@ export class ClusterPool<T> extends EventEmitter {
 
       worker.on('exit', (code, signal) => {
         if (!this.isShuttingDown) {
-          workerLogger.error(
-            `Worker ${workerId} 意外退出 (code: ${code}, signal: ${signal})`,
-          )
+          workerLogger.error(`Worker ${workerId} 意外退出 (code: ${code}, signal: ${signal})`)
           // 将该 worker 未完成的任务重新入队
           const pending = this.workerPendingTasks.get(workerId)
           const requeue: number[] = pending ? Array.from(pending.values()) : []
@@ -269,10 +254,7 @@ export class ClusterPool<T> extends EventEmitter {
     })
   }
 
-  private handleWorkerReady(
-    workerId: number,
-    _message: WorkerReadyMessage,
-  ): void {
+  private handleWorkerReady(workerId: number, _message: WorkerReadyMessage): void {
     const stats = this.workerStats.get(workerId)
     const worker = this.workers.get(workerId)
     const workerLogger = this.logger.worker(workerId)
@@ -334,13 +316,7 @@ export class ClusterPool<T> extends EventEmitter {
     const currentTaskCount = this.workerTaskCounts.get(workerId) || 0
 
     // 确保 worker 已经完成初始化（包含在 initializedWorkers 中且 isReady 为 true）
-    if (
-      !worker ||
-      !stats ||
-      !stats.isReady ||
-      !this.initializedWorkers.has(workerId)
-    )
-      return
+    if (!worker || !stats || !stats.isReady || !this.initializedWorkers.has(workerId)) return
 
     // 如果当前 worker 的任务数已达到并发限制，则不分配新任务
     if (currentTaskCount >= this.workerConcurrency) return
@@ -353,8 +329,7 @@ export class ClusterPool<T> extends EventEmitter {
 
     // 分配一批任务
     const tasks: Array<{ taskId: string; taskIndex: number }> = []
-    const workerPending =
-      this.workerPendingTasks.get(workerId) || new Map<string, number>()
+    const workerPending = this.workerPendingTasks.get(workerId) || new Map<string, number>()
     this.workerPendingTasks.set(workerId, workerPending)
 
     for (let i = 0; i < tasksToAssign; i++) {
@@ -400,10 +375,7 @@ export class ClusterPool<T> extends EventEmitter {
     )
   }
 
-  private handleWorkerBatchResult(
-    workerId: number,
-    message: BatchTaskResult,
-  ): void {
+  private handleWorkerBatchResult(workerId: number, message: BatchTaskResult): void {
     const stats = this.workerStats.get(workerId)
     const workerLogger = this.logger.worker(workerId)
     const currentTaskCount = this.workerTaskCounts.get(workerId) || 0
@@ -435,10 +407,7 @@ export class ClusterPool<T> extends EventEmitter {
 
         this.completedTasks++
       } else if (taskResult.type === 'error') {
-        workerLogger.error(
-          `任务执行失败：${taskResult.taskId}`,
-          taskResult.error,
-        )
+        workerLogger.error(`任务执行失败：${taskResult.taskId}`, taskResult.error)
         pendingTask.reject(new Error(taskResult.error))
       }
     }

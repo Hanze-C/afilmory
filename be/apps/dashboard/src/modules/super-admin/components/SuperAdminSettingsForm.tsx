@@ -1,24 +1,11 @@
 import { Button } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import {
-  GlassPanel,
-  SchemaFormRenderer,
-} from '../../schema-form/SchemaFormRenderer'
+import { GlassPanel, SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
 import type { SchemaFormValue } from '../../schema-form/types'
-import {
-  useSuperAdminSettingsQuery,
-  useUpdateSuperAdminSettingsMutation,
-} from '../hooks'
+import { useSuperAdminSettingsQuery, useUpdateSuperAdminSettingsMutation } from '../hooks'
 import type {
   SuperAdminSettingField,
   SuperAdminSettings,
@@ -28,24 +15,15 @@ import type {
 
 type FormState = Record<SuperAdminSettingField, SchemaFormValue>
 
-const BOOLEAN_FIELDS = new Set<SuperAdminSettingField>([
-  'allowRegistration',
-  'localProviderEnabled',
-])
+const BOOLEAN_FIELDS = new Set<SuperAdminSettingField>(['allowRegistration', 'localProviderEnabled'])
 
 const toFormState = (settings: SuperAdminSettings): FormState => ({
   allowRegistration: settings.allowRegistration,
   localProviderEnabled: settings.localProviderEnabled,
-  maxRegistrableUsers:
-    settings.maxRegistrableUsers === null
-      ? ''
-      : String(settings.maxRegistrableUsers),
+  maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
 })
 
-const areFormStatesEqual = (
-  left: FormState | null,
-  right: FormState | null,
-): boolean => {
+const areFormStatesEqual = (left: FormState | null, right: FormState | null): boolean => {
   if (left === right) {
     return true
   }
@@ -94,9 +72,7 @@ const coerceMaxUsers = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const normalizeServerSettings = (
-  input: PossiblySnakeCaseSettings | null,
-): SuperAdminSettings | null => {
+const normalizeServerSettings = (input: PossiblySnakeCaseSettings | null): SuperAdminSettings | null => {
   if (!input) {
     return null
   }
@@ -109,11 +85,7 @@ const normalizeServerSettings = (
     }
   }
 
-  if (
-    'allow_registration' in input ||
-    'local_provider_enabled' in input ||
-    'max_registrable_users' in input
-  ) {
+  if ('allow_registration' in input || 'local_provider_enabled' in input || 'max_registrable_users' in input) {
     return {
       allowRegistration: input.allow_registration ?? false,
       localProviderEnabled: input.local_provider_enabled ?? false,
@@ -124,9 +96,7 @@ const normalizeServerSettings = (
   return null
 }
 
-const extractServerValues = (
-  payload: SuperAdminSettingsResponse,
-): SuperAdminSettings | null => {
+const extractServerValues = (payload: SuperAdminSettingsResponse): SuperAdminSettings | null => {
   if ('values' in payload) {
     return normalizeServerSettings(payload.values ?? null)
   }
@@ -184,35 +154,32 @@ export const SuperAdminSettingsForm = () => {
     return !areFormStatesEqual(formState, initialState)
   }, [formState, initialState])
 
-  const handleChange = useCallback(
-    (key: SuperAdminSettingField, value: SchemaFormValue) => {
-      setFormState((prev) => {
-        if (!prev) {
-          return prev
-        }
+  const handleChange = useCallback((key: SuperAdminSettingField, value: SchemaFormValue) => {
+    setFormState((prev) => {
+      if (!prev) {
+        return prev
+      }
 
-        if (BOOLEAN_FIELDS.has(key)) {
-          return {
-            ...prev,
-            [key]: Boolean(value),
-          }
-        }
-
-        if (key === 'maxRegistrableUsers') {
-          return {
-            ...prev,
-            [key]: normalizeMaxUsers(value),
-          }
-        }
-
+      if (BOOLEAN_FIELDS.has(key)) {
         return {
           ...prev,
-          [key]: value,
+          [key]: Boolean(value),
         }
-      })
-    },
-    [],
-  )
+      }
+
+      if (key === 'maxRegistrableUsers') {
+        return {
+          ...prev,
+          [key]: normalizeMaxUsers(value),
+        }
+      }
+
+      return {
+        ...prev,
+        [key]: value,
+      }
+    })
+  }, [])
 
   const buildPayload = (): UpdateSuperAdminSettingsPayload | null => {
     if (!formState || !initialState) {
@@ -256,10 +223,7 @@ export const SuperAdminSettingsForm = () => {
 
   const mutationMessage = useMemo(() => {
     if (updateMutation.isError) {
-      const reason =
-        updateMutation.error instanceof Error
-          ? updateMutation.error.message
-          : '保存失败'
+      const reason = updateMutation.error instanceof Error ? updateMutation.error.message : '保存失败'
       return `保存失败：${reason}`
     }
 
@@ -276,21 +240,13 @@ export const SuperAdminSettingsForm = () => {
     }
 
     return '所有设置已同步'
-  }, [
-    hasChanges,
-    updateMutation.error,
-    updateMutation.isError,
-    updateMutation.isPending,
-    updateMutation.isSuccess,
-  ])
+  }, [hasChanges, updateMutation.error, updateMutation.isError, updateMutation.isPending, updateMutation.isSuccess])
 
   if (isError) {
     return (
       <GlassPanel className="p-6">
         <div className="text-red text-sm">
-          <span>
-            {`无法加载超级管理员设置：${error instanceof Error ? error.message : '未知错误'}`}
-          </span>
+          <span>{`无法加载超级管理员设置：${error instanceof Error ? error.message : '未知错误'}`}</span>
         </div>
       </GlassPanel>
     )
@@ -302,10 +258,7 @@ export const SuperAdminSettingsForm = () => {
         <div className="bg-fill/40 h-6 w-1/3 animate-pulse rounded-full" />
         <div className="space-y-4">
           {['skeleton-1', 'skeleton-2', 'skeleton-3'].map((key) => (
-            <div
-              key={key}
-              className="bg-fill/30 h-20 animate-pulse rounded-xl"
-            />
+            <div key={key} className="bg-fill/30 h-20 animate-pulse rounded-xl" />
           ))}
         </div>
       </GlassPanel>
@@ -315,17 +268,11 @@ export const SuperAdminSettingsForm = () => {
   const { stats } = data
   const { registrationsRemaining, totalUsers } = stats
   const remainingLabel = (() => {
-    if (
-      registrationsRemaining === null ||
-      registrationsRemaining === undefined
-    ) {
+    if (registrationsRemaining === null || registrationsRemaining === undefined) {
       return '无限制'
     }
 
-    if (
-      typeof registrationsRemaining === 'number' &&
-      Number.isFinite(registrationsRemaining)
-    ) {
+    if (typeof registrationsRemaining === 'number' && Number.isFinite(registrationsRemaining)) {
       return String(registrationsRemaining)
     }
 
@@ -340,28 +287,18 @@ export const SuperAdminSettingsForm = () => {
       transition={Spring.presets.smooth}
       className="space-y-6"
     >
-      <SchemaFormRenderer
-        schema={data.schema}
-        values={formState}
-        onChange={handleChange}
-      />
+      <SchemaFormRenderer schema={data.schema} values={formState} onChange={handleChange} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <GlassPanel className="p-6">
           <div className="space-y-1">
-            <p className="text-text-tertiary text-xs tracking-wide uppercase">
-              当前用户总数
-            </p>
-            <p className="text-text text-3xl font-semibold">
-              {typeof totalUsers === 'number' ? totalUsers : 0}
-            </p>
+            <p className="text-text-tertiary text-xs tracking-wide uppercase">当前用户总数</p>
+            <p className="text-text text-3xl font-semibold">{typeof totalUsers === 'number' ? totalUsers : 0}</p>
           </div>
         </GlassPanel>
         <GlassPanel className="p-6">
           <div className="space-y-1">
-            <p className="text-text-tertiary text-xs tracking-wide uppercase">
-              剩余可注册名额
-            </p>
+            <p className="text-text-tertiary text-xs tracking-wide uppercase">剩余可注册名额</p>
             <p className="text-text text-3xl font-semibold">{remainingLabel}</p>
           </div>
         </GlassPanel>

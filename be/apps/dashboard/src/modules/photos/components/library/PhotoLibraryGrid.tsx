@@ -31,10 +31,8 @@ const PhotoGridItem = ({
   isDeleting?: boolean
 }) => {
   const manifest = asset.manifest?.data
-  const previewUrl =
-    manifest?.thumbnailUrl ?? manifest?.originalUrl ?? asset.publicUrl
-  const deviceLabel =
-    manifest?.exif?.Model || manifest?.exif?.Make || '未知设备'
+  const previewUrl = manifest?.thumbnailUrl ?? manifest?.originalUrl ?? asset.publicUrl
+  const deviceLabel = manifest?.exif?.Model || manifest?.exif?.Make || '未知设备'
   const updatedAtLabel = new Date(asset.updatedAt).toLocaleString()
   const fileSizeLabel =
     asset.size !== null && asset.size !== undefined
@@ -65,18 +63,9 @@ const PhotoGridItem = ({
       {previewUrl ? (
         <div
           className="relative w-full"
-          style={
-            manifest?.aspectRatio
-              ? { aspectRatio: manifest.aspectRatio }
-              : undefined
-          }
+          style={manifest?.aspectRatio ? { aspectRatio: manifest.aspectRatio } : undefined}
         >
-          {manifest?.thumbHash && (
-            <Thumbhash
-              thumbHash={manifest.thumbHash}
-              className="absolute inset-0"
-            />
-          )}
+          {manifest?.thumbHash && <Thumbhash thumbHash={manifest.thumbHash} className="absolute inset-0" />}
           <img
             src={previewUrl}
             alt={manifest?.id ?? asset.photoId}
@@ -90,17 +79,10 @@ const PhotoGridItem = ({
       ) : (
         <div
           className="relative w-full"
-          style={
-            manifest?.aspectRatio
-              ? { aspectRatio: manifest.aspectRatio }
-              : undefined
-          }
+          style={manifest?.aspectRatio ? { aspectRatio: manifest.aspectRatio } : undefined}
         >
           {manifest?.thumbHash ? (
-            <Thumbhash
-              thumbHash={manifest.thumbHash}
-              className="absolute inset-0"
-            />
+            <Thumbhash thumbHash={manifest.thumbHash} className="absolute inset-0" />
           ) : (
             <div className="bg-background-secondary/80 text-text-tertiary flex h-48 w-full items-center justify-center">
               无法预览
@@ -111,9 +93,7 @@ const PhotoGridItem = ({
 
       <div className="bg-background/5 absolute inset-0 flex flex-col justify-between opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100">
         <div className="flex items-start justify-between p-3 text-xs text-white">
-          <div className="max-w-[70%] truncate font-medium">
-            {manifest?.title ?? manifest?.id ?? asset.photoId}
-          </div>
+          <div className="max-w-[70%] truncate font-medium">{manifest?.title ?? manifest?.id ?? asset.photoId}</div>
           <button
             type="button"
             className={clsxm(
@@ -122,10 +102,7 @@ const PhotoGridItem = ({
             )}
             onClick={() => onToggleSelect(asset.id)}
           >
-            <DynamicIcon
-              name={isSelected ? 'check' : 'square'}
-              className="mr-1 h-3 w-3"
-            />
+            <DynamicIcon name={isSelected ? 'check' : 'square'} className="mr-1 h-3 w-3" />
             <span>{isSelected ? '已选择' : '选择'}</span>
           </button>
         </div>
@@ -198,15 +175,13 @@ export const PhotoLibraryGrid = ({
     return (
       <div className="bg-background-tertiary relative overflow-hidden rounded-xl p-8 text-center">
         <p className="text-text text-base font-semibold">当前没有图片资源</p>
-        <p className="text-text-tertiary mt-2 text-sm">
-          使用右上角的“上传图片”按钮可以为图库添加新的照片。
-        </p>
+        <p className="text-text-tertiary mt-2 text-sm">使用右上角的“上传图片”按钮可以为图库添加新的照片。</p>
       </div>
     )
   }
 
   return (
-    <div className="p-2 mx-[calc(calc((3rem+100vw)-(var(--container-7xl)))*-1/2)]">
+    <div className="mx-[calc(calc((3rem+100vw)-(var(--container-7xl)))*-1/2)] p-2">
       <Masonry
         items={assets}
         columnGutter={8}

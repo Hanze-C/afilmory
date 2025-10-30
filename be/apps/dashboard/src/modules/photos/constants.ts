@@ -1,9 +1,6 @@
 import type { PhotoSyncAction, PhotoSyncConflictType } from './types'
 
-export const PHOTO_CONFLICT_TYPE_CONFIG: Record<
-  PhotoSyncConflictType,
-  { label: string; description: string }
-> = {
+export const PHOTO_CONFLICT_TYPE_CONFIG: Record<PhotoSyncConflictType, { label: string; description: string }> = {
   'missing-in-storage': {
     label: '存储缺失',
     description: '数据库存在记录，但对应的存储对象已无法访问。',
@@ -18,19 +15,14 @@ export const PHOTO_CONFLICT_TYPE_CONFIG: Record<
   },
 }
 
-export const getConflictTypeLabel = (
-  type: PhotoSyncConflictType | null | undefined,
-): string => {
+export const getConflictTypeLabel = (type: PhotoSyncConflictType | null | undefined): string => {
   if (!type) {
     return '冲突'
   }
   return PHOTO_CONFLICT_TYPE_CONFIG[type]?.label ?? '冲突'
 }
 
-export const PHOTO_ACTION_TYPE_CONFIG: Record<
-  PhotoSyncAction['type'],
-  { label: string; badgeClass: string }
-> = {
+export const PHOTO_ACTION_TYPE_CONFIG: Record<PhotoSyncAction['type'], { label: string; badgeClass: string }> = {
   insert: { label: '新增', badgeClass: 'bg-emerald-500/10 text-emerald-400' },
   update: { label: '更新', badgeClass: 'bg-sky-500/10 text-sky-400' },
   delete: { label: '删除', badgeClass: 'bg-rose-500/10 text-rose-400' },

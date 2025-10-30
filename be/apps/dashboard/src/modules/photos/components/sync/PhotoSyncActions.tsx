@@ -6,11 +6,7 @@ import { toast } from 'sonner'
 import { useMainPageLayout } from '~/components/layouts/MainPageLayout'
 
 import { runPhotoSync } from '../../api'
-import type {
-  PhotoSyncProgressEvent,
-  PhotoSyncResult,
-  RunPhotoSyncPayload,
-} from '../../types'
+import type { PhotoSyncProgressEvent, PhotoSyncResult, RunPhotoSyncPayload } from '../../types'
 
 type PhotoSyncActionsProps = {
   onCompleted: (result: PhotoSyncResult, context: { dryRun: boolean }) => void
@@ -18,15 +14,9 @@ type PhotoSyncActionsProps = {
   onError?: (error: Error) => void
 }
 
-export const PhotoSyncActions = ({
-  onCompleted,
-  onProgress,
-  onError,
-}: PhotoSyncActionsProps) => {
+export const PhotoSyncActions = ({ onCompleted, onProgress, onError }: PhotoSyncActionsProps) => {
   const { setHeaderActionState } = useMainPageLayout()
-  const [pendingMode, setPendingMode] = useState<'dry-run' | 'apply' | null>(
-    null,
-  )
+  const [pendingMode, setPendingMode] = useState<'dry-run' | 'apply' | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const mutation = useMutation({
@@ -62,10 +52,9 @@ export const PhotoSyncActions = ({
       })
     },
     onError: (error) => {
-      const normalizedError =
-        error instanceof Error ? error : new Error('照片同步失败，请稍后重试。')
+      const normalizedError = error instanceof Error ? error : new Error('照片同步失败，请稍后重试。')
 
-      const {message} = normalizedError
+      const { message } = normalizedError
       toast.error('同步失败', { description: message })
       onError?.(normalizedError)
     },

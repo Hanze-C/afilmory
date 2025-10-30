@@ -1,11 +1,5 @@
 // 导出接口
-export type {
-  ProgressCallback,
-  ScanProgress,
-  StorageConfig,
-  StorageObject,
-  StorageProvider,
-} from './interfaces.js'
+export type { ProgressCallback, ScanProgress, StorageConfig, StorageObject, StorageProvider } from './interfaces.js'
 
 // 导出工厂类
 export type { StorageProviderFactory } from './factory.js'

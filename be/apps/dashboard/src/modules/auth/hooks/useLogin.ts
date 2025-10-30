@@ -4,10 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { useSetAuthUser } from '~/atoms/auth'
-import {
-  AUTH_SESSION_QUERY_KEY,
-  fetchSession,
-} from '~/modules/auth/api/session'
+import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
 
 import { signIn } from '../auth-client'
 
@@ -44,8 +41,7 @@ export const useLogin = () => {
       queryClient.setQueryData(AUTH_SESSION_QUERY_KEY, session)
       setAuthUser(session.user)
       setErrorMessage(null)
-      const destination =
-        session.user.role === 'superadmin' ? '/superadmin/settings' : '/'
+      const destination = session.user.role === 'superadmin' ? '/superadmin/settings' : '/'
       navigate(destination, { replace: true })
     },
     onError: (error: Error) => {
@@ -65,11 +61,7 @@ export const useLogin = () => {
             break
           }
           default: {
-            setErrorMessage(
-              (error.data as any)?.message ||
-                error.message ||
-                'Login failed. Please try again',
-            )
+            setErrorMessage((error.data as any)?.message || error.message || 'Login failed. Please try again')
           }
         }
       } else {

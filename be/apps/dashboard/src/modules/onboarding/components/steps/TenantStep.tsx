@@ -11,13 +11,7 @@ type TenantStepProps = {
   onDomainChange: (value: string) => void
 }
 
-export const TenantStep: FC<TenantStepProps> = ({
-  tenant,
-  errors,
-  onNameChange,
-  onSlugChange,
-  onDomainChange,
-}) => (
+export const TenantStep: FC<TenantStepProps> = ({ tenant, errors, onNameChange, onSlugChange, onDomainChange }) => (
   <form className="space-y-6" onSubmit={(event) => event.preventDefault()}>
     <div className="grid gap-5 md:grid-cols-2">
       <div className="space-y-2">
@@ -61,8 +55,7 @@ export const TenantStep: FC<TenantStepProps> = ({
       />
       <FormError>{errors['tenant.domain']}</FormError>
       <p className="text-text-tertiary text-xs">
-        Domains enable automatic routing for tenant-specific dashboards.
-        Configure DNS separately after initialization.
+        Domains enable automatic routing for tenant-specific dashboards. Configure DNS separately after initialization.
       </p>
     </div>
   </form>

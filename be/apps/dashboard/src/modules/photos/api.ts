@@ -134,9 +134,7 @@ export const runPhotoSync = async (
   return camelCaseKeys<PhotoSyncResult>(finalResult)
 }
 
-export const listPhotoSyncConflicts = async (): Promise<
-  PhotoSyncConflict[]
-> => {
+export const listPhotoSyncConflicts = async (): Promise<PhotoSyncConflict[]> => {
   const conflicts = await coreApi<PhotoSyncConflict[]>('/data-sync/conflicts')
   return camelCaseKeys<PhotoSyncConflict[]>(conflicts)
 }
@@ -145,13 +143,10 @@ export const resolvePhotoSyncConflict = async (
   id: string,
   payload: { strategy: PhotoSyncResolution; dryRun?: boolean },
 ): Promise<PhotoSyncAction> => {
-  const result = await coreApi<PhotoSyncAction>(
-    `/data-sync/conflicts/${id}/resolve`,
-    {
-      method: 'POST',
-      body: payload,
-    },
-  )
+  const result = await coreApi<PhotoSyncAction>(`/data-sync/conflicts/${id}/resolve`, {
+    method: 'POST',
+    body: payload,
+  })
 
   return camelCaseKeys<PhotoSyncAction>(result)
 }
@@ -189,22 +184,17 @@ export const uploadPhotoAssets = async (
     formData.append('files', file)
   }
 
-  const response = await coreApi<{ assets: PhotoAssetListItem[] }>(
-    '/photos/assets/upload',
-    {
-      method: 'POST',
-      body: formData,
-    },
-  )
+  const response = await coreApi<{ assets: PhotoAssetListItem[] }>('/photos/assets/upload', {
+    method: 'POST',
+    body: formData,
+  })
 
   const data = camelCaseKeys<{ assets: PhotoAssetListItem[] }>(response)
 
   return data.assets
 }
 
-export const getPhotoStorageUrl = async (
-  storageKey: string,
-): Promise<string> => {
+export const getPhotoStorageUrl = async (storageKey: string): Promise<string> => {
   const result = await coreApi<{ url: string }>('/photos/storage-url', {
     method: 'GET',
     query: { key: storageKey },

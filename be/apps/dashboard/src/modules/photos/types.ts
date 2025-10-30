@@ -1,16 +1,8 @@
 import type { PhotoManifestItem } from '@afilmory/builder'
 
-export type PhotoSyncActionType =
-  | 'insert'
-  | 'update'
-  | 'delete'
-  | 'conflict'
-  | 'noop'
+export type PhotoSyncActionType = 'insert' | 'update' | 'delete' | 'conflict' | 'noop'
 
-export type PhotoSyncResolution =
-  | 'prefer-storage'
-  | 'prefer-database'
-  | undefined
+export type PhotoSyncResolution = 'prefer-storage' | 'prefer-database' | undefined
 
 export interface PhotoSyncSnapshot {
   size: number | null
@@ -51,10 +43,7 @@ export interface PhotoSyncResult {
   actions: PhotoSyncAction[]
 }
 
-export type PhotoSyncConflictType =
-  | 'missing-in-storage'
-  | 'metadata-mismatch'
-  | 'photo-id-conflict'
+export type PhotoSyncConflictType = 'missing-in-storage' | 'metadata-mismatch' | 'photo-id-conflict'
 
 export interface PhotoSyncConflictPayload {
   type: PhotoSyncConflictType
@@ -80,11 +69,7 @@ export interface RunPhotoSyncPayload {
   dryRun?: boolean
 }
 
-export type PhotoSyncProgressStage =
-  | 'missing-in-db'
-  | 'orphan-in-db'
-  | 'metadata-conflicts'
-  | 'status-reconciliation'
+export type PhotoSyncProgressStage = 'missing-in-db' | 'orphan-in-db' | 'metadata-conflicts' | 'status-reconciliation'
 
 export interface PhotoSyncStageTotals {
   'missing-in-db': number

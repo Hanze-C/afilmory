@@ -5,10 +5,7 @@ import { MainPageLayout } from '~/components/layouts/MainPageLayout'
 
 export const Component = () => {
   return (
-    <MainPageLayout
-      title="Dashboard"
-      description="Welcome to your photo management dashboard"
-    >
+    <MainPageLayout title="Dashboard" description="Welcome to your photo management dashboard">
       <div className="space-y-6">
         {/* Stats Cards - Sharp Edges */}
         <div className="grid gap-4 md:grid-cols-3">
@@ -30,15 +27,9 @@ export const Component = () => {
               <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
               <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-gradient-to-b from-transparent to-transparent" />
 
-              <div className="text-text-secondary text-[11px] font-medium">
-                {stat.label}
-              </div>
-              <div className="text-text mt-2 text-2xl font-semibold">
-                {stat.value}
-              </div>
-              <div className="text-accent mt-1 text-[11px] font-medium">
-                {stat.trend} from last month
-              </div>
+              <div className="text-text-secondary text-[11px] font-medium">{stat.label}</div>
+              <div className="text-text mt-2 text-2xl font-semibold">{stat.value}</div>
+              <div className="text-accent mt-1 text-[11px] font-medium">{stat.trend} from last month</div>
             </m.div>
           ))}
         </div>
@@ -66,9 +57,7 @@ export const Component = () => {
                 className="bg-fill/10 hover:bg-fill/20 flex items-center justify-between px-3 py-2 transition-colors"
               >
                 <span className="text-text text-[13px]">{activity.action}</span>
-                <span className="text-text-tertiary text-[11px]">
-                  {activity.time}
-                </span>
+                <span className="text-text-tertiary text-[11px]">{activity.time}</span>
               </div>
             ))}
           </div>

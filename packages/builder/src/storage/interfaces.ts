@@ -41,9 +41,7 @@ export interface StorageProvider {
    * @param progressCallback 可选的进度回调函数
    * @returns 所有文件对象数组
    */
-  listAllFiles: (
-    progressCallback?: ProgressCallback,
-  ) => Promise<StorageObject[]>
+  listAllFiles: (progressCallback?: ProgressCallback) => Promise<StorageObject[]>
 
   /**
    * 生成文件的公共访问 URL
@@ -70,11 +68,7 @@ export interface StorageProvider {
    * @param data 文件数据
    * @param options 上传选项
    */
-  uploadFile: (
-    key: string,
-    data: Buffer,
-    options?: StorageUploadOptions,
-  ) => Promise<StorageObject>
+  uploadFile: (key: string, data: Buffer, options?: StorageUploadOptions) => Promise<StorageObject>
 }
 
 export type S3Config = {

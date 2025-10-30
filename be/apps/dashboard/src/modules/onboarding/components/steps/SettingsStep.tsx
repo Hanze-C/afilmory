@@ -23,12 +23,7 @@ type SettingsStepProps = {
   onChange: (key: OnboardingSettingKey, value: string) => void
 }
 
-export const SettingsStep: FC<SettingsStepProps> = ({
-  settingsState,
-  errors,
-  onToggle,
-  onChange,
-}) => {
+export const SettingsStep: FC<SettingsStepProps> = ({ settingsState, errors, onToggle, onChange }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set([ONBOARDING_SETTING_SECTIONS[0]?.id]),
   )
@@ -49,9 +44,7 @@ export const SettingsStep: FC<SettingsStepProps> = ({
     <div className="-m-10 space-y-3">
       {ONBOARDING_SETTING_SECTIONS.map((section) => {
         const isOpen = expandedSections.has(section.id)
-        const enabledCount = section.fields.filter(
-          (field) => settingsState[field.key].enabled,
-        ).length
+        const enabledCount = section.fields.filter((field) => settingsState[field.key].enabled).length
 
         return (
           <Collapsible
@@ -63,18 +56,14 @@ export const SettingsStep: FC<SettingsStepProps> = ({
             <CollapsibleTrigger className={'hover:bg-fill/30 px-6 py-4'}>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-text text-sm font-semibold">
-                    {section.title}
-                  </h3>
+                  <h3 className="text-text text-sm font-semibold">{section.title}</h3>
                   {enabledCount > 0 && (
                     <span className="bg-accent/10 text-accent rounded-full px-2 py-0.5 text-xs font-medium">
                       {enabledCount} enabled
                     </span>
                   )}
                 </div>
-                <p className="text-text-tertiary mt-1 text-sm">
-                  {section.description}
-                </p>
+                <p className="text-text-tertiary mt-1 text-sm">{section.description}</p>
               </div>
               <CollapsibleIcon className="text-text-tertiary ml-4" />
             </CollapsibleTrigger>
@@ -99,16 +88,12 @@ export const SettingsStep: FC<SettingsStepProps> = ({
                           >
                             {field.label}
                           </label>
-                          <p className="text-text-tertiary mt-1 text-sm">
-                            {field.description}
-                          </p>
+                          <p className="text-text-tertiary mt-1 text-sm">{field.description}</p>
                         </div>
                         <Switch
                           id={`switch-${field.key}`}
                           checked={state.enabled}
-                          onCheckedChange={(checked) =>
-                            onToggle(field.key, checked)
-                          }
+                          onCheckedChange={(checked) => onToggle(field.key, checked)}
                           className="shrink-0"
                         />
                       </div>
@@ -124,9 +109,7 @@ export const SettingsStep: FC<SettingsStepProps> = ({
                             {field.multiline ? (
                               <Textarea
                                 value={state.value}
-                                onInput={(event) =>
-                                  onChange(field.key, event.currentTarget.value)
-                                }
+                                onInput={(event) => onChange(field.key, event.currentTarget.value)}
                                 rows={3}
                                 placeholder={field.placeholder}
                                 error={hasError}
@@ -135,20 +118,14 @@ export const SettingsStep: FC<SettingsStepProps> = ({
                               <Input
                                 type={field.sensitive ? 'password' : 'text'}
                                 value={state.value}
-                                onInput={(event) =>
-                                  onChange(field.key, event.currentTarget.value)
-                                }
+                                onInput={(event) => onChange(field.key, event.currentTarget.value)}
                                 placeholder={field.placeholder}
                                 error={hasError}
                                 autoComplete="off"
                               />
                             )}
                             <FormError>{errors[errorKey]}</FormError>
-                            {field.helper && (
-                              <p className="text-text-tertiary text-[11px]">
-                                {field.helper}
-                              </p>
-                            )}
+                            {field.helper && <p className="text-text-tertiary text-[11px]">{field.helper}</p>}
                           </div>
                         </m.div>
                       )}

@@ -16,14 +16,9 @@ export const getSettings = async (keys: ReadonlyArray<string>) => {
   })
 }
 
-export const updateSettings = async (
-  entries: ReadonlyArray<SettingEntryInput>,
-) => {
-  return await coreApi<{ updated: ReadonlyArray<SettingEntryInput> }>(
-    '/settings',
-    {
-      method: 'POST',
-      body: { entries },
-    },
-  )
+export const updateSettings = async (entries: ReadonlyArray<SettingEntryInput>) => {
+  return await coreApi<{ updated: ReadonlyArray<SettingEntryInput> }>('/settings', {
+    method: 'POST',
+    body: { entries },
+  })
 }

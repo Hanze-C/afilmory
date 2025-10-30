@@ -3,16 +3,10 @@ import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { startTransition, useEffect, useState } from 'react'
 
-import {
-  MainPageLayout,
-  useMainPageLayout,
-} from '~/components/layouts/MainPageLayout'
+import { MainPageLayout, useMainPageLayout } from '~/components/layouts/MainPageLayout'
 import { useBlock } from '~/hooks/useBlock'
 
-import {
-  useStorageProvidersQuery,
-  useUpdateStorageProvidersMutation,
-} from '../hooks'
+import { useStorageProvidersQuery, useUpdateStorageProvidersMutation } from '../hooks'
 import type { StorageProvider } from '../types'
 import { createEmptyProvider, reorderProvidersByActive } from '../utils'
 import { ProviderCard } from './ProviderCard'
@@ -30,8 +24,7 @@ export const StorageProvidersManager = () => {
   useBlock({
     when: isDirty,
     title: '离开前请保存设置',
-    description:
-      '当前存储提供商设置尚未保存，离开页面会丢失这些更改，确定要继续吗？',
+    description: '当前存储提供商设置尚未保存，离开页面会丢失这些更改，确定要继续吗？',
     confirmText: '继续离开',
     cancelText: '留在此页',
   })
@@ -42,9 +35,7 @@ export const StorageProvidersManager = () => {
     }
 
     const initialProviders = data.providers
-    const activeId =
-      data.activeProviderId ??
-      (initialProviders.length > 0 ? initialProviders[0].id : null)
+    const activeId = data.activeProviderId ?? (initialProviders.length > 0 ? initialProviders[0].id : null)
 
     startTransition(() => {
       setProviders(initialProviders)
@@ -75,9 +66,7 @@ export const StorageProvidersManager = () => {
     setProviders((prev) => {
       const exists = prev.some((p) => p.id === updatedProvider.id)
       if (exists) {
-        return prev.map((p) =>
-          p.id === updatedProvider.id ? updatedProvider : p,
-        )
+        return prev.map((p) => (p.id === updatedProvider.id ? updatedProvider : p))
       }
       // New provider
       const result = [...prev, updatedProvider]
@@ -97,10 +86,7 @@ export const StorageProvidersManager = () => {
 
   const handleSave = () => {
     const resolvedActiveId =
-      activeProviderId &&
-      providers.some((provider) => provider.id === activeProviderId)
-        ? activeProviderId
-        : null
+      activeProviderId && providers.some((provider) => provider.id === activeProviderId) ? activeProviderId : null
 
     updateMutation.mutate(
       {
@@ -115,22 +101,14 @@ export const StorageProvidersManager = () => {
     )
   }
 
-  const disableSave =
-    isLoading ||
-    isError ||
-    !isDirty ||
-    updateMutation.isPending ||
-    providers.length === 0
+  const disableSave = isLoading || isError || !isDirty || updateMutation.isPending || providers.length === 0
   useEffect(() => {
     setHeaderActionState((prev) => {
       const nextState = {
         disabled: disableSave,
         loading: updateMutation.isPending,
       }
-      return prev.disabled === nextState.disabled &&
-        prev.loading === nextState.loading
-        ? prev
-        : nextState
+      return prev.disabled === nextState.disabled && prev.loading === nextState.loading ? prev : nextState
     })
 
     return () => {
@@ -140,12 +118,7 @@ export const StorageProvidersManager = () => {
 
   const headerActionPortal = (
     <MainPageLayout.Actions>
-      <Button
-        type="button"
-        onClick={handleAddProvider}
-        size="sm"
-        variant="secondary"
-      >
+      <Button type="button" onClick={handleAddProvider} size="sm" variant="secondary">
         新增提供商
       </Button>
       <Button
@@ -173,10 +146,7 @@ export const StorageProvidersManager = () => {
           className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="bg-background-tertiary h-[180px] animate-pulse rounded"
-            />
+            <div key={i} className="bg-background-tertiary h-[180px] animate-pulse rounded" />
           ))}
         </m.div>
       </>
@@ -220,9 +190,7 @@ export const StorageProvidersManager = () => {
               isActive={provider.id === activeProviderId}
               onEdit={() => handleEditProvider(provider)}
               onToggleActive={() => {
-                setActiveProviderId((prev) =>
-                  prev === provider.id ? null : provider.id,
-                )
+                setActiveProviderId((prev) => (prev === provider.id ? null : provider.id))
                 markDirty()
               }}
             />

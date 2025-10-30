@@ -4,15 +4,8 @@ import { m } from 'motion/react'
 import { startTransition, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
-import {
-  getConflictTypeLabel,
-  PHOTO_CONFLICT_TYPE_CONFIG,
-} from '../../constants'
-import type {
-  PhotoSyncConflict,
-  PhotoSyncResolution,
-  PhotoSyncSnapshot,
-} from '../../types'
+import { getConflictTypeLabel, PHOTO_CONFLICT_TYPE_CONFIG } from '../../constants'
+import type { PhotoSyncConflict, PhotoSyncResolution, PhotoSyncSnapshot } from '../../types'
 import { BorderOverlay, MetadataSnapshot } from './PhotoSyncResultPanel'
 
 type PhotoSyncConflictsPanelProps = {
@@ -20,14 +13,8 @@ type PhotoSyncConflictsPanelProps = {
   isLoading?: boolean
   resolvingId?: string | null
   isBatchResolving?: boolean
-  onResolve?: (
-    conflict: PhotoSyncConflict,
-    strategy: PhotoSyncResolution,
-  ) => Promise<void>
-  onResolveBatch?: (
-    conflicts: PhotoSyncConflict[],
-    strategy: PhotoSyncResolution,
-  ) => Promise<void>
+  onResolve?: (conflict: PhotoSyncConflict, strategy: PhotoSyncResolution) => Promise<void>
+  onResolveBatch?: (conflicts: PhotoSyncConflict[], strategy: PhotoSyncResolution) => Promise<void>
   onRequestStorageUrl?: (storageKey: string) => Promise<string>
 }
 
@@ -50,10 +37,7 @@ export const PhotoSyncConflictsPanel = ({
 }: PhotoSyncConflictsPanelProps) => {
   const sortedConflicts = useMemo(() => {
     if (!conflicts) return []
-    return conflicts.toSorted(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    )
+    return conflicts.toSorted((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   }, [conflicts])
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -94,13 +78,8 @@ export const PhotoSyncConflictsPanel = ({
   )
 
   const hasSelection = selectedIds.size > 0
-  const isAllSelected =
-    sortedConflicts.length > 0 && selectedIds.size === sortedConflicts.length
-  const allCheckboxState = isAllSelected
-    ? true
-    : hasSelection
-      ? ('indeterminate' as const)
-      : false
+  const isAllSelected = sortedConflicts.length > 0 && selectedIds.size === sortedConflicts.length
+  const allCheckboxState = isAllSelected ? true : hasSelection ? ('indeterminate' as const) : false
 
   const isProcessing = Boolean(resolvingId) || Boolean(isBatchResolving)
 
@@ -143,9 +122,7 @@ export const PhotoSyncConflictsPanel = ({
     }
   }
 
-  const handleOpenManifest = (
-    manifest?: PhotoSyncConflict['manifest']['data'],
-  ) => {
+  const handleOpenManifest = (manifest?: PhotoSyncConflict['manifest']['data']) => {
     if (!manifest) {
       toast.info('当前记录没有原图链接')
       return
@@ -193,10 +170,7 @@ export const PhotoSyncConflictsPanel = ({
     }
   }
 
-  const confirmAction = (
-    message: string,
-    onConfirm: () => void | Promise<void>,
-  ) => {
+  const confirmAction = (message: string, onConfirm: () => void | Promise<void>) => {
     if (typeof window === 'undefined') {
       return onConfirm()
     }
@@ -215,20 +189,12 @@ export const PhotoSyncConflictsPanel = ({
   const getStrategyLabel = (strategy: PhotoSyncResolution) =>
     strategy === 'prefer-storage' ? '以存储为准' : '以数据库为准'
 
-  const buildBulkConfirmMessage = (
-    strategy: PhotoSyncResolution,
-    scope: 'all' | 'selected',
-    count: number,
-  ) => {
-    const scopeLabel =
-      scope === 'all' ? '全部待处理冲突' : `选中的 ${count} 个冲突`
+  const buildBulkConfirmMessage = (strategy: PhotoSyncResolution, scope: 'all' | 'selected', count: number) => {
+    const scopeLabel = scope === 'all' ? '全部待处理冲突' : `选中的 ${count} 个冲突`
     return `确认要将${scopeLabel}${getStrategyLabel(strategy)}处理吗？`
   }
 
-  const buildSingleConfirmMessage = (
-    strategy: PhotoSyncResolution,
-    conflict: PhotoSyncConflict,
-  ) => {
+  const buildSingleConfirmMessage = (strategy: PhotoSyncResolution, conflict: PhotoSyncConflict) => {
     const identifier = conflict.photoId ?? conflict.id
     return `确认要将冲突 ${identifier}${getStrategyLabel(strategy)}处理吗？`
   }
@@ -239,12 +205,9 @@ export const PhotoSyncConflictsPanel = ({
       return
     }
 
-    return confirmAction(
-      buildBulkConfirmMessage(strategy, 'selected', selectedConflicts.length),
-      async () => {
-        await runBatchResolve(selectedConflicts, strategy, true)
-      },
-    )
+    return confirmAction(buildBulkConfirmMessage(strategy, 'selected', selectedConflicts.length), async () => {
+      await runBatchResolve(selectedConflicts, strategy, true)
+    })
   }
 
   const handleAcceptAll = async (strategy: PhotoSyncResolution) => {
@@ -253,34 +216,25 @@ export const PhotoSyncConflictsPanel = ({
       return
     }
 
-    return confirmAction(
-      buildBulkConfirmMessage(strategy, 'all', sortedConflicts.length),
-      async () => {
-        await runBatchResolve(sortedConflicts, strategy, true)
-      },
-    )
+    return confirmAction(buildBulkConfirmMessage(strategy, 'all', sortedConflicts.length), async () => {
+      await runBatchResolve(sortedConflicts, strategy, true)
+    })
   }
 
-  const handleResolve = async (
-    conflict: PhotoSyncConflict,
-    strategy: PhotoSyncResolution,
-  ) => {
+  const handleResolve = async (conflict: PhotoSyncConflict, strategy: PhotoSyncResolution) => {
     if (!onResolve) return
 
-    return confirmAction(
-      buildSingleConfirmMessage(strategy, conflict),
-      async () => {
-        await onResolve(conflict, strategy)
-        setSelectedIds((prev) => {
-          if (!prev.has(conflict.id)) {
-            return prev
-          }
-          const next = new Set(prev)
-          next.delete(conflict.id)
-          return next
-        })
-      },
-    )
+    return confirmAction(buildSingleConfirmMessage(strategy, conflict), async () => {
+      await onResolve(conflict, strategy)
+      setSelectedIds((prev) => {
+        if (!prev.has(conflict.id)) {
+          return prev
+        }
+        const next = new Set(prev)
+        next.delete(conflict.id)
+        return next
+      })
+    })
   }
 
   if (!isLoading && sortedConflicts.length === 0) {
@@ -298,18 +252,13 @@ export const PhotoSyncConflictsPanel = ({
               这些冲突需要手动确认处理方式，可以批量选择以提升处理效率。
             </p>
           </div>
-          <span className="text-text-tertiary text-xs">
-            总计：{sortedConflicts.length}
-          </span>
+          <span className="text-text-tertiary text-xs">总计：{sortedConflicts.length}</span>
         </div>
 
         {isLoading ? (
           <div className="mt-6 grid gap-3">
             {[...Array.from({ length: 3 }).keys()].map((index) => (
-              <div
-                key={`conflict-skeleton-${index}`}
-                className="bg-fill/20 h-28 animate-pulse rounded-lg"
-              />
+              <div key={`conflict-skeleton-${index}`} className="bg-fill/20 h-28 animate-pulse rounded-lg" />
             ))}
           </div>
         ) : (
@@ -319,21 +268,13 @@ export const PhotoSyncConflictsPanel = ({
                 <Checkbox
                   checked={allCheckboxState}
                   disabled={isProcessing || sortedConflicts.length === 0}
-                  onCheckedChange={(checked) =>
-                    toggleAllSelection(Boolean(checked))
-                  }
+                  onCheckedChange={(checked) => toggleAllSelection(Boolean(checked))}
                 />
-                <span className="text-xs text-text-tertiary">
+                <span className="text-text-tertiary text-xs">
                   {hasSelection ? `已选 ${selectedIds.size} 项` : '未选择条目'}
                 </span>
                 {hasSelection ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    disabled={isProcessing}
-                    onClick={clearSelection}
-                  >
+                  <Button type="button" variant="ghost" size="xs" disabled={isProcessing} onClick={clearSelection}>
                     清除选择
                   </Button>
                 ) : null}
@@ -346,9 +287,7 @@ export const PhotoSyncConflictsPanel = ({
                       size="xs"
                       variant="ghost"
                       disabled={isProcessing}
-                      onClick={() =>
-                        void handleAcceptSelected('prefer-storage')
-                      }
+                      onClick={() => void handleAcceptSelected('prefer-storage')}
                     >
                       选中存储为准
                     </Button>
@@ -357,9 +296,7 @@ export const PhotoSyncConflictsPanel = ({
                       size="xs"
                       variant="ghost"
                       disabled={isProcessing}
-                      onClick={() =>
-                        void handleAcceptSelected('prefer-database')
-                      }
+                      onClick={() => void handleAcceptSelected('prefer-database')}
                     >
                       选中数据库为准
                     </Button>
@@ -393,14 +330,10 @@ export const PhotoSyncConflictsPanel = ({
               {sortedConflicts.map((conflict, index) => {
                 const { payload } = conflict
                 const typeLabel = getConflictTypeLabel(payload?.type)
-                const typeConfig = payload?.type
-                  ? PHOTO_CONFLICT_TYPE_CONFIG[payload.type]
-                  : null
+                const typeConfig = payload?.type ? PHOTO_CONFLICT_TYPE_CONFIG[payload.type] : null
                 const isSelected = selectedIds.has(conflict.id)
-                const isResolving =
-                  Boolean(isBatchResolving) || resolvingId === conflict.id
-                const storageKey =
-                  payload?.incomingStorageKey ?? conflict.storageKey
+                const isResolving = Boolean(isBatchResolving) || resolvingId === conflict.id
+                const storageKey = payload?.incomingStorageKey ?? conflict.storageKey
 
                 return (
                   <m.div
@@ -418,9 +351,7 @@ export const PhotoSyncConflictsPanel = ({
                       <Checkbox
                         checked={isSelected}
                         disabled={isProcessing}
-                        onCheckedChange={(checked) =>
-                          toggleSelection(conflict.id, Boolean(checked))
-                        }
+                        onCheckedChange={(checked) => toggleSelection(conflict.id, Boolean(checked))}
                       />
                       <div className="flex-1 space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -428,38 +359,26 @@ export const PhotoSyncConflictsPanel = ({
                             <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-400">
                               {typeLabel}
                             </span>
-                            <code className="text-text-secondary text-xs">
-                              {conflict.photoId ?? '未绑定 Photo ID'}
-                            </code>
+                            <code className="text-text-secondary text-xs">{conflict.photoId ?? '未绑定 Photo ID'}</code>
                             {typeConfig ? (
-                              <span className="text-text-tertiary text-xs">
-                                {typeConfig.description}
-                              </span>
+                              <span className="text-text-tertiary text-xs">{typeConfig.description}</span>
                             ) : null}
                           </div>
-                          <div className="flex flex-wrap justify-end gap-2 text-xs text-text-tertiary">
-                            <span>
-                              上次更新：{formatDate(conflict.updatedAt)}
-                            </span>
-                            <span>
-                              首次检测：{formatDate(conflict.syncedAt)}
-                            </span>
+                          <div className="text-text-tertiary flex flex-wrap justify-end gap-2 text-xs">
+                            <span>上次更新：{formatDate(conflict.updatedAt)}</span>
+                            <span>首次检测：{formatDate(conflict.syncedAt)}</span>
                           </div>
                         </div>
 
-                        <div className="text-text-tertiary text-xs flex flex-wrap gap-3">
+                        <div className="text-text-tertiary flex flex-wrap gap-3 text-xs">
                           <span>
                             存储 Key：
-                            <code className="ml-1 font-mono text-[11px] text-text">
-                              {conflict.storageKey}
-                            </code>
+                            <code className="text-text ml-1 font-mono text-[11px]">{conflict.storageKey}</code>
                           </span>
                           {payload?.incomingStorageKey ? (
                             <span>
                               冲突 Key：
-                              <code className="ml-1 font-mono text-[11px] text-text">
-                                {payload.incomingStorageKey}
-                              </code>
+                              <code className="text-text ml-1 font-mono text-[11px]">{payload.incomingStorageKey}</code>
                             </span>
                           ) : null}
                         </div>
@@ -470,35 +389,23 @@ export const PhotoSyncConflictsPanel = ({
                               <ConflictManifestPreview
                                 manifest={conflict.manifest?.data}
                                 disabled={isProcessing}
-                                onOpenOriginal={() =>
-                                  handleOpenManifest(conflict.manifest?.data)
-                                }
+                                onOpenOriginal={() => handleOpenManifest(conflict.manifest?.data)}
                               />
                               <ConflictStoragePreview
                                 storageKey={storageKey}
                                 snapshot={payload?.storageSnapshot ?? null}
                                 disabled={isProcessing}
-                                onOpenStorage={() =>
-                                  void handleOpenStorage(storageKey)
-                                }
+                                onOpenStorage={() => void handleOpenStorage(storageKey)}
                               />
                             </div>
-                            <div className="grid gap-3 text-xs text-text-tertiary md:grid-cols-2">
+                            <div className="text-text-tertiary grid gap-3 text-xs md:grid-cols-2">
                               <div>
-                                <p className="text-text font-semibold">
-                                  元数据（数据库）
-                                </p>
-                                <MetadataSnapshot
-                                  snapshot={payload?.recordSnapshot ?? null}
-                                />
+                                <p className="text-text font-semibold">元数据（数据库）</p>
+                                <MetadataSnapshot snapshot={payload?.recordSnapshot ?? null} />
                               </div>
                               <div>
-                                <p className="text-text font-semibold">
-                                  元数据（存储）
-                                </p>
-                                <MetadataSnapshot
-                                  snapshot={payload?.storageSnapshot ?? null}
-                                />
+                                <p className="text-text font-semibold">元数据（存储）</p>
+                                <MetadataSnapshot snapshot={payload?.storageSnapshot ?? null} />
                               </div>
                             </div>
                           </div>
@@ -510,9 +417,7 @@ export const PhotoSyncConflictsPanel = ({
                             size="xs"
                             variant="ghost"
                             disabled={isResolving || isProcessing}
-                            onClick={() =>
-                              void handleResolve(conflict, 'prefer-storage')
-                            }
+                            onClick={() => void handleResolve(conflict, 'prefer-storage')}
                           >
                             以存储为准
                           </Button>
@@ -521,9 +426,7 @@ export const PhotoSyncConflictsPanel = ({
                             size="xs"
                             variant="ghost"
                             disabled={isResolving || isProcessing}
-                            onClick={() =>
-                              void handleResolve(conflict, 'prefer-database')
-                            }
+                            onClick={() => void handleResolve(conflict, 'prefer-database')}
                           >
                             以数据库为准
                           </Button>
@@ -534,9 +437,7 @@ export const PhotoSyncConflictsPanel = ({
                             disabled={isProcessing}
                             onClick={() => toggleExpand(conflict.id)}
                           >
-                            {expandedId === conflict.id
-                              ? '收起详情'
-                              : '查看详情'}
+                            {expandedId === conflict.id ? '收起详情' : '查看详情'}
                           </Button>
                         </div>
                       </div>
@@ -563,34 +464,23 @@ const ConflictManifestPreview = ({
 }) => {
   if (!manifest) {
     return (
-      <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3 text-xs text-text-tertiary">
+      <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
         <p className="text-text text-sm font-semibold">数据库记录</p>
         <p className="mt-1">暂无数据库记录</p>
       </div>
     )
   }
 
-  const dimensions =
-    manifest.width && manifest.height
-      ? `${manifest.width} × ${manifest.height}`
-      : '未知'
+  const dimensions = manifest.width && manifest.height ? `${manifest.width} × ${manifest.height}` : '未知'
   const sizeMB =
-    typeof manifest.size === 'number' && manifest.size > 0
-      ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB`
-      : '未知'
-  const updatedAt = manifest.lastModified
-    ? new Date(manifest.lastModified).toLocaleString()
-    : '未知'
+    typeof manifest.size === 'number' && manifest.size > 0 ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB` : '未知'
+  const updatedAt = manifest.lastModified ? new Date(manifest.lastModified).toLocaleString() : '未知'
 
   return (
-    <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3 text-xs text-text-tertiary">
+    <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
       <div className="flex items-center gap-3">
         {manifest.thumbnailUrl ? (
-          <img
-            src={manifest.thumbnailUrl}
-            alt={manifest.id}
-            className="h-16 w-20 rounded-md object-cover"
-          />
+          <img src={manifest.thumbnailUrl} alt={manifest.id} className="h-16 w-20 rounded-md object-cover" />
         ) : null}
         <div className="space-y-1">
           <p className="text-text text-sm font-semibold">数据库记录</p>
@@ -613,14 +503,7 @@ const ConflictManifestPreview = ({
         </div>
       </div>
       {onOpenOriginal ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="mt-3"
-          disabled={disabled}
-          onClick={onOpenOriginal}
-        >
+        <Button type="button" variant="ghost" size="xs" className="mt-3" disabled={disabled} onClick={onOpenOriginal}>
           查看原图
         </Button>
       ) : null}
@@ -639,24 +522,18 @@ const ConflictStoragePreview = ({
   disabled?: boolean
   onOpenStorage?: () => void
 }) => (
-  <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3 text-xs text-text-tertiary">
+  <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
     <div className="flex items-center justify-between">
       <p className="text-text text-sm font-semibold">存储对象</p>
       {onOpenStorage ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          disabled={disabled}
-          onClick={onOpenStorage}
-        >
+        <Button type="button" variant="ghost" size="xs" disabled={disabled} onClick={onOpenStorage}>
           打开
         </Button>
       ) : null}
     </div>
     <p className="mt-1 break-all">
       Key：
-      <span className="font-mono text-[11px] text-text">{storageKey}</span>
+      <span className="text-text font-mono text-[11px]">{storageKey}</span>
     </p>
     <MetadataSnapshot snapshot={snapshot ?? null} />
   </div>

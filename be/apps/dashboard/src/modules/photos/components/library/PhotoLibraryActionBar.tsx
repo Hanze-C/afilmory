@@ -38,14 +38,7 @@ export const PhotoLibraryActionBar = ({
 
   return (
     <div className="flex items-center gap-3">
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        multiple
-        accept="image/*"
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" className="hidden" multiple accept="image/*" onChange={handleFileChange} />
       <Button
         type="button"
         variant="primary"
@@ -79,12 +72,7 @@ export const PhotoLibraryActionBar = ({
             <DynamicIcon name="trash-2" className="h-3.5 w-3.5" />
             删除
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onClearSelection}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={onClearSelection}>
             <DynamicIcon name="x" className="h-3.5 w-3.5" />
             清除选择
           </Button>

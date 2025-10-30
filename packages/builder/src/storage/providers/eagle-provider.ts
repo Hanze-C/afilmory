@@ -6,13 +6,7 @@ import { workdir } from '@afilmory/builder/path.js'
 import { getGlobalLoggers } from '@afilmory/builder/photo/logger-adapter.js'
 
 import { logger } from '../../logger/index.js'
-import type {
-  EagleConfig,
-  EagleRule,
-  StorageObject,
-  StorageProvider,
-  StorageUploadOptions,
-} from '../interfaces.js'
+import type { EagleConfig, EagleRule, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces.js'
 
 const EAGLE_VERSION = '4.0.0'
 
@@ -82,23 +76,17 @@ export class EagleStorageProvider implements StorageProvider {
       throw new Error('EagleStorageProvider: libraryPath 不能为空')
     }
     if (!path.isAbsolute(userConfig.libraryPath)) {
-      throw new Error(
-        `EagleStorageProvider: libraryPath 必须是绝对路径. libraryPath: ${userConfig.libraryPath}`,
-      )
+      throw new Error(`EagleStorageProvider: libraryPath 必须是绝对路径. libraryPath: ${userConfig.libraryPath}`)
     }
     if (userConfig.distPath && !path.isAbsolute(userConfig.distPath)) {
-      throw new Error(
-        `EagleStorageProvider: distPath 必须是绝对路径. distPath: ${userConfig.distPath}`,
-      )
+      throw new Error(`EagleStorageProvider: distPath 必须是绝对路径. distPath: ${userConfig.distPath}`)
     }
 
     this.config = {
       ...defaultEagleConfig,
       ...userConfig,
       libraryPath: path.resolve(userConfig.libraryPath),
-      distPath: path.resolve(
-        userConfig.distPath ?? defaultEagleConfig.distPath,
-      ),
+      distPath: path.resolve(userConfig.distPath ?? defaultEagleConfig.distPath),
     }
   }
 
@@ -110,9 +98,7 @@ export class EagleStorageProvider implements StorageProvider {
       await validateEagleLibrary(this.config.libraryPath)
     } catch (error) {
       if (error instanceof Error) {
-        logger.main.error(
-          `EagleStorageProvider: libraryPath 不是有效的 Eagle 库：${error.message}`,
-        )
+        logger.main.error(`EagleStorageProvider: libraryPath 不是有效的 Eagle 库：${error.message}`)
       }
       throw error
     }
@@ -124,21 +110,12 @@ export class EagleStorageProvider implements StorageProvider {
         .catch(() => false))
     ) {
       await fs.mkdir(this.config.distPath, { recursive: true })
-      logger.main.info(
-        `EagleStorageProvider: 已创建 distPath 目录：${this.config.distPath}`,
-      )
+      logger.main.info(`EagleStorageProvider: 已创建 distPath 目录：${this.config.distPath}`)
     }
 
-    const libraryMetadata = await readEagleLibraryMetadata(
-      this.config.libraryPath,
-    )
-    logger.main.info(
-      `EagleStorageProvider: 检测到 Eagle 版本：${libraryMetadata.applicationVersion}`,
-    )
-    if (
-      Number(libraryMetadata.applicationVersion.at(0)) !==
-      Number(EAGLE_VERSION.at(0))
-    ) {
+    const libraryMetadata = await readEagleLibraryMetadata(this.config.libraryPath)
+    logger.main.info(`EagleStorageProvider: 检测到 Eagle 版本：${libraryMetadata.applicationVersion}`)
+    if (Number(libraryMetadata.applicationVersion.at(0)) !== Number(EAGLE_VERSION.at(0))) {
       logger.main.warn(
         `EagleStorageProvider: 当前支持 Eagle ${EAGLE_VERSION} 版本的库，检测到的版本为：${libraryMetadata.applicationVersion}，可能会导致兼容性问题。`,
       )
@@ -151,26 +128,15 @@ export class EagleStorageProvider implements StorageProvider {
     const logger = getGlobalLoggers().s3
     await this.initialize()
 
-    const imageInfoPath = path.resolve(
-      this.config.libraryPath,
-      'images',
-      `${key}.info`,
-    )
+    const imageInfoPath = path.resolve(this.config.libraryPath, 'images', `${key}.info`)
     const infoStats = await fs.stat(imageInfoPath)
     if (!infoStats.isDirectory()) {
-      logger.error(
-        `EagleStorageProvider: 请求的文件路径不安全。key: ${key}, 路径: ${imageInfoPath}`,
-      )
+      logger.error(`EagleStorageProvider: 请求的文件路径不安全。key: ${key}, 路径: ${imageInfoPath}`)
       return null
     }
-    const imageMetadata: EagleImageMetadata = await readImageMetadata(
-      this.config.libraryPath,
-      key,
-    )
+    const imageMetadata: EagleImageMetadata = await readImageMetadata(this.config.libraryPath, key)
     if (!SUPPORTED_FORMATS.has(`.${imageMetadata.ext.toLowerCase()}`)) {
-      logger.error(
-        `EagleStorageProvider: 不支持的图片格式。key: ${key}, 格式: .${imageMetadata.ext}`,
-      )
+      logger.error(`EagleStorageProvider: 不支持的图片格式。key: ${key}, 格式: .${imageMetadata.ext}`)
       return null
     }
     const imageFileName = `${imageMetadata.name}.${imageMetadata.ext}`
@@ -179,9 +145,7 @@ export class EagleStorageProvider implements StorageProvider {
       const buffer = await fs.readFile(imageFilePath)
       return buffer
     } catch (error) {
-      logger.error(
-        `EagleStorageProvider: 读取图片文件失败。key: ${key}, 路径: ${imageFilePath}, 错误: ${error}`,
-      )
+      logger.error(`EagleStorageProvider: 读取图片文件失败。key: ${key}, 路径: ${imageFilePath}, 错误: ${error}`)
       return null
     }
   }
@@ -209,17 +173,9 @@ export class EagleStorageProvider implements StorageProvider {
           // Skip deleted images
           return
         }
-        const include =
-          this.config.include.length === 0
-            ? true
-            : this.runPredicate(meta, this.config.include)
-        const exclude =
-          this.config.exclude.length === 0
-            ? false
-            : this.runPredicate(meta, this.config.exclude)
-        const supportedFormat = SUPPORTED_FORMATS.has(
-          `.${meta.ext.toLowerCase()}`,
-        )
+        const include = this.config.include.length === 0 ? true : this.runPredicate(meta, this.config.include)
+        const exclude = this.config.exclude.length === 0 ? false : this.runPredicate(meta, this.config.exclude)
+        const supportedFormat = SUPPORTED_FORMATS.has(`.${meta.ext.toLowerCase()}`)
 
         if (include && !exclude && supportedFormat) {
           filtered.push({
@@ -238,11 +194,7 @@ export class EagleStorageProvider implements StorageProvider {
     throw new Error('EagleStorageProvider: 当前不支持删除文件操作')
   }
 
-  async uploadFile(
-    _key: string,
-    _data: Buffer,
-    _options?: StorageUploadOptions,
-  ): Promise<StorageObject> {
+  async uploadFile(_key: string, _data: Buffer, _options?: StorageUploadOptions): Promise<StorageObject> {
     throw new Error('EagleStorageProvider: 当前不支持上传文件操作')
   }
 
@@ -260,12 +212,7 @@ export class EagleStorageProvider implements StorageProvider {
   private async copyToDist(key: string) {
     const imageMeta = await readImageMetadata(this.config.libraryPath, key)
     const imageName = `${imageMeta.name}.${imageMeta.ext}`
-    const sourceImage = path.join(
-      this.config.libraryPath,
-      'images',
-      `${key}.info`,
-      imageName,
-    )
+    const sourceImage = path.join(this.config.libraryPath, 'images', `${key}.info`, imageName)
     const distName = `${key}.${imageMeta.ext}`
     const distFile = path.join(this.config.distPath, distName)
     if (
@@ -275,25 +222,18 @@ export class EagleStorageProvider implements StorageProvider {
         .catch(() => false)
     ) {
       // 文件已存在，跳过复制
-      logger.main.log(
-        `EagleStorageProvider: 发布目录已存在文件，跳过复制： ${imageName} -> ${distFile}`,
-      )
+      logger.main.log(`EagleStorageProvider: 发布目录已存在文件，跳过复制： ${imageName} -> ${distFile}`)
       return distName
     }
     await fs.copyFile(sourceImage, distFile)
-    logger.main.log(
-      `EagleStorageProvider: 已复制文件到发布目录： ${imageName} -> ${distFile}`,
-    )
+    logger.main.log(`EagleStorageProvider: 已复制文件到发布目录： ${imageName} -> ${distFile}`)
     return distName
   }
 
   /**
    * Returns `true` if the image matches any of the given rules.
    */
-  private runPredicate(
-    imageMeta: EagleImageMetadata,
-    rules: EagleRule[],
-  ): boolean {
+  private runPredicate(imageMeta: EagleImageMetadata, rules: EagleRule[]): boolean {
     if (rules.length === 0) {
       return true
     }
@@ -307,9 +247,7 @@ export class EagleStorageProvider implements StorageProvider {
           for (const folderId of imageMeta.folders) {
             const folderPath = this.folderIndex.get(folderId)
             if (!folderPath) {
-              logger.main.warn(
-                `EagleStorageProvider: 无法找到文件夹索引，跳过该文件夹过滤条件。folderId: ${folderId}`,
-              )
+              logger.main.warn(`EagleStorageProvider: 无法找到文件夹索引，跳过该文件夹过滤条件。folderId: ${folderId}`)
               continue
             }
             if (includeSubfolder) {
@@ -343,14 +281,10 @@ async function validateEagleLibrary(libraryPath: string): Promise<void> {
   try {
     const stats = await fs.stat(libraryPath)
     if (!stats.isDirectory()) {
-      throw new Error(
-        `EagleStorageProvider: 指定的 libraryPath 不是目录。libraryPath: ${libraryPath}`,
-      )
+      throw new Error(`EagleStorageProvider: 指定的 libraryPath 不是目录。libraryPath: ${libraryPath}`)
     }
   } catch (error) {
-    throw new Error(
-      `EagleStorageProvider: 无法访问指定的 libraryPath: ${libraryPath} - ${error}`,
-    )
+    throw new Error(`EagleStorageProvider: 无法访问指定的 libraryPath: ${libraryPath} - ${error}`)
   }
 
   // Check for metadata.json existence
@@ -358,9 +292,7 @@ async function validateEagleLibrary(libraryPath: string): Promise<void> {
     const metadataPath = path.join(libraryPath, 'metadata.json')
     await fs.access(metadataPath)
   } catch (error) {
-    throw new Error(
-      `EagleStorageProvider: library metadata.json 不存在：${libraryPath} - ${error}`,
-    )
+    throw new Error(`EagleStorageProvider: library metadata.json 不存在：${libraryPath} - ${error}`)
   }
 
   // Check for images directory existence
@@ -368,44 +300,27 @@ async function validateEagleLibrary(libraryPath: string): Promise<void> {
     const imagesDir = path.join(libraryPath, 'images')
     const stats = await fs.stat(imagesDir)
     if (!stats.isDirectory()) {
-      throw new Error(
-        `EagleStorageProvider: images 不是目录。libraryPath: ${imagesDir}`,
-      )
+      throw new Error(`EagleStorageProvider: images 不是目录。libraryPath: ${imagesDir}`)
     }
   } catch (error) {
-    throw new Error(
-      `EagleStorageProvider: 无法访问指定的 images 目录: ${libraryPath} - ${error}`,
-    )
+    throw new Error(`EagleStorageProvider: 无法访问指定的 images 目录: ${libraryPath} - ${error}`)
   }
 }
 
-async function readEagleLibraryMetadata(
-  libraryPath: string,
-): Promise<EagleLibraryMetadata> {
+async function readEagleLibraryMetadata(libraryPath: string): Promise<EagleLibraryMetadata> {
   const metadataPath = path.join(libraryPath, 'metadata.json')
 
   try {
     const content = await fs.readFile(metadataPath, 'utf-8')
     return JSON.parse(content) as EagleLibraryMetadata
   } catch (error) {
-    const errorMsg =
-      error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-    throw new Error(
-      `EagleStorageProvider: 无法解析 library metadata：${errorMsg}`,
-    )
+    const errorMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    throw new Error(`EagleStorageProvider: 无法解析 library metadata：${errorMsg}`)
   }
 }
 
-async function readImageMetadata(
-  libraryPath: string,
-  key: string,
-): Promise<EagleImageMetadata> {
-  const metadataPath = path.join(
-    libraryPath,
-    'images',
-    `${key}.info`,
-    'metadata.json',
-  )
+async function readImageMetadata(libraryPath: string, key: string): Promise<EagleImageMetadata> {
+  const metadataPath = path.join(libraryPath, 'images', `${key}.info`, 'metadata.json')
   const content = await fs.readFile(metadataPath, 'utf-8')
   return JSON.parse(content) as EagleImageMetadata
 }

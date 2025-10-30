@@ -15,11 +15,7 @@ import {
 import type { PluginRunState } from '../plugins/manager.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { shouldProcessPhoto } from './cache-manager.js'
-import {
-  processExifData,
-  processThumbnailAndBlurhash,
-  processToneAnalysis,
-} from './data-processors.js'
+import { processExifData, processThumbnailAndBlurhash, processToneAnalysis } from './data-processors.js'
 import { extractPhotoInfo } from './info-extractor.js'
 import { processLivePhoto } from './live-photo-handler.js'
 import { getGlobalLoggers } from './logger-adapter.js'
@@ -81,10 +77,7 @@ export async function preprocessImage(
  * 处理图片并创建 Sharp 实例
  * 包括 BMP 转换和元数据提取
  */
-export async function processImageWithSharp(
-  imageBuffer: Buffer,
-  photoKey: string,
-): Promise<ProcessedImageData | null> {
+export async function processImageWithSharp(imageBuffer: Buffer, photoKey: string): Promise<ProcessedImageData | null> {
   const loggers = getGlobalLoggers()
 
   try {
@@ -128,10 +121,7 @@ export async function processImageWithSharp(
  * @param s3Key S3 键
  * @returns 带摘要后缀的 ID
  */
-async function generatePhotoId(
-  s3Key: string,
-  builder: AfilmoryBuilder,
-): Promise<string> {
+async function generatePhotoId(s3Key: string, builder: AfilmoryBuilder): Promise<string> {
   const { options } = builder.getConfig()
   const { digestSuffixLength } = options
   if (!digestSuffixLength || digestSuffixLength <= 0) {
@@ -164,48 +154,25 @@ export async function executePhotoProcessingPipeline(
     if (!imageData) return null
 
     // 2. 处理图片并创建 Sharp 实例
-    const processedData = await processImageWithSharp(
-      imageData.processedBuffer,
-      photoKey,
-    )
+    const processedData = await processImageWithSharp(imageData.processedBuffer, photoKey)
     if (!processedData) return null
 
     const { sharpInstance, imageBuffer, metadata } = processedData
 
     // 3. 处理缩略图和 blurhash
-    const thumbnailResult = await processThumbnailAndBlurhash(
-      imageBuffer,
-      photoId,
-      existingItem,
-      options,
-    )
+    const thumbnailResult = await processThumbnailAndBlurhash(imageBuffer, photoId, existingItem, options)
 
     // 4. 处理 EXIF 数据
-    const exifData = await processExifData(
-      imageBuffer,
-      imageData.rawBuffer,
-      photoKey,
-      existingItem,
-      options,
-    )
+    const exifData = await processExifData(imageBuffer, imageData.rawBuffer, photoKey, existingItem, options)
 
     // 5. 处理影调分析
-    const toneAnalysis = await processToneAnalysis(
-      sharpInstance,
-      photoKey,
-      existingItem,
-      options,
-    )
+    const toneAnalysis = await processToneAnalysis(sharpInstance, photoKey, existingItem, options)
 
     // 6. 提取照片信息
     const photoInfo = extractPhotoInfo(photoKey, exifData)
 
     // 7. 处理 Live Photo
-    const livePhotoResult = await processLivePhoto(
-      photoKey,
-      livePhotoMap,
-      storageManager,
-    )
+    const livePhotoResult = await processLivePhoto(photoKey, livePhotoMap, storageManager)
 
     // 8. 构建照片清单项
     const aspectRatio = metadata.width / metadata.height
@@ -218,9 +185,7 @@ export async function executePhotoProcessingPipeline(
       tags: photoInfo.tags,
       originalUrl: await storageManager.generatePublicUrl(photoKey),
       thumbnailUrl: thumbnailResult.thumbnailUrl,
-      thumbHash: thumbnailResult.thumbHash
-        ? compressUint8Array(thumbnailResult.thumbHash)
-        : null,
+      thumbHash: thumbnailResult.thumbHash ? compressUint8Array(thumbnailResult.thumbHash) : null,
       width: metadata.width,
       height: metadata.height,
       aspectRatio,
@@ -268,12 +233,7 @@ export async function processPhotoWithPipeline(
   })
 
   // 检查是否需要处理
-  const { shouldProcess, reason } = await shouldProcessPhoto(
-    photoId,
-    existingItem,
-    obj,
-    options,
-  )
+  const { shouldProcess, reason } = await shouldProcessPhoto(photoId, existingItem, obj, options)
 
   if (!shouldProcess) {
     loggers.image.info(`⏭️ 跳过处理 (${reason}): ${photoKey}`)

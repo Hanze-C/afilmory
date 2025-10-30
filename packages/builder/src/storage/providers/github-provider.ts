@@ -79,17 +79,12 @@ export class GitHubStorageProvider implements StorageProvider {
   private getFullPath(key: string): string {
     const normalizedKey = this.normalizeKey(key)
     if (this.githubConfig.path) {
-      return `${this.githubConfig.path}/${normalizedKey}`.replaceAll(
-        /\/+/g,
-        '/',
-      )
+      return `${this.githubConfig.path}/${normalizedKey}`.replaceAll(/\/+/g, '/')
     }
     return normalizedKey
   }
 
-  private async fetchContentMetadata(
-    key: string,
-  ): Promise<GitHubFileContent | null> {
+  private async fetchContentMetadata(key: string): Promise<GitHubFileContent | null> {
     const fullPath = this.getFullPath(key)
     const url = `${this.baseApiUrl}/contents/${fullPath}?ref=${this.githubConfig.branch}`
 
@@ -102,9 +97,7 @@ export class GitHubStorageProvider implements StorageProvider {
     }
 
     if (!response.ok) {
-      throw new Error(
-        `GitHub API 请求失败：${response.status} ${response.statusText}`,
-      )
+      throw new Error(`GitHub API 请求失败：${response.status} ${response.statusText}`)
     }
 
     const data = (await response.json()) as GitHubContent
@@ -130,9 +123,7 @@ export class GitHubStorageProvider implements StorageProvider {
           logger.warn(`文件不存在：${key}`)
           return null
         }
-        throw new Error(
-          `GitHub API 请求失败：${response.status} ${response.statusText}`,
-        )
+        throw new Error(`GitHub API 请求失败：${response.status} ${response.statusText}`)
       }
 
       const data = (await response.json()) as GitHubFileContent
@@ -148,9 +139,7 @@ export class GitHubStorageProvider implements StorageProvider {
         // 使用 download_url 获取文件内容（推荐方式）
         const fileResponse = await fetch(data.download_url)
         if (!fileResponse.ok) {
-          throw new Error(
-            `下载文件失败：${fileResponse.status} ${fileResponse.statusText}`,
-          )
+          throw new Error(`下载文件失败：${fileResponse.status} ${fileResponse.statusText}`)
         }
         const arrayBuffer = await fileResponse.arrayBuffer()
         fileBuffer = Buffer.from(arrayBuffer)
@@ -182,9 +171,7 @@ export class GitHubStorageProvider implements StorageProvider {
     })
   }
 
-  async listAllFiles(
-    progressCallback?: ProgressCallback,
-  ): Promise<StorageObject[]> {
+  async listAllFiles(progressCallback?: ProgressCallback): Promise<StorageObject[]> {
     const files: StorageObject[] = []
     const basePath = this.githubConfig.path || ''
 
@@ -210,9 +197,7 @@ export class GitHubStorageProvider implements StorageProvider {
           // 目录不存在，返回空数组
           return
         }
-        throw new Error(
-          `GitHub API 请求失败：${response.status} ${response.statusText}`,
-        )
+        throw new Error(`GitHub API 请求失败：${response.status} ${response.statusText}`)
       }
 
       const contents = (await response.json()) as GitHubContent[]
@@ -222,10 +207,7 @@ export class GitHubStorageProvider implements StorageProvider {
           // 计算相对于配置路径的 key
           let key = item.path
           if (this.githubConfig.path) {
-            key = item.path.replace(
-              new RegExp(`^${this.githubConfig.path}/`),
-              '',
-            )
+            key = item.path.replace(new RegExp(`^${this.githubConfig.path}/`), '')
           }
 
           files.push({
@@ -270,17 +252,11 @@ export class GitHubStorageProvider implements StorageProvider {
     })
 
     if (!response.ok) {
-      throw new Error(
-        `GitHub 删除文件失败：${response.status} ${response.statusText}`,
-      )
+      throw new Error(`GitHub 删除文件失败：${response.status} ${response.statusText}`)
     }
   }
 
-  async uploadFile(
-    key: string,
-    data: Buffer,
-    _options?: StorageUploadOptions,
-  ): Promise<StorageObject> {
+  async uploadFile(key: string, data: Buffer, _options?: StorageUploadOptions): Promise<StorageObject> {
     const metadata = await this.fetchContentMetadata(key)
     const fullPath = this.getFullPath(key)
     const url = `${this.baseApiUrl}/contents/${fullPath}`
@@ -305,9 +281,7 @@ export class GitHubStorageProvider implements StorageProvider {
     })
 
     if (!response.ok) {
-      throw new Error(
-        `GitHub 上传文件失败：${response.status} ${response.statusText}`,
-      )
+      throw new Error(`GitHub 上传文件失败：${response.status} ${response.statusText}`)
     }
 
     const result = (await response.json()) as { content?: GitHubFileContent }

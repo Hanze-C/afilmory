@@ -69,11 +69,7 @@ function ModalWrapper({ item }: { item: ModalItem }) {
         {...contentProps}
         {...item.modalContent}
       >
-        <Component
-          modalId={item.id}
-          dismiss={dismiss}
-          {...(item.props as any)}
-        />
+        <Component modalId={item.id} dismiss={dismiss} {...(item.props as any)} />
       </DialogContent>
     </Dialog>
   )

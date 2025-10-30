@@ -13,11 +13,7 @@ import { runAsWorker } from './runAsWorker.js'
 
 async function main() {
   // 检查是否作为 cluster worker 运行
-  if (
-    process.env.CLUSTER_WORKER === 'true' ||
-    process.argv.includes('--cluster-worker') ||
-    cluster.isWorker
-  ) {
+  if (process.env.CLUSTER_WORKER === 'true' || process.argv.includes('--cluster-worker') || cluster.isWorker) {
     await runAsWorker()
     return
   }
@@ -77,9 +73,7 @@ async function main() {
         logger.main.info(`   存储桶：${config.storage.bucket}`)
         logger.main.info(`   区域：${config.storage.region || '未设置'}`)
         logger.main.info(`   端点：${config.storage.endpoint || '默认'}`)
-        logger.main.info(
-          `   自定义域名：${config.storage.customDomain || '未设置'}`,
-        )
+        logger.main.info(`   自定义域名：${config.storage.customDomain || '未设置'}`)
         logger.main.info(`   前缀：${config.storage.prefix || '无'}`)
         break
       }
@@ -93,25 +87,17 @@ async function main() {
       }
     }
     logger.main.info(`   默认并发数：${config.options.defaultConcurrency}`)
-    logger.main.info(
-      `   Live Photo 检测：${config.options.enableLivePhotoDetection ? '启用' : '禁用'}`,
-    )
-    logger.main.info(
-      `   照片后缀摘要长度：${config.options.digestSuffixLength}`,
-    )
+    logger.main.info(`   Live Photo 检测：${config.options.enableLivePhotoDetection ? '启用' : '禁用'}`)
+    logger.main.info(`   照片后缀摘要长度：${config.options.digestSuffixLength}`)
     logger.main.info(`   Worker 数：${config.performance.worker.workerCount}`)
     logger.main.info(`   Worker 超时：${config.performance.worker.timeout}ms`)
-    logger.main.info(
-      `   集群模式：${config.performance.worker.useClusterMode ? '启用' : '禁用'}`,
-    )
+    logger.main.info(`   集群模式：${config.performance.worker.useClusterMode ? '启用' : '禁用'}`)
     logger.main.info('')
     logger.main.info('📦 远程仓库配置：')
     logger.main.info(`   启用状态：${config.repo.enable ? '启用' : '禁用'}`)
     if (config.repo.enable) {
       logger.main.info(`   仓库地址：${config.repo.url || '未设置'}`)
-      logger.main.info(
-        `   推送权限：${config.repo.token ? '已配置' : '未配置'}`,
-      )
+      logger.main.info(`   推送权限：${config.repo.token ? '已配置' : '未配置'}`)
     }
     return
   }
@@ -131,9 +117,7 @@ async function main() {
   const config = cliBuilder.getConfig()
   const concurrencyLimit = config.performance.worker.workerCount
   const finalConcurrency = concurrencyLimit ?? config.options.defaultConcurrency
-  const processingMode = config.performance.worker.useClusterMode
-    ? '多进程集群'
-    : '并发线程池'
+  const processingMode = config.performance.worker.useClusterMode ? '多进程集群' : '并发线程池'
 
   logger.main.info(`🚀 运行模式：${runMode}`)
   logger.main.info(`⚡ 最大并发数：${finalConcurrency}`)

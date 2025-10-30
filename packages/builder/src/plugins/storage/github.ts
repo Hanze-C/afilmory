@@ -6,9 +6,7 @@ export interface GitHubStoragePluginOptions {
   provider?: string
 }
 
-export default function githubStoragePlugin(
-  options: GitHubStoragePluginOptions = {},
-): BuilderPlugin {
+export default function githubStoragePlugin(options: GitHubStoragePluginOptions = {}): BuilderPlugin {
   const providerName = options.provider ?? 'github'
 
   return {

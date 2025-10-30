@@ -7,9 +7,7 @@ import { Navigate, NavLink, Outlet } from 'react-router'
 import { useAuthUserValue, useIsSuperAdmin } from '~/atoms/auth'
 import { usePageRedirect } from '~/hooks/usePageRedirect'
 
-const navigationTabs = [
-  { label: '系统设置', path: '/superadmin/settings' },
-] as const
+const navigationTabs = [{ label: '系统设置', path: '/superadmin/settings' }] as const
 
 export const Component = () => {
   const { logout } = usePageRedirect()
@@ -39,17 +37,11 @@ export const Component = () => {
     <div className="flex h-screen flex-col">
       <nav className="border-border/50 bg-background-tertiary shrink-0 border-b px-6 py-3">
         <div className="flex items-center gap-6">
-          <div className="text-text text-base font-semibold">
-            Afilmory · Superadmin
-          </div>
+          <div className="text-text text-base font-semibold">Afilmory · Superadmin</div>
 
           <div className="flex flex-1 items-center gap-1">
             {navigationTabs.map((tab) => (
-              <NavLink
-                key={tab.path}
-                to={tab.path}
-                end={tab.path === '/superadmin/settings'}
-              >
+              <NavLink key={tab.path} to={tab.path} end={tab.path === '/superadmin/settings'}>
                 {({ isActive }) => (
                   <m.div
                     className="relative overflow-hidden rounded-md px-3 py-1.5"
@@ -69,9 +61,7 @@ export const Component = () => {
                     <span
                       className="relative z-10 text-[13px] font-medium transition-colors"
                       style={{
-                        color: isActive
-                          ? 'var(--color-accent)'
-                          : 'var(--color-text-secondary)',
+                        color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                       }}
                     >
                       {tab.label}
@@ -86,20 +76,10 @@ export const Component = () => {
             {user && (
               <div className="flex items-center gap-2">
                 <div className="text-right">
-                  <div className="text-text text-[13px] font-medium">
-                    {user.name || user.email}
-                  </div>
-                  <div className="text-text-tertiary text-[11px] capitalize">
-                    {user.role}
-                  </div>
+                  <div className="text-text text-[13px] font-medium">{user.name || user.email}</div>
+                  <div className="text-text-tertiary text-[11px] capitalize">{user.role}</div>
                 </div>
-                {user.image && (
-                  <img
-                    src={user.image}
-                    alt={user.name || user.email}
-                    className="size-7 rounded-full"
-                  />
-                )}
+                {user.image && <img src={user.image} alt={user.name || user.email} className="size-7 rounded-full" />}
               </div>
             )}
 

@@ -2,12 +2,7 @@ import path from 'node:path'
 
 import { thumbnailExists } from '../image/thumbnail.js'
 import { logger } from '../logger/index.js'
-import {
-  handleDeletedPhotos,
-  loadExistingManifest,
-  needsUpdate,
-  saveManifest,
-} from '../manifest/manager.js'
+import { handleDeletedPhotos, loadExistingManifest, needsUpdate, saveManifest } from '../manifest/manager.js'
 import { CURRENT_MANIFEST_VERSION } from '../manifest/version.js'
 import type { PhotoProcessorOptions } from '../photo/processor.js'
 import { processPhoto } from '../photo/processor.js'
@@ -21,11 +16,7 @@ import type {
 import type { StorageProviderFactory } from '../storage/factory.js'
 import { StorageFactory, StorageManager } from '../storage/index.js'
 import type { BuilderConfig } from '../types/config.js'
-import type {
-  AfilmoryManifest,
-  CameraInfo,
-  LensInfo,
-} from '../types/manifest.js'
+import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { clone } from '../utils/clone.js'
 import { ClusterPool } from '../worker/cluster-pool.js'
@@ -105,9 +96,7 @@ export class AfilmoryBuilder {
       // 读取现有的 manifest（如果存在）
       const existingManifest = await this.loadExistingManifest(options)
       const existingManifestItems = existingManifest.data
-      const existingManifestMap = new Map(
-        existingManifestItems.map((item) => [item.s3Key, item]),
-      )
+      const existingManifestMap = new Map(existingManifestItems.map((item) => [item.s3Key, item]))
 
       await this.emitPluginEvent(runState, 'afterManifestLoad', {
         options,
@@ -115,9 +104,7 @@ export class AfilmoryBuilder {
         manifestMap: existingManifestMap,
       })
 
-      logger.main.info(
-        `现有 manifest 包含 ${existingManifestItems.length} 张照片`,
-      )
+      logger.main.info(`现有 manifest 包含 ${existingManifestItems.length} 张照片`)
 
       logger.main.info('使用存储提供商：', this.config.storage.provider)
 
@@ -176,18 +163,12 @@ export class AfilmoryBuilder {
       const s3ImageKeys = new Set(imageObjects.map((obj) => obj.key))
 
       // 筛选出实际需要处理的图片
-      let tasksToProcess = await this.filterTaskImages(
-        imageObjects,
-        existingManifestMap,
-        options,
-      )
+      let tasksToProcess = await this.filterTaskImages(imageObjects, existingManifestMap, options)
 
       // 为减少尾部长耗时，按文件大小降序处理（优先处理大文件）
       if (tasksToProcess.length > 1) {
         const beforeFirst = tasksToProcess[0]?.key
-        tasksToProcess = tasksToProcess.sort(
-          (a, b) => (b.size ?? 0) - (a.size ?? 0),
-        )
+        tasksToProcess = tasksToProcess.sort((a, b) => (b.size ?? 0) - (a.size ?? 0))
         if (beforeFirst !== tasksToProcess[0]?.key) {
           logger.main.info('已按文件大小降序重排处理队列')
         }
@@ -199,9 +180,7 @@ export class AfilmoryBuilder {
         totalImages: imageObjects.length,
       })
 
-      logger.main.info(
-        `存储中找到 ${imageObjects.length} 张照片，实际需要处理 ${tasksToProcess.length} 张`,
-      )
+      logger.main.info(`存储中找到 ${imageObjects.length} 张照片，实际需要处理 ${tasksToProcess.length} 张`)
 
       const processorOptions: PhotoProcessorOptions = {
         isForceMode: options.isForceMode,
@@ -209,11 +188,9 @@ export class AfilmoryBuilder {
         isForceThumbnails: options.isForceThumbnails,
       }
 
-      const concurrency =
-        options.concurrencyLimit ?? this.config.options.defaultConcurrency
+      const concurrency = options.concurrencyLimit ?? this.config.options.defaultConcurrency
       const { useClusterMode } = this.config.performance.worker
-      const shouldUseCluster =
-        useClusterMode && tasksToProcess.length >= concurrency * 2
+      const shouldUseCluster = useClusterMode && tasksToProcess.length >= concurrency * 2
 
       await this.emitPluginEvent(runState, 'beforeProcessTasks', {
         options,
@@ -432,9 +409,7 @@ export class AfilmoryBuilder {
     }
   }
 
-  private async loadExistingManifest(
-    options: BuilderOptions,
-  ): Promise<AfilmoryManifest> {
+  private async loadExistingManifest(options: BuilderOptions): Promise<AfilmoryManifest> {
     return options.isForceMode || options.isForceManifest
       ? {
           version: CURRENT_MANIFEST_VERSION,
@@ -515,10 +490,7 @@ export class AfilmoryBuilder {
     return this.ensureStorageManager()
   }
 
-  registerStorageProvider(
-    provider: string,
-    factory: StorageProviderFactory,
-  ): void {
+  registerStorageProvider(provider: string, factory: StorageProviderFactory): void {
     StorageFactory.registerProvider(provider, factory)
 
     if (this.config.storage.provider === provider) {
@@ -579,13 +551,8 @@ export class AfilmoryBuilder {
       addReference(ref)
     }
 
-    if (
-      this.config.repo.enable &&
-      !hasPluginWithName('afilmory:github-repo-sync')
-    ) {
-      addReference(
-        () => import('@afilmory/builder/plugins/github-repo-sync.js'),
-      )
+    if (this.config.repo.enable && !hasPluginWithName('afilmory:github-repo-sync')) {
+      addReference(() => import('@afilmory/builder/plugins/github-repo-sync.js'))
     }
 
     const storagePluginByProvider: Record<string, BuilderPluginESMImporter> = {
@@ -684,9 +651,7 @@ export class AfilmoryBuilder {
    * @param manifest 照片清单数组
    * @returns 唯一相机信息数组
    */
-  private generateCameraCollection(
-    manifest: PhotoManifestItem[],
-  ): CameraInfo[] {
+  private generateCameraCollection(manifest: PhotoManifestItem[]): CameraInfo[] {
     const cameraMap = new Map<string, CameraInfo>()
 
     for (const photo of manifest) {
@@ -707,9 +672,7 @@ export class AfilmoryBuilder {
     }
 
     // 按 displayName 排序返回
-    return Array.from(cameraMap.values()).sort((a, b) =>
-      a.displayName.localeCompare(b.displayName),
-    )
+    return Array.from(cameraMap.values()).sort((a, b) => a.displayName.localeCompare(b.displayName))
   }
 
   /**
@@ -740,8 +703,6 @@ export class AfilmoryBuilder {
     }
 
     // 按 displayName 排序返回
-    return Array.from(lensMap.values()).sort((a, b) =>
-      a.displayName.localeCompare(b.displayName),
-    )
+    return Array.from(lensMap.values()).sort((a, b) => a.displayName.localeCompare(b.displayName))
   }
 }

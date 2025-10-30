@@ -16,10 +16,7 @@ export class PluginManager {
   private plugins: Awaited<ReturnType<typeof loadPlugins>> = []
   private loadPromise: Promise<void> | null = null
 
-  constructor(
-    entries: BuilderPluginConfigEntry[] = [],
-    options: { baseDir?: string } = {},
-  ) {
+  constructor(entries: BuilderPluginConfigEntry[] = [], options: { baseDir?: string } = {}) {
     this.entries = entries
     this.baseDir = options.baseDir ?? process.cwd()
   }
@@ -57,15 +54,11 @@ export class PluginManager {
             builder,
             config: builder.getConfig(),
             logger,
-            registerStorageProvider:
-              builder.registerStorageProvider.bind(builder),
+            registerStorageProvider: builder.registerStorageProvider.bind(builder),
             pluginOptions: plugin.pluginOptions,
           })
         } catch (error) {
-          logger.main.error(
-            `[Builder Plugin] 初始化插件 "${plugin.name}" 失败`,
-            error,
-          )
+          logger.main.error(`[Builder Plugin] 初始化插件 "${plugin.name}" 失败`, error)
           throw error
         }
       }
@@ -111,10 +104,7 @@ export class PluginManager {
       try {
         await hook(context)
       } catch (error) {
-        logger.main.error(
-          `[Builder Plugin] 插件 "${plugin.name}" 在 ${event} 钩子中抛出错误`,
-          error,
-        )
+        logger.main.error(`[Builder Plugin] 插件 "${plugin.name}" 在 ${event} 钩子中抛出错误`, error)
         throw error
       }
     }

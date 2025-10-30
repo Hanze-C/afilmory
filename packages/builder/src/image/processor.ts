@@ -9,9 +9,7 @@ import { getGlobalLoggers } from '../photo/logger-adapter.js'
 import type { ImageMetadata } from '../types/photo.js'
 
 // 获取图片元数据（复用 Sharp 实例）
-export async function getImageMetadataWithSharp(
-  sharpInstance: sharp.Sharp,
-): Promise<ImageMetadata | null> {
+export async function getImageMetadataWithSharp(sharpInstance: sharp.Sharp): Promise<ImageMetadata | null> {
   const log = getGlobalLoggers().image
 
   try {
@@ -27,17 +25,10 @@ export async function getImageMetadataWithSharp(
 
     // 根据 EXIF Orientation 信息调整宽高
     const { orientation } = metadata
-    if (
-      orientation === 5 ||
-      orientation === 6 ||
-      orientation === 7 ||
-      orientation === 8
-    ) {
+    if (orientation === 5 || orientation === 6 || orientation === 7 || orientation === 8) {
       // 对于需要旋转 90°的图片，需要交换宽高
       ;[width, height] = [height, width]
-      log.info(
-        `检测到需要旋转 90°的图片 (orientation: ${orientation})，交换宽高：${width}x${height}`,
-      )
+      log.info(`检测到需要旋转 90°的图片 (orientation: ${orientation})，交换宽高：${width}x${height}`)
     }
 
     return {
@@ -56,9 +47,7 @@ export async function convertHeicToJpeg(heicBuffer: Buffer): Promise<Buffer> {
   const log = getGlobalLoggers().image
 
   try {
-    log.info(
-      `开始 HEIC/HEIF → JPEG 转换 (${Math.round(heicBuffer.length / 1024)}KB)`,
-    )
+    log.info(`开始 HEIC/HEIF → JPEG 转换 (${Math.round(heicBuffer.length / 1024)}KB)`)
     const startTime = Date.now()
 
     const jpegBuffer = await heicConvert({
@@ -79,10 +68,7 @@ export async function convertHeicToJpeg(heicBuffer: Buffer): Promise<Buffer> {
 }
 
 // 预处理图片 Buffer（处理 HEIC/HEIF 格式）
-export async function preprocessImageBuffer(
-  buffer: Buffer,
-  key: string,
-): Promise<Buffer> {
+export async function preprocessImageBuffer(buffer: Buffer, key: string): Promise<Buffer> {
   const log = getGlobalLoggers().image
   const ext = path.extname(key).toLowerCase()
 
@@ -111,9 +97,7 @@ export function isBitmap(buf: Buffer): boolean {
  * @param bmpBuffer Buffer
  * @returns Sharp 实例
  */
-export async function convertBmpToJpegSharpInstance(
-  bmpBuffer: Buffer,
-): Promise<sharp.Sharp> {
+export async function convertBmpToJpegSharpInstance(bmpBuffer: Buffer): Promise<sharp.Sharp> {
   const log = getGlobalLoggers().image
 
   try {

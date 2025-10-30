@@ -13,7 +13,7 @@ export interface BuilderStorageProvider {
   updatedAt?: string
 }
 
-function normalizeConfig (config: unknown): Record<string, string> {
+function normalizeConfig(config: unknown): Record<string, string> {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     return {}
   }
@@ -27,7 +27,7 @@ function normalizeConfig (config: unknown): Record<string, string> {
   return result
 }
 
-function normalizeProvider (input: unknown): BuilderStorageProvider | null {
+function normalizeProvider(input: unknown): BuilderStorageProvider | null {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return null
   }
@@ -45,7 +45,7 @@ function normalizeProvider (input: unknown): BuilderStorageProvider | null {
   }
 }
 
-export function parseStorageProviders (raw: string | null): BuilderStorageProvider[] {
+export function parseStorageProviders(raw: string | null): BuilderStorageProvider[] {
   if (!raw) {
     return []
   }
@@ -62,11 +62,11 @@ export function parseStorageProviders (raw: string | null): BuilderStorageProvid
   }
 }
 
-export function serializeStorageProviders (providers: BuilderStorageProvider[]): string {
+export function serializeStorageProviders(providers: BuilderStorageProvider[]): string {
   return JSON.stringify(providers)
 }
 
-export function maskStorageProviderSecrets (providers: BuilderStorageProvider[]): BuilderStorageProvider[] {
+export function maskStorageProviderSecrets(providers: BuilderStorageProvider[]): BuilderStorageProvider[] {
   return providers.map((provider) => {
     const sensitiveKeys = STORAGE_PROVIDER_SENSITIVE_FIELDS[provider.type] ?? []
     const maskedConfig: Record<string, string> = { ...provider.config }
@@ -84,8 +84,10 @@ export function maskStorageProviderSecrets (providers: BuilderStorageProvider[])
   })
 }
 
-export function mergeStorageProviderSecrets (incoming: BuilderStorageProvider[],
-  existing: BuilderStorageProvider[]): BuilderStorageProvider[] {
+export function mergeStorageProviderSecrets(
+  incoming: BuilderStorageProvider[],
+  existing: BuilderStorageProvider[],
+): BuilderStorageProvider[] {
   const existingMap = new Map(existing.map((provider) => [provider.id, provider]))
   const now = new Date().toISOString()
 
@@ -111,7 +113,7 @@ export function mergeStorageProviderSecrets (incoming: BuilderStorageProvider[],
   })
 }
 
-export function sanitizeStorageProviders (raw: string | null): string {
+export function sanitizeStorageProviders(raw: string | null): string {
   const normalized = typeof raw === 'string' ? raw.trim() : ''
   if (!normalized) {
     return '[]'
@@ -122,8 +124,10 @@ export function sanitizeStorageProviders (raw: string | null): string {
   return serializeStorageProviders(masked)
 }
 
-export function prepareStorageProvidersForPersist (incomingRaw: string,
-  existingRaw: string | null): { stored: string; masked: string } {
+export function prepareStorageProvidersForPersist(
+  incomingRaw: string,
+  existingRaw: string | null,
+): { stored: string; masked: string } {
   const incomingProviders = parseStorageProviders(incomingRaw)
   const existingProviders = parseStorageProviders(existingRaw)
   const merged = mergeStorageProviderSecrets(incomingProviders, existingProviders)

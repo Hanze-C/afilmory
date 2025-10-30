@@ -27,13 +27,7 @@ import type {
   UiSlotComponent,
 } from './types'
 
-export const GlassPanel = ({
-  className,
-  children,
-}: {
-  className?: string
-  children: ReactNode
-}) => (
+export const GlassPanel = ({ className, children }: { className?: string; children: ReactNode }) => (
   <div className={clsxm('group relative overflow-hidden -mx-6', className)}>
     {/* Linear gradient borders - sharp edges */}
     <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
@@ -53,20 +47,12 @@ const FieldDescription = ({ description }: { description?: string | null }) => {
   return <p className="text-text-tertiary mt-1 text-xs">{description}</p>
 }
 
-const SchemaIcon = ({
-  name,
-  className,
-}: {
-  name?: string | null
-  className?: string
-}) => {
+const SchemaIcon = ({ name, className }: { name?: string | null; className?: string }) => {
   if (!name) {
     return null
   }
 
-  return (
-    <DynamicIcon name={name as any} className={clsxm('h-4 w-4', className)} />
-  )
+  return <DynamicIcon name={name as any} className={clsxm('h-4 w-4', className)} />
 }
 
 const SecretFieldInput = <Key extends string>({
@@ -132,17 +118,12 @@ const FieldRenderer = <Key extends string>({
 
   if (component.type === 'slot') {
     return renderSlot
-      ? renderSlot(
-          field as UiFieldNode<Key> & { component: UiSlotComponent<Key> },
-          context,
-          onChange,
-        )
+      ? renderSlot(field as UiFieldNode<Key> & { component: UiSlotComponent<Key> }, context, onChange)
       : null
   }
 
   if (component.type === 'textarea') {
-    const stringValue =
-      typeof value === 'string' ? value : value == null ? '' : String(value)
+    const stringValue = typeof value === 'string' ? value : value == null ? '' : String(value)
     return (
       <Textarea
         value={stringValue}
@@ -155,13 +136,9 @@ const FieldRenderer = <Key extends string>({
   }
 
   if (component.type === 'select') {
-    const stringValue =
-      typeof value === 'string' ? value : value == null ? '' : String(value)
+    const stringValue = typeof value === 'string' ? value : value == null ? '' : String(value)
     return (
-      <Select
-        value={stringValue}
-        onValueChange={(nextValue) => onChange(field.key, nextValue)}
-      >
+      <Select value={stringValue} onValueChange={(nextValue) => onChange(field.key, nextValue)}>
         <SelectTrigger>
           <SelectValue placeholder={component.placeholder ?? '请选择'} />
         </SelectTrigger>
@@ -177,16 +154,8 @@ const FieldRenderer = <Key extends string>({
   }
 
   if (component.type === 'secret') {
-    const stringValue =
-      typeof value === 'string' ? value : value == null ? '' : String(value)
-    return (
-      <SecretFieldInput
-        component={component}
-        fieldKey={field.key}
-        value={stringValue}
-        onChange={onChange}
-      />
-    )
+    const stringValue = typeof value === 'string' ? value : value == null ? '' : String(value)
+    return <SecretFieldInput component={component} fieldKey={field.key} value={stringValue} onChange={onChange} />
   }
 
   if (component.type === 'switch') {
@@ -194,21 +163,14 @@ const FieldRenderer = <Key extends string>({
     const label = checked ? component.trueLabel : component.falseLabel
     return (
       <div className="flex items-center gap-2">
-        <Switch
-          checked={checked}
-          onCheckedChange={(next) => onChange(field.key, next)}
-        />
-        {label ? (
-          <span className="text-text-secondary text-xs">{label}</span>
-        ) : null}
+        <Switch checked={checked} onCheckedChange={(next) => onChange(field.key, next)} />
+        {label ? <span className="text-text-secondary text-xs">{label}</span> : null}
       </div>
     )
   }
 
-  const stringValue =
-    typeof value === 'string' ? value : value == null ? '' : String(value)
-  const inputType =
-    component.type === 'text' ? (component.inputType ?? 'text') : 'text'
+  const stringValue = typeof value === 'string' ? value : value == null ? '' : String(value)
+  const inputType = component.type === 'text' ? (component.inputType ?? 'text') : 'text'
 
   return (
     <Input
@@ -231,16 +193,7 @@ const renderGroup = <Key extends string>(
   renderSlot?: SlotRenderer<Key>,
 ) => {
   const renderedChildren = node.children
-    .map((child) =>
-      renderNode(
-        child,
-        context,
-        formState,
-        handleChange,
-        shouldRenderNode,
-        renderSlot,
-      ),
-    )
+    .map((child) => renderNode(child, context, formState, handleChange, shouldRenderNode, renderSlot))
     .filter(Boolean)
 
   if (renderedChildren.length === 0) {
@@ -248,10 +201,7 @@ const renderGroup = <Key extends string>(
   }
 
   return (
-    <div
-      key={node.id}
-      className="bg-accent/2 relative p-5 transition-all duration-200"
-    >
+    <div key={node.id} className="bg-accent/2 relative p-5 transition-all duration-200">
       {/* Subtle gradient borders for nested groups */}
       <div className="via-accent/15 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
       <div className="via-accent/15 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
@@ -284,20 +234,13 @@ const renderField = <Key extends string>(
   const { isSensitive, helperText, component, icon } = field
 
   if (component.type === 'switch') {
-    const helper = helperText ? (
-      <FormHelperText>{helperText}</FormHelperText>
-    ) : null
+    const helper = helperText ? <FormHelperText>{helperText}</FormHelperText> : null
 
     return (
-      <div
-        key={field.id}
-        className="border-fill/30 bg-background/40 rounded-lg border p-4"
-      >
+      <div key={field.id} className="border-fill/30 bg-background/40 rounded-lg border p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Label className="text-text text-sm font-medium">
-              {field.title}
-            </Label>
+            <Label className="text-text text-sm font-medium">{field.title}</Label>
             <FieldDescription description={field.description} />
           </div>
           <FieldRenderer
@@ -313,14 +256,10 @@ const renderField = <Key extends string>(
     )
   }
 
-  const showSensitiveHint =
-    isSensitive && typeof value === 'string' && value.length === 0
+  const showSensitiveHint = isSensitive && typeof value === 'string' && value.length === 0
 
   return (
-    <div
-      key={field.id}
-      className="border-fill-tertiary/40 bg-background/30 space-y-2 rounded-lg border p-4"
-    >
+    <div key={field.id} className="border-fill-tertiary/40 bg-background/30 space-y-2 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Label className="text-text text-sm font-medium">{field.title}</Label>
@@ -329,17 +268,9 @@ const renderField = <Key extends string>(
         <SchemaIcon name={icon} className="text-text-tertiary" />
       </div>
 
-      <FieldRenderer
-        field={field}
-        value={value}
-        onChange={handleChange}
-        renderSlot={renderSlot}
-        context={context}
-      />
+      <FieldRenderer field={field} value={value} onChange={handleChange} renderSlot={renderSlot} context={context} />
 
-      {showSensitiveHint ? (
-        <FormHelperText>出于安全考虑，仅在更新时填写新的值。</FormHelperText>
-      ) : null}
+      {showSensitiveHint ? <FormHelperText>出于安全考虑，仅在更新时填写新的值。</FormHelperText> : null}
 
       {helperText ? <FormHelperText>{helperText}</FormHelperText> : null}
     </div>
@@ -359,14 +290,7 @@ const renderNode = <Key extends string>(
   }
 
   if (node.type === 'group') {
-    return renderGroup(
-      node,
-      context,
-      formState,
-      handleChange,
-      shouldRenderNode,
-      renderSlot,
-    )
+    return renderGroup(node, context, formState, handleChange, shouldRenderNode, renderSlot)
   }
 
   if (node.type === 'field') {
@@ -374,16 +298,7 @@ const renderNode = <Key extends string>(
   }
 
   const renderedChildren = node.children
-    .map((child) =>
-      renderNode(
-        child,
-        context,
-        formState,
-        handleChange,
-        shouldRenderNode,
-        renderSlot,
-      ),
-    )
+    .map((child) => renderNode(child, context, formState, handleChange, shouldRenderNode, renderSlot))
     .filter(Boolean)
 
   if (renderedChildren.length === 0) {
@@ -410,10 +325,7 @@ export interface SchemaFormRendererProps<Key extends string> {
   schema: UiSchema<Key>
   values: SchemaFormState<Key>
   onChange: (key: Key, value: SchemaFormValue) => void
-  shouldRenderNode?: (
-    node: UiNode<Key>,
-    context: SchemaRendererContext<Key>,
-  ) => boolean
+  shouldRenderNode?: (node: UiNode<Key>, context: SchemaRendererContext<Key>) => boolean
   renderSlot?: SlotRenderer<Key>
 }
 
@@ -434,16 +346,7 @@ export const SchemaFormRenderer = <Key extends string>({
         }
 
         const renderedChildren = section.children
-          .map((child) =>
-            renderNode(
-              child,
-              context,
-              values,
-              onChange,
-              shouldRenderNode,
-              renderSlot,
-            ),
-          )
+          .map((child) => renderNode(child, context, values, onChange, shouldRenderNode, renderSlot))
           .filter(Boolean)
 
         if (renderedChildren.length === 0) {
@@ -455,13 +358,8 @@ export const SchemaFormRenderer = <Key extends string>({
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <SchemaIcon
-                    name={section.icon}
-                    className="text-accent h-5 w-5"
-                  />
-                  <h2 className="text-text text-lg font-semibold">
-                    {section.title}
-                  </h2>
+                  <SchemaIcon name={section.icon} className="text-accent h-5 w-5" />
+                  <h2 className="text-text text-lg font-semibold">{section.title}</h2>
                 </div>
                 <FieldDescription description={section.description} />
               </div>

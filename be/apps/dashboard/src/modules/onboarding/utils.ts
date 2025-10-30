@@ -12,8 +12,7 @@ export const createInitialSettingsState = (): SettingFormState => {
   return state
 }
 
-export const maskSecret = (value: string) =>
-  value ? '•'.repeat(Math.min(10, value.length)) : ''
+export const maskSecret = (value: string) => (value ? '•'.repeat(Math.min(10, value.length)) : '')
 
 export const slugify = (value: string) =>
   value
@@ -35,12 +34,9 @@ export const isLikelyEmail = (value: string) => {
   return domain.includes('.')
 }
 
-export const stepProgress = (index: number) =>
-  Math.round((index / (ONBOARDING_STEPS.length - 1 || 1)) * 100)
+export const stepProgress = (index: number) => Math.round((index / (ONBOARDING_STEPS.length - 1 || 1)) * 100)
 
-export const getFieldByKey = (
-  key: OnboardingSettingKey,
-): SettingFieldDefinition => {
+export const getFieldByKey = (key: OnboardingSettingKey): SettingFieldDefinition => {
   for (const section of ONBOARDING_SETTING_SECTIONS) {
     for (const field of section.fields) {
       if (field.key === key) {

@@ -12,16 +12,11 @@ export interface LoadBuilderConfigOptions {
   defaults?: BuilderConfig
 }
 
-export function defineBuilderConfig(
-  config: BuilderConfigInput | (() => BuilderConfigInput),
-): BuilderConfigInput {
+export function defineBuilderConfig(config: BuilderConfigInput | (() => BuilderConfigInput)): BuilderConfigInput {
   return typeof config === 'function' ? config() : config
 }
 
-function normalizeBuilderConfig(
-  defaults: BuilderConfig,
-  input: BuilderConfigInput,
-): BuilderConfig {
+function normalizeBuilderConfig(defaults: BuilderConfig, input: BuilderConfigInput): BuilderConfig {
   const base = clone(defaults)
   const merged = merge(base, input as Record<string, unknown>) as BuilderConfig
 
@@ -38,9 +33,7 @@ function normalizeBuilderConfig(
   return merged
 }
 
-export async function loadBuilderConfig(
-  options: LoadBuilderConfigOptions = {},
-): Promise<BuilderConfig> {
+export async function loadBuilderConfig(options: LoadBuilderConfigOptions = {}): Promise<BuilderConfig> {
   const defaults = options.defaults ?? createDefaultBuilderConfig()
 
   const result = await loadConfig<BuilderConfigInput>({

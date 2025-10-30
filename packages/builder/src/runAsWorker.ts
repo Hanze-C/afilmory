@@ -7,12 +7,7 @@ import type { PluginRunState } from './plugins/manager.js'
 import type { StorageObject } from './storage/interfaces'
 import type { BuilderConfig } from './types/config.js'
 import type { PhotoManifestItem } from './types/photo'
-import type {
-  BatchTaskMessage,
-  BatchTaskResult,
-  TaskMessage,
-  TaskResult,
-} from './worker/cluster-pool'
+import type { BatchTaskMessage, BatchTaskResult, TaskMessage, TaskResult } from './worker/cluster-pool'
 
 // 新增接口定义
 interface WorkerInitMessage {
@@ -45,9 +40,7 @@ export async function runAsWorker() {
   let pluginRunState: PluginRunState
 
   // 初始化函数，从主进程接收共享数据
-  const initializeWorker = async (
-    serializedData: WorkerInitMessage['sharedData'],
-  ) => {
+  const initializeWorker = async (serializedData: WorkerInitMessage['sharedData']) => {
     if (isInitialized) return
 
     // 将数组重新转换为 Buffer，然后反序列化
@@ -273,14 +266,7 @@ export async function runAsWorker() {
   // 立即注册消息监听器
   process.on(
     'message',
-    async (
-      message:
-        | TaskMessage
-        | BatchTaskMessage
-        | WorkerInitMessage
-        | { type: 'shutdown' }
-        | { type: 'ping' },
-    ) => {
+    async (message: TaskMessage | BatchTaskMessage | WorkerInitMessage | { type: 'shutdown' } | { type: 'ping' }) => {
       if (message.type === 'shutdown') {
         process.removeAllListeners('message')
         return

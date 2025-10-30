@@ -55,9 +55,7 @@ export const Component = () => {
                     <span
                       className="relative z-10 text-[13px] font-medium transition-colors"
                       style={{
-                        color: isActive
-                          ? 'var(--color-accent)'
-                          : 'var(--color-text-secondary)',
+                        color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                       }}
                     >
                       {tab.label}
@@ -73,20 +71,10 @@ export const Component = () => {
             {user && (
               <div className="flex items-center gap-2">
                 <div className="text-right">
-                  <div className="text-text text-[13px] font-medium">
-                    {user.name || user.email}
-                  </div>
-                  <div className="text-text-tertiary text-[11px] capitalize">
-                    {user.role}
-                  </div>
+                  <div className="text-text text-[13px] font-medium">{user.name || user.email}</div>
+                  <div className="text-text-tertiary text-[11px] capitalize">{user.role}</div>
                 </div>
-                {user.image && (
-                  <img
-                    src={user.image}
-                    alt={user.name || user.email}
-                    className="size-7 rounded-full"
-                  />
-                )}
+                {user.image && <img src={user.image} alt={user.name || user.email} className="size-7 rounded-full" />}
               </div>
             )}
 

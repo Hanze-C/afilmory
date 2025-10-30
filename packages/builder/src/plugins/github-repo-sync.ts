@@ -13,9 +13,7 @@ export interface GitHubRepoSyncPluginOptions {
   autoPush?: boolean
 }
 
-export default function githubRepoSyncPlugin(
-  options: GitHubRepoSyncPluginOptions = {},
-): BuilderPlugin {
+export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOptions = {}): BuilderPlugin {
   const autoPush = options.autoPush ?? true
 
   return {
@@ -72,9 +70,7 @@ export default function githubRepoSyncPlugin(
         }
 
         const { result } = context.payload
-        const assetsGitDir = context.runShared.get(RUN_SHARED_ASSETS_DIR) as
-          | string
-          | undefined
+        const assetsGitDir = context.runShared.get(RUN_SHARED_ASSETS_DIR) as string | undefined
 
         if (!assetsGitDir) {
           context.logger.main.warn('⚠️ 未找到仓库目录，跳过推送')
@@ -101,10 +97,7 @@ interface PrepareRepositoryLayoutOptions {
   logger: typeof import('../logger/index.js').logger
 }
 
-async function prepareRepositoryLayout({
-  assetsGitDir,
-  logger,
-}: PrepareRepositoryLayoutOptions): Promise<void> {
+async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareRepositoryLayoutOptions): Promise<void> {
   const thumbnailsSourceDir = path.resolve(assetsGitDir, 'thumbnails')
   const manifestSourcePath = path.resolve(assetsGitDir, 'photos-manifest.json')
 
@@ -116,11 +109,7 @@ async function prepareRepositoryLayout({
   if (!existsSync(manifestSourcePath)) {
     logger.main.info('📄 创建初始 manifest 文件...')
     const { CURRENT_MANIFEST_VERSION } = await import('../manifest/version.js')
-    const initial = JSON.stringify(
-      { version: CURRENT_MANIFEST_VERSION, data: [] },
-      null,
-      2,
-    )
+    const initial = JSON.stringify({ version: CURRENT_MANIFEST_VERSION, data: [] }, null, 2)
     await fs.writeFile(manifestSourcePath, initial)
   }
 
@@ -133,12 +122,7 @@ async function prepareRepositoryLayout({
     stdio: 'inherit',
   })`ln -s ${thumbnailsSourceDir} ${thumbnailsDir}`
 
-  const photosManifestPath = path.resolve(
-    workdir,
-    'src',
-    'data',
-    'photos-manifest.json',
-  )
+  const photosManifestPath = path.resolve(workdir, 'src', 'data', 'photos-manifest.json')
   if (existsSync(photosManifestPath)) {
     await $({ cwd: workdir, stdio: 'inherit' })`rm -f ${photosManifestPath}`
   }
@@ -158,11 +142,7 @@ interface PushRemoteOptions {
   }
 }
 
-async function pushUpdatesToRemoteRepo({
-  assetsGitDir,
-  logger,
-  repoConfig,
-}: PushRemoteOptions): Promise<void> {
+async function pushUpdatesToRemoteRepo({ assetsGitDir, logger, repoConfig }: PushRemoteOptions): Promise<void> {
   if (!repoConfig.url) {
     return
   }
@@ -189,10 +169,7 @@ async function pushUpdatesToRemoteRepo({
   logger.main.info('📋 检测到以下变更：')
   logger.main.info(status.stdout)
 
-  const authenticatedUrl = buildAuthenticatedRepoUrl(
-    repoConfig.url,
-    repoConfig.token,
-  )
+  const authenticatedUrl = buildAuthenticatedRepoUrl(repoConfig.url, repoConfig.token)
 
   await $({
     cwd: assetsGitDir,
@@ -237,8 +214,6 @@ function buildAuthenticatedRepoUrl(url: string, token?: string): string {
 }
 
 export const plugin = githubRepoSyncPlugin
-export function createGitHubRepoSyncPlugin(
-  options?: GitHubRepoSyncPluginOptions,
-): BuilderPlugin {
+export function createGitHubRepoSyncPlugin(options?: GitHubRepoSyncPluginOptions): BuilderPlugin {
   return githubRepoSyncPlugin(options)
 }

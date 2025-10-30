@@ -82,18 +82,10 @@ const result = await processPhoto(
 #### 单独使用各个模块
 
 ```typescript
-import { 
-  processLivePhoto, 
-  processThumbnailAndBlurhash,
-  processExifData 
-} from './index.js'
+import { processLivePhoto, processThumbnailAndBlurhash, processExifData } from './index.js'
 
 // Live Photo 处理
-const livePhotoResult = processLivePhoto(
-  photoKey,
-  livePhotoMap,
-  builder.getStorageManager(),
-)
+const livePhotoResult = processLivePhoto(photoKey, livePhotoMap, builder.getStorageManager())
 
 // 缩略图处理
 const thumbnailResult = await processThumbnailAndBlurhash(imageBuffer, photoId, width, height, existingItem, options)
@@ -114,4 +106,4 @@ const exifData = await processExifData(imageBuffer, rawImageBuffer, photoKey, ex
 
 1. **缓存复用**: 智能复用现有的缩略图、EXIF、影调分析数据
 2. **Sharp 实例复用**: 在处理管道中复用 Sharp 实例
-3. **条件处理**: 只在需要时处理特定的数据类型 
+3. **条件处理**: 只在需要时处理特定的数据类型

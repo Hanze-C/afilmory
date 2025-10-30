@@ -45,35 +45,23 @@ export const LinearBorderContainer: FC<LinearBorderContainerProps> = ({
     <div className="flex flex-col">
       <div className={clsxm('flex flex-row', className)}>
         {/* Top border */}
-        <div
-          className="absolute right-0 left-0 z-1 h-[0.5px]"
-          style={horizontalGradient}
-        />
+        <div className="absolute right-0 left-0 z-1 h-[0.5px]" style={horizontalGradient} />
 
         {/* Left border */}
-        <div
-          className="absolute top-0 bottom-0 z-1 w-[0.5px]"
-          style={verticalGradient}
-        />
+        <div className="absolute top-0 bottom-0 z-1 w-[0.5px]" style={verticalGradient} />
 
         {/* Main content area */}
         {children}
 
         {/* Right border container */}
         <div className="flex shrink-0 flex-col">
-          <div
-            className="absolute top-0 bottom-0 z-1 w-[0.5px]"
-            style={verticalGradient}
-          />
+          <div className="absolute top-0 bottom-0 z-1 w-[0.5px]" style={verticalGradient} />
         </div>
       </div>
 
       {/* Bottom border container */}
       <div className="w-[2px] shrink-0">
-        <div
-          className="absolute right-0 left-0 z-1 h-[0.5px]"
-          style={horizontalGradient}
-        />
+        <div className="absolute right-0 left-0 z-1 h-[0.5px]" style={horizontalGradient} />
       </div>
     </div>
   )

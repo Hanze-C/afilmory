@@ -1,6 +1,6 @@
 import { Modal, Prompt } from '@afilmory/ui'
 import { useCallback, useEffect, useRef } from 'react'
-import { useBeforeUnload,useBlocker } from 'react-router'
+import { useBeforeUnload, useBlocker } from 'react-router'
 
 type UseBlockOptions = {
   when: boolean
@@ -71,15 +71,7 @@ export const useBlock = ({
         blocker.reset?.()
       },
     })
-  }, [
-    blocker,
-    cancelText,
-    closePrompt,
-    confirmText,
-    description,
-    title,
-    variant,
-  ])
+  }, [blocker, cancelText, closePrompt, confirmText, description, title, variant])
 
   useEffect(() => {
     if (!when) {

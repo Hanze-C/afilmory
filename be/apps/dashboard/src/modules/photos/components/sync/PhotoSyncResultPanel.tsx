@@ -4,12 +4,7 @@ import { m } from 'motion/react'
 import { useMemo, useState } from 'react'
 
 import { getConflictTypeLabel, PHOTO_ACTION_TYPE_CONFIG } from '../../constants'
-import type {
-  PhotoAssetSummary,
-  PhotoSyncAction,
-  PhotoSyncResult,
-  PhotoSyncSnapshot,
-} from '../../types'
+import type { PhotoAssetSummary, PhotoSyncAction, PhotoSyncResult, PhotoSyncSnapshot } from '../../types'
 
 export const BorderOverlay = () => (
   <>
@@ -39,9 +34,7 @@ const SummaryCard = ({ label, value, tone }: SummaryCardProps) => {
   return (
     <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-5">
       <BorderOverlay />
-      <p className="text-text-tertiary text-xs tracking-wide uppercase">
-        {label}
-      </p>
+      <p className="text-text-tertiary text-xs tracking-wide uppercase">{label}</p>
       <p className={`mt-2 text-2xl font-semibold ${toneClass}`}>{value}</p>
     </div>
   )
@@ -57,12 +50,7 @@ type PhotoSyncResultPanelProps = {
 
 const actionTypeConfig = PHOTO_ACTION_TYPE_CONFIG
 
-const SUMMARY_SKELETON_KEYS = [
-  'summary-skeleton-1',
-  'summary-skeleton-2',
-  'summary-skeleton-3',
-  'summary-skeleton-4',
-]
+const SUMMARY_SKELETON_KEYS = ['summary-skeleton-1', 'summary-skeleton-2', 'summary-skeleton-3', 'summary-skeleton-4']
 
 export const PhotoSyncResultPanel = ({
   result,
@@ -86,10 +74,7 @@ export const PhotoSyncResultPanel = ({
         {
           label: '冲突条目',
           value: result.summary.conflicts,
-          tone:
-            result.summary.conflicts > 0
-              ? ('warning' as const)
-              : ('muted' as const),
+          tone: result.summary.conflicts > 0 ? ('warning' as const) : ('muted' as const),
         },
         {
           label: '跳过条目',
@@ -106,18 +91,12 @@ export const PhotoSyncResultPanel = ({
         {
           label: '冲突条目',
           value: baselineSummary.conflicts,
-          tone:
-            baselineSummary.conflicts > 0
-              ? ('warning' as const)
-              : ('muted' as const),
+          tone: baselineSummary.conflicts > 0 ? ('warning' as const) : ('muted' as const),
         },
         {
           label: '待处理',
           value: baselineSummary.pending,
-          tone:
-            baselineSummary.pending > 0
-              ? ('accent' as const)
-              : ('muted' as const),
+          tone: baselineSummary.pending > 0 ? ('accent' as const) : ('muted' as const),
         },
       ]
     }
@@ -125,12 +104,8 @@ export const PhotoSyncResultPanel = ({
     return []
   }, [result, baselineSummary])
 
-  const [selectedActionType, setSelectedActionType] = useState<
-    'all' | PhotoSyncAction['type']
-  >('all')
-  const [expandedActionKey, setExpandedActionKey] = useState<string | null>(
-    null,
-  )
+  const [selectedActionType, setSelectedActionType] = useState<'all' | PhotoSyncAction['type']>('all')
+  const [expandedActionKey, setExpandedActionKey] = useState<string | null>(null)
 
   const actionFilters = useMemo(() => {
     const counts: Record<PhotoSyncAction['type'], number> = {
@@ -173,9 +148,7 @@ export const PhotoSyncResultPanel = ({
     return result.actions.filter((action) => action.type === selectedActionType)
   }, [result, selectedActionType])
 
-  const activeFilter = actionFilters.find(
-    (item) => item.type === selectedActionType,
-  )
+  const activeFilter = actionFilters.find((item) => item.type === selectedActionType)
 
   const handleSelectActionType = (type: 'all' | PhotoSyncAction['type']) => {
     setSelectedActionType(type)
@@ -219,32 +192,19 @@ export const PhotoSyncResultPanel = ({
       applied,
     } = action
     const resolutionLabel =
-      resolution === 'prefer-storage'
-        ? '以存储为准'
-        : resolution === 'prefer-database'
-          ? '以数据库为准'
-          : null
-    const conflictTypeLabel =
-      action.type === 'conflict'
-        ? getConflictTypeLabel(conflictPayload?.type)
-        : null
+      resolution === 'prefer-storage' ? '以存储为准' : resolution === 'prefer-database' ? '以数据库为准' : null
+    const conflictTypeLabel = action.type === 'conflict' ? getConflictTypeLabel(conflictPayload?.type) : null
 
     return (
       <div className="border-border/20 bg-fill/10 relative overflow-hidden rounded-lg p-4">
         <BorderOverlay />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass}`}
-            >
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass}`}>
               {label}
             </span>
             <code className="text-text-secondary text-xs">{storageKey}</code>
-            {photoId ? (
-              <span className="text-text-tertiary text-xs">
-                Photo ID：{photoId}
-              </span>
-            ) : null}
+            {photoId ? <span className="text-text-tertiary text-xs">Photo ID：{photoId}</span> : null}
           </div>
           <span className="text-text-tertiary inline-flex items-center gap-1 text-xs">
             <span>{applied ? '已应用' : '未应用'}</span>
@@ -252,21 +212,15 @@ export const PhotoSyncResultPanel = ({
           </span>
         </div>
 
-        {action.reason ? (
-          <p className="text-text-tertiary text-sm">{action.reason}</p>
-        ) : null}
+        {action.reason ? <p className="text-text-tertiary text-sm">{action.reason}</p> : null}
 
         {conflictTypeLabel || conflictPayload?.incomingStorageKey ? (
           <div className="text-text-tertiary text-xs">
-            {conflictTypeLabel ? (
-              <span>冲突类型：{conflictTypeLabel}</span>
-            ) : null}
+            {conflictTypeLabel ? <span>冲突类型：{conflictTypeLabel}</span> : null}
             {conflictPayload?.incomingStorageKey ? (
               <span className="ml-2">
                 存储 Key：
-                <code className="ml-1 font-mono text-[11px] text-text">
-                  {conflictPayload.incomingStorageKey}
-                </code>
+                <code className="text-text ml-1 font-mono text-[11px]">{conflictPayload.incomingStorageKey}</code>
               </span>
             ) : null}
           </div>
@@ -317,21 +271,13 @@ export const PhotoSyncResultPanel = ({
           {isSummaryLoading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {SUMMARY_SKELETON_KEYS.map((key) => (
-                <div
-                  key={key}
-                  className="bg-fill/30 h-24 animate-pulse rounded-lg"
-                />
+                <div key={key} className="bg-fill/30 h-24 animate-pulse rounded-lg" />
               ))}
             </div>
           ) : summaryItems.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {summaryItems.map((item) => (
-                <SummaryCard
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                  tone={item.tone}
-                />
+                <SummaryCard key={item.label} label={item.label} value={item.value} tone={item.tone} />
               ))}
             </div>
           ) : null}
@@ -372,11 +318,7 @@ export const PhotoSyncResultPanel = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...Spring.presets.smooth, delay: index * 0.04 }}
           >
-            <SummaryCard
-              label={item.label}
-              value={item.value}
-              tone={item.tone}
-            />
+            <SummaryCard label={item.label} value={item.value} tone={item.tone} />
           </m.div>
         ))}
       </div>
@@ -387,9 +329,7 @@ export const PhotoSyncResultPanel = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-text text-base font-semibold">同步操作明细</h3>
             <span className="text-text-tertiary text-xs">
-              {lastWasDryRun
-                ? '预览模式 · 未应用变更'
-                : '实时模式 · 结果已写入'}
+              {lastWasDryRun ? '预览模式 · 未应用变更' : '实时模式 · 结果已写入'}
             </span>
           </div>
 
@@ -399,25 +339,19 @@ export const PhotoSyncResultPanel = ({
                 key={filter.type}
                 type="button"
                 size="xs"
-                variant={
-                  selectedActionType === filter.type ? 'primary' : 'ghost'
-                }
+                variant={selectedActionType === filter.type ? 'primary' : 'ghost'}
                 className="gap-1"
                 onClick={() => handleSelectActionType(filter.type)}
               >
                 <span>{filter.label}</span>
-                <span className="text-text-tertiary text-[11px]">
-                  {filter.count}
-                </span>
+                <span className="text-text-tertiary text-[11px]">{filter.count}</span>
               </Button>
             ))}
           </div>
 
           {filteredActions.length === 0 ? (
             <p className="text-text-tertiary text-sm">
-              {result
-                ? '当前筛选下没有需要查看的操作。'
-                : '同步完成，未检测到需要处理的对象。'}
+              {result ? '当前筛选下没有需要查看的操作。' : '同步完成，未检测到需要处理的对象。'}
             </p>
           ) : (
             <div className="space-y-3">
@@ -432,9 +366,7 @@ export const PhotoSyncResultPanel = ({
                       : null
                 const { conflictPayload } = action
                 const conflictTypeLabel =
-                  action.type === 'conflict'
-                    ? getConflictTypeLabel(conflictPayload?.type)
-                    : null
+                  action.type === 'conflict' ? getConflictTypeLabel(conflictPayload?.type) : null
                 const incomingKey = conflictPayload?.incomingStorageKey
                 const isExpanded = expandedActionKey === actionKey
 
@@ -450,7 +382,7 @@ export const PhotoSyncResultPanel = ({
                   >
                     <div className="border-border/20 bg-fill/10 relative overflow-hidden rounded-lg">
                       <BorderOverlay />
-                      <div className="p-4 space-y-3">
+                      <div className="space-y-3 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="flex flex-wrap items-center gap-2">
                             <span
@@ -458,20 +390,14 @@ export const PhotoSyncResultPanel = ({
                             >
                               {label}
                             </span>
-                            <code className="text-text-secondary text-xs">
-                              {action.storageKey}
-                            </code>
+                            <code className="text-text-secondary text-xs">{action.storageKey}</code>
                             {action.photoId ? (
-                              <span className="text-text-tertiary text-xs">
-                                Photo ID：{action.photoId}
-                              </span>
+                              <span className="text-text-tertiary text-xs">Photo ID：{action.photoId}</span>
                             ) : null}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
+                          <div className="text-text-tertiary flex flex-wrap items-center gap-2 text-xs">
                             <span>{action.applied ? '已应用' : '未应用'}</span>
-                            {resolutionLabel ? (
-                              <span>· {resolutionLabel}</span>
-                            ) : null}
+                            {resolutionLabel ? <span>· {resolutionLabel}</span> : null}
                             <Button
                               type="button"
                               size="xs"
@@ -483,32 +409,22 @@ export const PhotoSyncResultPanel = ({
                           </div>
                         </div>
 
-                        {action.reason ? (
-                          <p className="text-text-tertiary text-sm">
-                            {action.reason}
-                          </p>
-                        ) : null}
+                        {action.reason ? <p className="text-text-tertiary text-sm">{action.reason}</p> : null}
 
                         {conflictTypeLabel || incomingKey ? (
                           <div className="text-text-tertiary text-xs">
-                            {conflictTypeLabel ? (
-                              <span>冲突类型：{conflictTypeLabel}</span>
-                            ) : null}
+                            {conflictTypeLabel ? <span>冲突类型：{conflictTypeLabel}</span> : null}
                             {incomingKey ? (
                               <span className="ml-2">
                                 存储 Key：
-                                <code className="ml-1 font-mono text-[11px] text-text">
-                                  {incomingKey}
-                                </code>
+                                <code className="text-text ml-1 font-mono text-[11px]">{incomingKey}</code>
                               </span>
                             ) : null}
                           </div>
                         ) : null}
 
                         {isExpanded ? (
-                          <div className="border-border/10 border-t pt-3">
-                            {renderActionDetails(action)}
-                          </div>
+                          <div className="border-border/10 border-t pt-3">{renderActionDetails(action)}</div>
                         ) : null}
                       </div>
                     </div>
@@ -534,36 +450,25 @@ const ManifestPreview = ({
 }) => {
   if (!manifest) {
     return (
-      <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3 text-xs text-text-tertiary">
+      <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
         <p className="text-text text-sm font-semibold">{title}</p>
         <p className="mt-1">暂无数据</p>
       </div>
     )
   }
 
-  const dimensions =
-    manifest.width && manifest.height
-      ? `${manifest.width} × ${manifest.height}`
-      : '未知'
+  const dimensions = manifest.width && manifest.height ? `${manifest.width} × ${manifest.height}` : '未知'
   const sizeMB =
-    typeof manifest.size === 'number' && manifest.size > 0
-      ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB`
-      : '未知'
-  const updatedAt = manifest.lastModified
-    ? new Date(manifest.lastModified).toLocaleString()
-    : '未知'
+    typeof manifest.size === 'number' && manifest.size > 0 ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB` : '未知'
+  const updatedAt = manifest.lastModified ? new Date(manifest.lastModified).toLocaleString() : '未知'
 
   return (
     <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3">
       <div className="flex items-start gap-3">
         {manifest.thumbnailUrl ? (
-          <img
-            src={manifest.thumbnailUrl}
-            alt={manifest.id}
-            className="h-16 w-20 rounded-md object-cover"
-          />
+          <img src={manifest.thumbnailUrl} alt={manifest.id} className="h-16 w-20 rounded-md object-cover" />
         ) : null}
-        <div className="space-y-1 text-xs text-text-tertiary">
+        <div className="text-text-tertiary space-y-1 text-xs">
           <p className="text-text text-sm font-semibold">{title}</p>
           <div className="flex items-center gap-2">
             <span className="text-text">ID：</span>
@@ -584,13 +489,7 @@ const ManifestPreview = ({
         </div>
       </div>
       {onOpenOriginal ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="mt-3"
-          onClick={onOpenOriginal}
-        >
+        <Button type="button" variant="ghost" size="xs" className="mt-3" onClick={onOpenOriginal}>
           查看原图
         </Button>
       ) : null}
@@ -609,28 +508,20 @@ export const MetadataSnapshot = ({ snapshot }: MetadataSnapshotProps) => {
       <div className="flex items-center justify-between gap-4">
         <dt>大小</dt>
         <dd className="text-text text-right">
-          {snapshot.size !== null
-            ? `${(snapshot.size / 1024 / 1024).toFixed(2)} MB`
-            : '未知'}
+          {snapshot.size !== null ? `${(snapshot.size / 1024 / 1024).toFixed(2)} MB` : '未知'}
         </dd>
       </div>
       <div className="flex items-center justify-between gap-4">
         <dt>ETag</dt>
-        <dd className="text-text text-right font-mono text-[10px]">
-          {snapshot.etag ?? '未知'}
-        </dd>
+        <dd className="text-text text-right font-mono text-[10px]">{snapshot.etag ?? '未知'}</dd>
       </div>
       <div className="flex items-center justify-between gap-4">
         <dt>更新时间</dt>
-        <dd className="text-text text-right">
-          {snapshot.lastModified ?? '未知'}
-        </dd>
+        <dd className="text-text text-right">{snapshot.lastModified ?? '未知'}</dd>
       </div>
       <div className="flex items-center justify-between gap-4">
         <dt>元数据摘要</dt>
-        <dd className="text-text text-right font-mono text-[10px]">
-          {snapshot.metadataHash ?? '无'}
-        </dd>
+        <dd className="text-text text-right font-mono text-[10px]">{snapshot.metadataHash ?? '无'}</dd>
       </div>
     </dl>
   )

@@ -58,7 +58,6 @@
   "devDependencies": {
     "@egoist/tailwindcss-icons": "1.9.0",
     "@iconify-json/mingcute": "1.2.5",
-    "@innei/prettier": "^1.0.0",
     "@tailwindcss/container-queries": "0.1.1",
     "@tailwindcss/postcss": "4.1.16",
     "@tailwindcss/typography": "0.5.19",
