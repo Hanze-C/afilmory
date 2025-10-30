@@ -2,7 +2,6 @@ import { Body, ContextParam, Controller, Delete, Get, Post, Query } from '@afilm
 import { BizException, ErrorCode } from 'core/errors'
 import { Roles } from 'core/guards/roles.decorator'
 import type { Context } from 'hono'
-import { File } from 'undici'
 
 import type { PhotoAssetListItem, PhotoAssetSummary } from './photo-asset.service'
 import { PhotoAssetService } from './photo-asset.service'

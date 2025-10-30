@@ -10,14 +10,20 @@ export const getSettings = async (keys: ReadonlyArray<string>) => {
   return await coreApi<{
     keys: string[]
     values: Record<string, string | null>
-  }>('/settings', {
-    query: { keys },
+  }>('/settings/batch', {
+    body: { keys },
+    method: 'POST',
   })
 }
 
-export const updateSettings = async (entries: ReadonlyArray<SettingEntryInput>) => {
-  return await coreApi<{ updated: ReadonlyArray<SettingEntryInput> }>('/settings', {
-    method: 'POST',
-    body: { entries },
-  })
+export const updateSettings = async (
+  entries: ReadonlyArray<SettingEntryInput>,
+) => {
+  return await coreApi<{ updated: ReadonlyArray<SettingEntryInput> }>(
+    '/settings',
+    {
+      method: 'POST',
+      body: { entries },
+    },
+  )
 }

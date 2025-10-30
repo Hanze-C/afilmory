@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback,useMemo, useState  } from 'react'
 import { toast } from 'sonner'
 
 import { MainPageLayout } from '~/components/layouts/MainPageLayout'
@@ -11,19 +11,51 @@ import {
   usePhotoAssetSummaryQuery,
   useUploadPhotoAssetsMutation,
 } from '../hooks'
-import type { PhotoAssetListItem, PhotoSyncResult } from '../types'
+import type {
+  PhotoAssetListItem,
+  PhotoSyncProgressEvent,
+  PhotoSyncProgressStage,
+  PhotoSyncProgressState,
+  PhotoSyncResult,
+} from '../types'
 import { PhotoLibraryActionBar } from './library/PhotoLibraryActionBar'
 import { PhotoLibraryGrid } from './library/PhotoLibraryGrid'
 import { PhotoSyncActions } from './sync/PhotoSyncActions'
+import { PhotoSyncProgressPanel } from './sync/PhotoSyncProgressPanel'
 import { PhotoSyncResultPanel } from './sync/PhotoSyncResultPanel'
 
 type PhotoPageTab = 'sync' | 'library'
+
+const STAGE_ORDER: PhotoSyncProgressStage[] = [
+  'missing-in-db',
+  'orphan-in-db',
+  'metadata-conflicts',
+  'status-reconciliation',
+]
+
+const createInitialStages = (
+  totals: PhotoSyncProgressState['totals'],
+): PhotoSyncProgressState['stages'] =>
+  STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
+    (acc, stage) => {
+      const total = totals[stage]
+      acc[stage] = {
+        status: total === 0 ? 'completed' : 'pending',
+        processed: 0,
+        total,
+      }
+      return acc
+    },
+    {} as PhotoSyncProgressState['stages'],
+  )
 
 export const PhotoPage = () => {
   const [activeTab, setActiveTab] = useState<PhotoPageTab>('sync')
   const [result, setResult] = useState<PhotoSyncResult | null>(null)
   const [lastWasDryRun, setLastWasDryRun] = useState<boolean | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [syncProgress, setSyncProgress] =
+    useState<PhotoSyncProgressState | null>(null)
 
   const summaryQuery = usePhotoAssetSummaryQuery()
   const listQuery = usePhotoAssetListQuery({ enabled: activeTab === 'library' })
@@ -45,6 +77,120 @@ export const PhotoPage = () => {
   const handleClearSelection = () => {
     setSelectedIds([])
   }
+
+  const handleProgressEvent = useCallback(
+    (event: PhotoSyncProgressEvent) => {
+      if (event.type === 'start') {
+        const { summary, totals, options } = event.payload
+        setSyncProgress({
+          dryRun: options.dryRun,
+          summary,
+          totals,
+          stages: createInitialStages(totals),
+          startedAt: Date.now(),
+          updatedAt: Date.now(),
+          lastAction: undefined,
+          error: undefined,
+        })
+        setResult(null)
+        setLastWasDryRun(options.dryRun)
+        return
+      }
+
+      if (event.type === 'complete') {
+        setSyncProgress(null)
+        return
+      }
+
+      if (event.type === 'error') {
+        setSyncProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                error: event.payload.message,
+                updatedAt: Date.now(),
+              }
+            : prev,
+        )
+        return
+      }
+
+      if (event.type === 'stage') {
+        setSyncProgress((prev) => {
+          if (!prev) {
+            return prev
+          }
+
+          const { stage, status, processed, total, summary } = event.payload
+          const nextStages = {
+            ...prev.stages,
+            [stage]: {
+              status:
+                status === 'complete'
+                  ? 'completed'
+                  : total === 0
+                    ? 'completed'
+                    : 'running',
+              processed,
+              total,
+            },
+          }
+
+          return {
+            ...prev,
+            summary,
+            stages: nextStages,
+            updatedAt: Date.now(),
+          }
+        })
+        return
+      }
+
+      if (event.type === 'action') {
+        setSyncProgress((prev) => {
+          if (!prev) {
+            return prev
+          }
+
+          const { stage, index, total, action, summary } = event.payload
+          const nextStages = {
+            ...prev.stages,
+            [stage]: {
+              status: total === 0 ? 'completed' : 'running',
+              processed: index,
+              total,
+            },
+          }
+
+          return {
+            ...prev,
+            summary,
+            stages: nextStages,
+            lastAction: {
+              stage,
+              index,
+              total,
+              action,
+            },
+            updatedAt: Date.now(),
+          }
+        })
+      }
+    },
+    [setResult, setLastWasDryRun],
+  )
+
+  const handleSyncError = useCallback((error: Error) => {
+    setSyncProgress((prev) =>
+      prev
+        ? {
+            ...prev,
+            error: error.message,
+            updatedAt: Date.now(),
+          }
+        : prev,
+    )
+  }, [])
 
   const handleDeleteAssets = async (ids: string[]) => {
     if (ids.length === 0) return
@@ -115,9 +261,12 @@ export const PhotoPage = () => {
             onCompleted={(data, context) => {
               setResult(data)
               setLastWasDryRun(context.dryRun)
+              setSyncProgress(null)
               void summaryQuery.refetch()
               void listQuery.refetch()
             }}
+            onProgress={handleProgressEvent}
+            onError={handleSyncError}
           />
         ) : (
           <PhotoLibraryActionBar
@@ -142,6 +291,10 @@ export const PhotoPage = () => {
             { id: 'library', label: '图库管理' },
           ]}
         />
+
+        {activeTab === 'sync' && syncProgress ? (
+          <PhotoSyncProgressPanel progress={syncProgress} />
+        ) : null}
 
         {activeTab === 'sync' ? (
           <PhotoSyncResultPanel

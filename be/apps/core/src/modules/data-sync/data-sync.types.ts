@@ -77,3 +77,54 @@ export interface ResolveConflictOptions {
   storageConfig?: StorageConfig
   dryRun?: boolean
 }
+
+export type DataSyncProgressStage = 'missing-in-db' | 'orphan-in-db' | 'metadata-conflicts' | 'status-reconciliation'
+
+export interface DataSyncStageTotals {
+  'missing-in-db': number
+  'orphan-in-db': number
+  'metadata-conflicts': number
+  'status-reconciliation': number
+}
+
+export type DataSyncProgressEvent =
+  | {
+      type: 'start'
+      payload: {
+        summary: DataSyncResultSummary
+        totals: DataSyncStageTotals
+        options: Pick<DataSyncOptions, 'dryRun'>
+      }
+    }
+  | {
+      type: 'stage'
+      payload: {
+        stage: DataSyncProgressStage
+        status: 'start' | 'complete'
+        processed: number
+        total: number
+        summary: DataSyncResultSummary
+      }
+    }
+  | {
+      type: 'action'
+      payload: {
+        stage: DataSyncProgressStage
+        index: number
+        total: number
+        action: DataSyncAction
+        summary: DataSyncResultSummary
+      }
+    }
+  | {
+      type: 'complete'
+      payload: DataSyncResult
+    }
+  | {
+      type: 'error'
+      payload: {
+        message: string
+      }
+    }
+
+export type DataSyncProgressEmitter = (event: DataSyncProgressEvent) => Promise<void> | void

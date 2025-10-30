@@ -1,26 +1,54 @@
 import { Button } from '@afilmory/ui'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useMainPageLayout } from '~/components/layouts/MainPageLayout'
 
 import { runPhotoSync } from '../../api'
-import type { PhotoSyncResult, RunPhotoSyncPayload } from '../../types'
+import type {
+  PhotoSyncProgressEvent,
+  PhotoSyncResult,
+  RunPhotoSyncPayload,
+} from '../../types'
 
 type PhotoSyncActionsProps = {
   onCompleted: (result: PhotoSyncResult, context: { dryRun: boolean }) => void
+  onProgress?: (event: PhotoSyncProgressEvent) => void
+  onError?: (error: Error) => void
 }
 
-export const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
+export const PhotoSyncActions = ({
+  onCompleted,
+  onProgress,
+  onError,
+}: PhotoSyncActionsProps) => {
   const { setHeaderActionState } = useMainPageLayout()
   const [pendingMode, setPendingMode] = useState<'dry-run' | 'apply' | null>(
     null,
   )
+  const abortRef = useRef<AbortController | null>(null)
 
   const mutation = useMutation({
     mutationFn: async (variables: RunPhotoSyncPayload) => {
-      return await runPhotoSync({ dryRun: variables.dryRun ?? false })
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      try {
+        return await runPhotoSync(
+          { dryRun: variables.dryRun ?? false },
+          {
+            signal: controller.signal,
+            onEvent: (event) => {
+              onProgress?.(event)
+            },
+          },
+        )
+      } finally {
+        if (abortRef.current === controller) {
+          abortRef.current = null
+        }
+      }
     },
     onMutate: (variables) => {
       setPendingMode(variables.dryRun ? 'dry-run' : 'apply')
@@ -34,13 +62,17 @@ export const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
       })
     },
     onError: (error) => {
-      const message =
-        error instanceof Error ? error.message : '照片同步失败，请稍后重试。'
+      const normalizedError =
+        error instanceof Error ? error : new Error('照片同步失败，请稍后重试。')
+
+      const {message} = normalizedError
       toast.error('同步失败', { description: message })
+      onError?.(normalizedError)
     },
     onSettled: () => {
       setPendingMode(null)
       setHeaderActionState({ disabled: false, loading: false })
+      abortRef.current = null
     },
   })
 
@@ -48,6 +80,7 @@ export const PhotoSyncActions = ({ onCompleted }: PhotoSyncActionsProps) => {
 
   useEffect(() => {
     return () => {
+      abortRef.current?.abort()
       setHeaderActionState({ disabled: false, loading: false })
     }
   }, [setHeaderActionState])

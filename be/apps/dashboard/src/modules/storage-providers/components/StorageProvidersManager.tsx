@@ -7,6 +7,7 @@ import {
   MainPageLayout,
   useMainPageLayout,
 } from '~/components/layouts/MainPageLayout'
+import { useBlock } from '~/hooks/useBlock'
 
 import {
   useStorageProvidersQuery,
@@ -25,6 +26,15 @@ export const StorageProvidersManager = () => {
   const [providers, setProviders] = useState<StorageProvider[]>([])
   const [activeProviderId, setActiveProviderId] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
+
+  useBlock({
+    when: isDirty,
+    title: '离开前请保存设置',
+    description:
+      '当前存储提供商设置尚未保存，离开页面会丢失这些更改，确定要继续吗？',
+    confirmText: '继续离开',
+    cancelText: '留在此页',
+  })
 
   useEffect(() => {
     if (!data) {

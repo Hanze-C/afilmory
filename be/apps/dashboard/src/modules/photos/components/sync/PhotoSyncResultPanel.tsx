@@ -10,7 +10,7 @@ import type {
   PhotoSyncSnapshot,
 } from '../../types'
 
-const BorderOverlay = () => (
+export const BorderOverlay = () => (
   <>
     <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
     <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-gradient-to-b from-transparent to-transparent" />
@@ -54,7 +54,7 @@ type PhotoSyncResultPanelProps = {
   onRequestStorageUrl?: (storageKey: string) => Promise<string>
 }
 
-const actionTypeConfig: Record<
+export const actionTypeConfig: Record<
   PhotoSyncAction['type'],
   { label: string; badgeClass: string }
 > = {

@@ -53,6 +53,84 @@ export interface RunPhotoSyncPayload {
   dryRun?: boolean
 }
 
+export type PhotoSyncProgressStage =
+  | 'missing-in-db'
+  | 'orphan-in-db'
+  | 'metadata-conflicts'
+  | 'status-reconciliation'
+
+export interface PhotoSyncStageTotals {
+  'missing-in-db': number
+  'orphan-in-db': number
+  'metadata-conflicts': number
+  'status-reconciliation': number
+}
+
+export type PhotoSyncProgressEvent =
+  | {
+      type: 'start'
+      payload: {
+        summary: PhotoSyncResultSummary
+        totals: PhotoSyncStageTotals
+        options: { dryRun: boolean }
+      }
+    }
+  | {
+      type: 'stage'
+      payload: {
+        stage: PhotoSyncProgressStage
+        status: 'start' | 'complete'
+        processed: number
+        total: number
+        summary: PhotoSyncResultSummary
+      }
+    }
+  | {
+      type: 'action'
+      payload: {
+        stage: PhotoSyncProgressStage
+        index: number
+        total: number
+        action: PhotoSyncAction
+        summary: PhotoSyncResultSummary
+      }
+    }
+  | {
+      type: 'complete'
+      payload: PhotoSyncResult
+    }
+  | {
+      type: 'error'
+      payload: {
+        message: string
+      }
+    }
+
+export type PhotoSyncStageStatus = 'pending' | 'running' | 'completed'
+
+export interface PhotoSyncProgressState {
+  dryRun: boolean
+  summary: PhotoSyncResultSummary
+  totals: PhotoSyncStageTotals
+  stages: Record<
+    PhotoSyncProgressStage,
+    {
+      status: PhotoSyncStageStatus
+      processed: number
+      total: number
+    }
+  >
+  startedAt: number
+  updatedAt: number
+  lastAction?: {
+    stage: PhotoSyncProgressStage
+    index: number
+    total: number
+    action: PhotoSyncAction
+  }
+  error?: string
+}
+
 export interface PhotoAssetManifestPayload {
   version: string
   data: PhotoManifestItem
