@@ -8,6 +8,7 @@ import type {
   ProgressCallback,
   StorageObject,
   StorageProvider,
+  StorageUploadOptions,
 } from '../interfaces.js'
 
 // GitHub API 响应类型
@@ -84,6 +85,30 @@ export class GitHubStorageProvider implements StorageProvider {
       )
     }
     return normalizedKey
+  }
+
+  private async fetchContentMetadata(
+    key: string,
+  ): Promise<GitHubFileContent | null> {
+    const fullPath = this.getFullPath(key)
+    const url = `${this.baseApiUrl}/contents/${fullPath}?ref=${this.githubConfig.branch}`
+
+    const response = await fetch(url, {
+      headers: this.getAuthHeaders(),
+    })
+
+    if (response.status === 404) {
+      return null
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `GitHub API 请求失败：${response.status} ${response.statusText}`,
+      )
+    }
+
+    const data = (await response.json()) as GitHubContent
+    return data.type === 'file' ? data : null
   }
 
   async getFile(key: string): Promise<Buffer | null> {
@@ -218,6 +243,81 @@ export class GitHubStorageProvider implements StorageProvider {
     } catch (error) {
       console.error(`列出目录 ${dirPath} 失败:`, error)
       throw error
+    }
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    const metadata = await this.fetchContentMetadata(key)
+    if (!metadata) {
+      return
+    }
+
+    const fullPath = this.getFullPath(key)
+    const url = `${this.baseApiUrl}/contents/${fullPath}`
+    const body = {
+      message: `Delete ${fullPath}`,
+      sha: metadata.sha,
+      branch: this.githubConfig.branch,
+    }
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      throw new Error(
+        `GitHub 删除文件失败：${response.status} ${response.statusText}`,
+      )
+    }
+  }
+
+  async uploadFile(
+    key: string,
+    data: Buffer,
+    _options?: StorageUploadOptions,
+  ): Promise<StorageObject> {
+    const metadata = await this.fetchContentMetadata(key)
+    const fullPath = this.getFullPath(key)
+    const url = `${this.baseApiUrl}/contents/${fullPath}`
+
+    const payload: Record<string, unknown> = {
+      message: `Upload ${fullPath}`,
+      content: data.toString('base64'),
+      branch: this.githubConfig.branch,
+    }
+
+    if (metadata?.sha) {
+      payload.sha = metadata.sha
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      throw new Error(
+        `GitHub 上传文件失败：${response.status} ${response.statusText}`,
+      )
+    }
+
+    const result = (await response.json()) as { content?: GitHubFileContent }
+    const content = result.content ?? (await this.fetchContentMetadata(key))
+
+    return {
+      key,
+      size: content?.size ?? data.byteLength,
+      lastModified: new Date(),
+      etag: content?.sha,
     }
   }
 

@@ -3,6 +3,7 @@ import type {
   StorageConfig,
   StorageObject,
   StorageProvider,
+  StorageUploadOptions,
 } from './interfaces.js'
 
 export class StorageManager {
@@ -57,6 +58,18 @@ export class StorageManager {
   ): Promise<Map<string, StorageObject>> {
     const objects = allObjects || (await this.listAllFiles())
     return this.provider.detectLivePhotos(objects)
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    await this.provider.deleteFile(key)
+  }
+
+  async uploadFile(
+    key: string,
+    data: Buffer,
+    options?: StorageUploadOptions,
+  ): Promise<StorageObject> {
+    return await this.provider.uploadFile(key, data, options)
   }
 
   /**

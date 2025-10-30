@@ -1,7 +1,12 @@
 import path from 'node:path'
 
 import type { _Object, S3Client } from '@aws-sdk/client-s3'
-import { GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3'
 
 import { backoffDelay, sleep } from '../../../../utils/src/backoff.js'
 import { Semaphore } from '../../../../utils/src/semaphore.js'
@@ -13,6 +18,7 @@ import type {
   S3Config,
   StorageObject,
   StorageProvider,
+  StorageUploadOptions,
 } from '../interfaces'
 
 // 将 AWS S3 对象转换为通用存储对象
@@ -265,5 +271,37 @@ export class S3StorageProvider implements StorageProvider {
     }
 
     return livePhotoMap
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: this.config.bucket,
+      Key: key,
+    })
+
+    await this.s3Client.send(command)
+  }
+
+  async uploadFile(
+    key: string,
+    data: Buffer,
+    options?: StorageUploadOptions,
+  ): Promise<StorageObject> {
+    const command = new PutObjectCommand({
+      Bucket: this.config.bucket,
+      Key: key,
+      Body: data,
+      ContentType: options?.contentType,
+    })
+
+    const response = await this.s3Client.send(command)
+    const lastModified = new Date()
+
+    return {
+      key,
+      size: data.byteLength,
+      lastModified,
+      etag: response.ETag ?? undefined,
+    }
   }
 }

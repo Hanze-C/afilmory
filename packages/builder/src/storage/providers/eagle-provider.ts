@@ -11,6 +11,7 @@ import type {
   EagleRule,
   StorageObject,
   StorageProvider,
+  StorageUploadOptions,
 } from '../interfaces.js'
 
 const EAGLE_VERSION = '4.0.0'
@@ -231,6 +232,18 @@ export class EagleStorageProvider implements StorageProvider {
     )
 
     return filtered
+  }
+
+  async deleteFile(_key: string): Promise<void> {
+    throw new Error('EagleStorageProvider: 当前不支持删除文件操作')
+  }
+
+  async uploadFile(
+    _key: string,
+    _data: Buffer,
+    _options?: StorageUploadOptions,
+  ): Promise<StorageObject> {
+    throw new Error('EagleStorageProvider: 当前不支持上传文件操作')
   }
 
   async generatePublicUrl(key: string) {

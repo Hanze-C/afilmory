@@ -1,4 +1,4 @@
-import type { BuilderConfig, StorageConfig } from '@afilmory/builder'
+import type { BuilderConfig, PhotoManifestItem, StorageConfig } from '@afilmory/builder'
 import type { PhotoAssetConflictPayload, PhotoAssetManifest } from '@afilmory/db'
 
 export enum ConflictResolutionStrategy {
@@ -33,6 +33,8 @@ export interface DataSyncAction {
     before?: SyncObjectSnapshot | null
     after?: SyncObjectSnapshot | null
   }
+  manifestBefore?: PhotoManifestItem | null
+  manifestAfter?: PhotoManifestItem | null
 }
 
 export interface DataSyncResultSummary {
