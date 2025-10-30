@@ -1,4 +1,5 @@
 import { coreApi } from '~/lib/api-client'
+import { camelCaseKeys } from '~/lib/case'
 
 import type {
   PhotoAssetListItem,
@@ -10,18 +11,24 @@ import type {
 export const runPhotoSync = async (
   payload: RunPhotoSyncPayload,
 ): Promise<PhotoSyncResult> => {
-  return await coreApi<PhotoSyncResult>('/data-sync/run', {
+  const result = await coreApi<PhotoSyncResult>('/data-sync/run', {
     method: 'POST',
     body: { dryRun: payload.dryRun ?? false },
   })
+
+  return camelCaseKeys<PhotoSyncResult>(result)
 }
 
 export const listPhotoAssets = async (): Promise<PhotoAssetListItem[]> => {
-  return await coreApi<PhotoAssetListItem[]>('/photos/assets')
+  const assets = await coreApi<PhotoAssetListItem[]>('/photos/assets')
+
+  return camelCaseKeys<PhotoAssetListItem[]>(assets)
 }
 
 export const getPhotoAssetSummary = async (): Promise<PhotoAssetSummary> => {
-  return await coreApi<PhotoAssetSummary>('/photos/assets/summary')
+  const summary = await coreApi<PhotoAssetSummary>('/photos/assets/summary')
+
+  return camelCaseKeys<PhotoAssetSummary>(summary)
 }
 
 export const deletePhotoAssets = async (ids: string[]): Promise<void> => {
@@ -53,7 +60,9 @@ export const uploadPhotoAssets = async (
     },
   )
 
-  return response.assets
+  const data = camelCaseKeys<{ assets: PhotoAssetListItem[] }>(response)
+
+  return data.assets
 }
 
 export const getPhotoStorageUrl = async (
@@ -64,5 +73,7 @@ export const getPhotoStorageUrl = async (
     query: { key: storageKey },
   })
 
-  return result.url
+  const data = camelCaseKeys<{ url: string }>(result)
+
+  return data.url
 }
