@@ -32,8 +32,8 @@ export const getPhotoAssetSummary = async (): Promise<PhotoAssetSummary> => {
 }
 
 export const deletePhotoAssets = async (ids: string[]): Promise<void> => {
-  await coreApi('/photos/assets/delete', {
-    method: 'POST',
+  await coreApi('/photos/assets', {
+    method: 'DELETE',
     body: { ids },
   })
 }

@@ -1,4 +1,4 @@
-import { Button, Thumbhash } from '@afilmory/ui'
+import { Button, Prompt, Thumbhash } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 
@@ -11,7 +11,7 @@ type PhotoLibraryGridProps = {
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onOpenAsset: (asset: PhotoAssetListItem) => void
-  onDeleteAsset: (asset: PhotoAssetListItem) => void
+  onDeleteAsset: (asset: PhotoAssetListItem) => Promise<void> | void
   isDeleting?: boolean
 }
 
@@ -27,7 +27,7 @@ const PhotoGridItem = ({
   isSelected: boolean
   onToggleSelect: (id: string) => void
   onOpenAsset: (asset: PhotoAssetListItem) => void
-  onDeleteAsset: (asset: PhotoAssetListItem) => void
+  onDeleteAsset: (asset: PhotoAssetListItem) => Promise<void> | void
   isDeleting?: boolean
 }) => {
   const manifest = asset.manifest?.data
@@ -42,6 +42,18 @@ const PhotoGridItem = ({
       : manifest?.size
         ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB`
         : '未知大小'
+  const assetLabel = manifest?.title ?? manifest?.id ?? asset.photoId
+
+  const handleDelete = () => {
+    Prompt.prompt({
+      title: '确认删除该资源？',
+      description: `删除后将无法恢复，是否继续删除「${assetLabel}」？`,
+      variant: 'danger',
+      onConfirmText: '删除',
+      onCancelText: '取消',
+      onConfirm: () => Promise.resolve(onDeleteAsset(asset)),
+    })
+  }
 
   return (
     <div
@@ -141,7 +153,7 @@ const PhotoGridItem = ({
               size="xs"
               className="bg-rose-500/20 text-rose-50 hover:bg-rose-500/30"
               disabled={isDeleting}
-              onClick={() => onDeleteAsset(asset)}
+              onClick={handleDelete}
             >
               <DynamicIcon name="trash-2" className="mr-1 h-3.5 w-3.5" />
               <span>删除</span>

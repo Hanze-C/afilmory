@@ -1,8 +1,8 @@
-import { Body, ContextParam, Controller, Get, Post, Query } from '@afilmory/framework'
+import { Body, ContextParam, Controller, Delete, Get, Post, Query } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { Roles } from 'core/guards/roles.decorator'
 import type { Context } from 'hono'
-import type { File } from 'undici'
+import { File } from 'undici'
 
 import type { PhotoAssetListItem, PhotoAssetSummary } from './photo-asset.service'
 import { PhotoAssetService } from './photo-asset.service'
@@ -26,7 +26,7 @@ export class PhotoController {
     return await this.photoAssetService.getSummary()
   }
 
-  @Post('assets/delete')
+  @Delete('assets')
   async deleteAssets(@Body() body: DeleteAssetsDto) {
     const ids = Array.isArray(body?.ids) ? body.ids : []
     await this.photoAssetService.deleteAssets(ids)
