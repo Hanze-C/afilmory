@@ -4,7 +4,10 @@ import { camelCaseKeys } from '~/lib/case'
 import type {
   PhotoAssetListItem,
   PhotoAssetSummary,
+  PhotoSyncAction,
+  PhotoSyncConflict,
   PhotoSyncProgressEvent,
+  PhotoSyncResolution,
   PhotoSyncResult,
   RunPhotoSyncPayload,
 } from './types'
@@ -129,6 +132,28 @@ export const runPhotoSync = async (
   }
 
   return camelCaseKeys<PhotoSyncResult>(finalResult)
+}
+
+export const listPhotoSyncConflicts = async (): Promise<
+  PhotoSyncConflict[]
+> => {
+  const conflicts = await coreApi<PhotoSyncConflict[]>('/data-sync/conflicts')
+  return camelCaseKeys<PhotoSyncConflict[]>(conflicts)
+}
+
+export const resolvePhotoSyncConflict = async (
+  id: string,
+  payload: { strategy: PhotoSyncResolution; dryRun?: boolean },
+): Promise<PhotoSyncAction> => {
+  const result = await coreApi<PhotoSyncAction>(
+    `/data-sync/conflicts/${id}/resolve`,
+    {
+      method: 'POST',
+      body: payload,
+    },
+  )
+
+  return camelCaseKeys<PhotoSyncAction>(result)
 }
 
 export const listPhotoAssets = async (): Promise<PhotoAssetListItem[]> => {

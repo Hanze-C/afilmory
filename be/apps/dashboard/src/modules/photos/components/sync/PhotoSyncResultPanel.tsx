@@ -1,8 +1,9 @@
 import { Button } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
+import { getConflictTypeLabel, PHOTO_ACTION_TYPE_CONFIG } from '../../constants'
 import type {
   PhotoAssetSummary,
   PhotoSyncAction,
@@ -12,10 +13,10 @@ import type {
 
 export const BorderOverlay = () => (
   <>
-    <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-gradient-to-b from-transparent to-transparent" />
-    <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-gradient-to-b from-transparent to-transparent" />
+    <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+    <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
+    <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+    <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
   </>
 )
 
@@ -54,16 +55,7 @@ type PhotoSyncResultPanelProps = {
   onRequestStorageUrl?: (storageKey: string) => Promise<string>
 }
 
-export const actionTypeConfig: Record<
-  PhotoSyncAction['type'],
-  { label: string; badgeClass: string }
-> = {
-  insert: { label: '新增', badgeClass: 'bg-emerald-500/10 text-emerald-400' },
-  update: { label: '更新', badgeClass: 'bg-sky-500/10 text-sky-400' },
-  delete: { label: '删除', badgeClass: 'bg-rose-500/10 text-rose-400' },
-  conflict: { label: '冲突', badgeClass: 'bg-amber-500/10 text-amber-400' },
-  noop: { label: '跳过', badgeClass: 'bg-slate-500/10 text-slate-400' },
-}
+const actionTypeConfig = PHOTO_ACTION_TYPE_CONFIG
 
 const SUMMARY_SKELETON_KEYS = [
   'summary-skeleton-1',
@@ -133,39 +125,65 @@ export const PhotoSyncResultPanel = ({
     return []
   }, [result, baselineSummary])
 
-  const renderManifestMetadata = (
-    manifest: PhotoSyncAction['manifestAfter'],
-  ) => {
-    if (!manifest) return null
+  const [selectedActionType, setSelectedActionType] = useState<
+    'all' | PhotoSyncAction['type']
+  >('all')
+  const [expandedActionKey, setExpandedActionKey] = useState<string | null>(
+    null,
+  )
 
-    const dimensions = `${manifest.width} × ${manifest.height}`
-    const sizeMB =
-      typeof manifest.size === 'number' && manifest.size > 0
-        ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB`
-        : '未知'
+  const actionFilters = useMemo(() => {
+    const counts: Record<PhotoSyncAction['type'], number> = {
+      insert: 0,
+      update: 0,
+      delete: 0,
+      conflict: 0,
+      noop: 0,
+    }
 
-    return (
-      <dl className="text-text-tertiary mt-2 space-y-1 text-xs">
-        <div className="flex items-center justify-between gap-4">
-          <dt>照片 ID</dt>
-          <dd className="text-text truncate text-right">{manifest.id}</dd>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt>尺寸</dt>
-          <dd className="text-text text-right">{dimensions}</dd>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt>大小</dt>
-          <dd className="text-text text-right">{sizeMB}</dd>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt>更新时间</dt>
-          <dd className="text-text text-right">
-            {new Date(manifest.lastModified).toLocaleString()}
-          </dd>
-        </div>
-      </dl>
-    )
+    if (result) {
+      for (const action of result.actions) {
+        counts[action.type] = (counts[action.type] ?? 0) + 1
+      }
+    }
+
+    return [
+      {
+        type: 'all' as const,
+        label: '全部',
+        count: result ? result.actions.length : 0,
+      },
+      ...Object.entries(actionTypeConfig).map(([type, config]) => ({
+        type: type as PhotoSyncAction['type'],
+        label: config.label,
+        count: counts[type as PhotoSyncAction['type']] ?? 0,
+      })),
+    ]
+  }, [result])
+
+  const filteredActions = useMemo(() => {
+    if (!result) {
+      return [] as PhotoSyncAction[]
+    }
+
+    if (selectedActionType === 'all') {
+      return result.actions
+    }
+
+    return result.actions.filter((action) => action.type === selectedActionType)
+  }, [result, selectedActionType])
+
+  const activeFilter = actionFilters.find(
+    (item) => item.type === selectedActionType,
+  )
+
+  const handleSelectActionType = (type: 'all' | PhotoSyncAction['type']) => {
+    setSelectedActionType(type)
+    setExpandedActionKey(null)
+  }
+
+  const handleToggleAction = (key: string) => {
+    setExpandedActionKey((prev) => (prev === key ? null : key))
   }
 
   const handleOpenOriginal = async (action: PhotoSyncAction) => {
@@ -190,81 +208,83 @@ export const PhotoSyncResultPanel = ({
   }
 
   const renderActionDetails = (action: PhotoSyncAction) => {
-    const config = actionTypeConfig[action.type]
+    const { label, badgeClass } = actionTypeConfig[action.type]
+    const {
+      manifestBefore: beforeManifest,
+      manifestAfter: afterManifest,
+      conflictPayload,
+      resolution,
+      storageKey,
+      photoId,
+      applied,
+    } = action
     const resolutionLabel =
-      action.resolution === 'prefer-storage'
+      resolution === 'prefer-storage'
         ? '以存储为准'
-        : action.resolution === 'prefer-database'
+        : resolution === 'prefer-database'
           ? '以数据库为准'
           : null
-    const beforeManifest = action.manifestBefore
-    const afterManifest = action.manifestAfter
+    const conflictTypeLabel =
+      action.type === 'conflict'
+        ? getConflictTypeLabel(conflictPayload?.type)
+        : null
 
     return (
-      <div className="bg-fill/10 relative overflow-hidden rounded-lg p-4">
+      <div className="border-border/20 bg-fill/10 relative overflow-hidden rounded-lg p-4">
         <BorderOverlay />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${config.badgeClass}`}
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass}`}
             >
-              {config.label}
+              {label}
             </span>
-            <code className="text-text-secondary text-xs">
-              {action.storageKey}
-            </code>
+            <code className="text-text-secondary text-xs">{storageKey}</code>
+            {photoId ? (
+              <span className="text-text-tertiary text-xs">
+                Photo ID：{photoId}
+              </span>
+            ) : null}
           </div>
           <span className="text-text-tertiary inline-flex items-center gap-1 text-xs">
-            <span>{action.applied ? '已应用' : '未应用'}</span>
+            <span>{applied ? '已应用' : '未应用'}</span>
             {resolutionLabel ? <span>· {resolutionLabel}</span> : null}
           </span>
         </div>
+
         {action.reason ? (
-          <p className="text-text-tertiary mt-2 text-sm">{action.reason}</p>
+          <p className="text-text-tertiary text-sm">{action.reason}</p>
         ) : null}
 
-        {(beforeManifest || afterManifest || action.snapshots) && (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {beforeManifest ? (
-              <div className="bg-background-secondary/60 border-border/20 rounded-lg border p-3">
-                <p className="text-text text-sm font-semibold">同步前</p>
-                {beforeManifest.thumbnailUrl ? (
-                  <img
-                    src={beforeManifest.thumbnailUrl}
-                    alt={beforeManifest.id}
-                    className="mt-2 aspect-4/3 w-full rounded-md object-cover"
-                  />
-                ) : null}
-                {renderManifestMetadata(beforeManifest)}
-              </div>
+        {conflictTypeLabel || conflictPayload?.incomingStorageKey ? (
+          <div className="text-text-tertiary text-xs">
+            {conflictTypeLabel ? (
+              <span>冲突类型：{conflictTypeLabel}</span>
             ) : null}
-            {afterManifest ? (
-              <div className="bg-background-secondary/60 border-border/20 rounded-lg border p-3">
-                <p className="text-text text-sm font-semibold">同步后</p>
-                {afterManifest.thumbnailUrl ? (
-                  <img
-                    src={afterManifest.thumbnailUrl}
-                    alt={afterManifest.id}
-                    className="mt-2 aspect-4/3 w-full rounded-md object-cover"
-                  />
-                ) : null}
-                {renderManifestMetadata(afterManifest)}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="mt-3"
-                  onClick={() => handleOpenOriginal(action)}
-                >
-                  查看原图
-                </Button>
-              </div>
+            {conflictPayload?.incomingStorageKey ? (
+              <span className="ml-2">
+                存储 Key：
+                <code className="ml-1 font-mono text-[11px] text-text">
+                  {conflictPayload.incomingStorageKey}
+                </code>
+              </span>
             ) : null}
+          </div>
+        ) : null}
+
+        {(beforeManifest || afterManifest) && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <ManifestPreview title="数据库记录" manifest={beforeManifest} />
+            <ManifestPreview
+              title="存储对象"
+              manifest={afterManifest}
+              onOpenOriginal={() => handleOpenOriginal(action)}
+            />
           </div>
         )}
 
         {action.snapshots ? (
-          <div className="text-text-tertiary mt-4 grid gap-4 text-xs md:grid-cols-2">
+          <div className="text-text-tertiary grid gap-4 text-xs md:grid-cols-2">
             {action.snapshots.before ? (
               <div>
                 <p className="text-text font-semibold">元数据（数据库）</p>
@@ -334,7 +354,13 @@ export const PhotoSyncResultPanel = ({
           </p>
         </div>
         <p className="text-text-tertiary text-xs">
-          操作总数：{result.actions.length}
+          <span>操作数：{filteredActions.length}</span>
+          {result && selectedActionType !== 'all' ? (
+            <span className="ml-1 inline-flex items-center gap-1">
+              <span>· 筛选：</span>
+              <span>{activeFilter?.label ?? ''}</span>
+            </span>
+          ) : null}
         </p>
       </div>
 
@@ -367,14 +393,50 @@ export const PhotoSyncResultPanel = ({
             </span>
           </div>
 
-          {result.actions.length === 0 ? (
-            <p className="text-text-tertiary mt-4 text-sm">
-              同步完成，未检测到需要处理的对象。
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {actionFilters.map((filter) => (
+              <Button
+                key={filter.type}
+                type="button"
+                size="xs"
+                variant={
+                  selectedActionType === filter.type ? 'primary' : 'ghost'
+                }
+                className="gap-1"
+                onClick={() => handleSelectActionType(filter.type)}
+              >
+                <span>{filter.label}</span>
+                <span className="text-text-tertiary text-[11px]">
+                  {filter.count}
+                </span>
+              </Button>
+            ))}
+          </div>
+
+          {filteredActions.length === 0 ? (
+            <p className="text-text-tertiary text-sm">
+              {result
+                ? '当前筛选下没有需要查看的操作。'
+                : '同步完成，未检测到需要处理的对象。'}
             </p>
           ) : (
-            <div className="mt-4 space-y-3">
-              {result.actions.slice(0, 20).map((action, index) => {
+            <div className="space-y-3">
+              {filteredActions.map((action, index) => {
                 const actionKey = `${action.storageKey}-${action.type}-${action.photoId ?? 'none'}-${action.manifestAfter?.id ?? action.manifestBefore?.id ?? 'unknown'}`
+                const { label, badgeClass } = actionTypeConfig[action.type]
+                const resolutionLabel =
+                  action.resolution === 'prefer-storage'
+                    ? '以存储为准'
+                    : action.resolution === 'prefer-database'
+                      ? '以数据库为准'
+                      : null
+                const { conflictPayload } = action
+                const conflictTypeLabel =
+                  action.type === 'conflict'
+                    ? getConflictTypeLabel(conflictPayload?.type)
+                    : null
+                const incomingKey = conflictPayload?.incomingStorageKey
+                const isExpanded = expandedActionKey === actionKey
 
                 return (
                   <m.div
@@ -386,15 +448,73 @@ export const PhotoSyncResultPanel = ({
                       delay: index * 0.03,
                     }}
                   >
-                    {renderActionDetails(action)}
+                    <div className="border-border/20 bg-fill/10 relative overflow-hidden rounded-lg">
+                      <BorderOverlay />
+                      <div className="p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass}`}
+                            >
+                              {label}
+                            </span>
+                            <code className="text-text-secondary text-xs">
+                              {action.storageKey}
+                            </code>
+                            {action.photoId ? (
+                              <span className="text-text-tertiary text-xs">
+                                Photo ID：{action.photoId}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-text-tertiary">
+                            <span>{action.applied ? '已应用' : '未应用'}</span>
+                            {resolutionLabel ? (
+                              <span>· {resolutionLabel}</span>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => handleToggleAction(actionKey)}
+                            >
+                              {isExpanded ? '收起详情' : '查看详情'}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {action.reason ? (
+                          <p className="text-text-tertiary text-sm">
+                            {action.reason}
+                          </p>
+                        ) : null}
+
+                        {conflictTypeLabel || incomingKey ? (
+                          <div className="text-text-tertiary text-xs">
+                            {conflictTypeLabel ? (
+                              <span>冲突类型：{conflictTypeLabel}</span>
+                            ) : null}
+                            {incomingKey ? (
+                              <span className="ml-2">
+                                存储 Key：
+                                <code className="ml-1 font-mono text-[11px] text-text">
+                                  {incomingKey}
+                                </code>
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {isExpanded ? (
+                          <div className="border-border/10 border-t pt-3">
+                            {renderActionDetails(action)}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
                   </m.div>
                 )
               })}
-              {result.actions.length > 20 ? (
-                <p className="text-text-tertiary text-xs">
-                  仅展示前 20 条操作，更多详情请使用核心 API 查询。
-                </p>
-              ) : null}
             </div>
           )}
         </div>
@@ -403,11 +523,86 @@ export const PhotoSyncResultPanel = ({
   )
 }
 
+const ManifestPreview = ({
+  title,
+  manifest,
+  onOpenOriginal,
+}: {
+  title: string
+  manifest: PhotoSyncAction['manifestAfter'] | PhotoSyncAction['manifestBefore']
+  onOpenOriginal?: () => void
+}) => {
+  if (!manifest) {
+    return (
+      <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3 text-xs text-text-tertiary">
+        <p className="text-text text-sm font-semibold">{title}</p>
+        <p className="mt-1">暂无数据</p>
+      </div>
+    )
+  }
+
+  const dimensions =
+    manifest.width && manifest.height
+      ? `${manifest.width} × ${manifest.height}`
+      : '未知'
+  const sizeMB =
+    typeof manifest.size === 'number' && manifest.size > 0
+      ? `${(manifest.size / (1024 * 1024)).toFixed(2)} MB`
+      : '未知'
+  const updatedAt = manifest.lastModified
+    ? new Date(manifest.lastModified).toLocaleString()
+    : '未知'
+
+  return (
+    <div className="border-border/20 bg-background-secondary/60 rounded-md border p-3">
+      <div className="flex items-start gap-3">
+        {manifest.thumbnailUrl ? (
+          <img
+            src={manifest.thumbnailUrl}
+            alt={manifest.id}
+            className="h-16 w-20 rounded-md object-cover"
+          />
+        ) : null}
+        <div className="space-y-1 text-xs text-text-tertiary">
+          <p className="text-text text-sm font-semibold">{title}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-text">ID：</span>
+            <span className="truncate">{manifest.id}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-text">尺寸：</span>
+            <span>{dimensions}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-text">大小：</span>
+            <span>{sizeMB}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-text">更新时间：</span>
+            <span>{updatedAt}</span>
+          </div>
+        </div>
+      </div>
+      {onOpenOriginal ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="mt-3"
+          onClick={onOpenOriginal}
+        >
+          查看原图
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
 type MetadataSnapshotProps = {
   snapshot: PhotoSyncSnapshot | null | undefined
 }
 
-const MetadataSnapshot = ({ snapshot }: MetadataSnapshotProps) => {
+export const MetadataSnapshot = ({ snapshot }: MetadataSnapshotProps) => {
   if (!snapshot) return null
   return (
     <dl className="mt-2 space-y-1">

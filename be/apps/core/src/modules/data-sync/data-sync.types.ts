@@ -29,6 +29,8 @@ export interface DataSyncAction {
   applied: boolean
   resolution?: ConflictResolutionStrategy
   reason?: string
+  conflictId?: string | null
+  conflictPayload?: ConflictPayload | null
   snapshots?: {
     before?: SyncObjectSnapshot | null
     after?: SyncObjectSnapshot | null

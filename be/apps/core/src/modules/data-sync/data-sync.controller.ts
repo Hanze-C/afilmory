@@ -1,5 +1,5 @@
 import type { BuilderConfig, StorageConfig } from '@afilmory/builder'
-import { Body, ContextParam, Controller, Get, Param, Post } from '@afilmory/framework'
+import { Body, ContextParam, Controller, createLogger, Get, Param, Post } from '@afilmory/framework'
 import { Roles } from 'core/guards/roles.decorator'
 import type { Context } from 'hono'
 
@@ -16,6 +16,7 @@ import type {
 @Controller('data-sync')
 @Roles('admin')
 export class DataSyncController {
+  private readonly logger = createLogger('DataSyncController')
   constructor(private readonly dataSyncService: DataSyncService) {}
 
   @Post('run')
@@ -106,6 +107,8 @@ export class DataSyncController {
             )
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error'
+
+            this.logger.error('Failed to run data sync', error)
             sendEvent({ type: 'error', payload: { message } })
           } finally {
             const currentCleanup = cleanup

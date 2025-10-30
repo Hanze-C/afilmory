@@ -4,15 +4,21 @@ import {
   deletePhotoAssets,
   getPhotoAssetSummary,
   listPhotoAssets,
+  listPhotoSyncConflicts,
+  resolvePhotoSyncConflict,
   uploadPhotoAssets,
 } from './api'
-import type { PhotoAssetListItem } from './types'
+import type { PhotoAssetListItem, PhotoSyncResolution } from './types'
 
 export const PHOTO_ASSET_SUMMARY_QUERY_KEY = [
   'photo-assets',
   'summary',
 ] as const
 export const PHOTO_ASSET_LIST_QUERY_KEY = ['photo-assets', 'list'] as const
+export const PHOTO_SYNC_CONFLICTS_QUERY_KEY = [
+  'photo-sync',
+  'conflicts',
+] as const
 
 export const usePhotoAssetSummaryQuery = () => {
   return useQuery({
@@ -25,6 +31,14 @@ export const usePhotoAssetListQuery = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: PHOTO_ASSET_LIST_QUERY_KEY,
     queryFn: listPhotoAssets,
+    enabled: options?.enabled ?? true,
+  })
+}
+
+export const usePhotoSyncConflictsQuery = (options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: PHOTO_SYNC_CONFLICTS_QUERY_KEY,
+    queryFn: listPhotoSyncConflicts,
     enabled: options?.enabled ?? true,
   })
 }
@@ -69,6 +83,28 @@ export const useUploadPhotoAssetsMutation = () => {
       })
       void queryClient.invalidateQueries({
         queryKey: PHOTO_ASSET_SUMMARY_QUERY_KEY,
+      })
+    },
+  })
+}
+
+export const useResolvePhotoSyncConflictMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (variables: {
+      id: string
+      strategy: PhotoSyncResolution
+      dryRun?: boolean
+    }) => {
+      return await resolvePhotoSyncConflict(variables.id, {
+        strategy: variables.strategy,
+        dryRun: variables.dryRun,
+      })
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: PHOTO_SYNC_CONFLICTS_QUERY_KEY,
       })
     },
   })

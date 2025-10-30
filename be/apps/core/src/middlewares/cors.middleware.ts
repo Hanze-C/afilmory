@@ -77,7 +77,10 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
 
   async onModuleInit(): Promise<void> {
     try {
-      const defaultTenant = await this.tenantService.getDefaultTenant()
+      const defaultTenant = await this.tenantService.resolve({ fallbackToPrimary: true }, true)
+      if (!defaultTenant) {
+        return
+      }
       this.defaultTenantId = defaultTenant.tenant.id
       await this.reloadAllowedOrigins(defaultTenant.tenant.id)
     } catch (error) {

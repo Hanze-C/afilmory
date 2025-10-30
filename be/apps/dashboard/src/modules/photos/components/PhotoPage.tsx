@@ -1,4 +1,4 @@
-import { useCallback,useMemo, useState  } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { MainPageLayout } from '~/components/layouts/MainPageLayout'
@@ -9,22 +9,29 @@ import {
   useDeletePhotoAssetsMutation,
   usePhotoAssetListQuery,
   usePhotoAssetSummaryQuery,
+  usePhotoSyncConflictsQuery,
+  useResolvePhotoSyncConflictMutation,
   useUploadPhotoAssetsMutation,
 } from '../hooks'
 import type {
   PhotoAssetListItem,
+  PhotoSyncConflict,
   PhotoSyncProgressEvent,
   PhotoSyncProgressStage,
   PhotoSyncProgressState,
+  PhotoSyncResolution,
   PhotoSyncResult,
 } from '../types'
 import { PhotoLibraryActionBar } from './library/PhotoLibraryActionBar'
 import { PhotoLibraryGrid } from './library/PhotoLibraryGrid'
 import { PhotoSyncActions } from './sync/PhotoSyncActions'
+import { PhotoSyncConflictsPanel } from './sync/PhotoSyncConflictsPanel'
 import { PhotoSyncProgressPanel } from './sync/PhotoSyncProgressPanel'
 import { PhotoSyncResultPanel } from './sync/PhotoSyncResultPanel'
 
 type PhotoPageTab = 'sync' | 'library'
+
+const BATCH_RESOLVING_ID = '__batch__'
 
 const STAGE_ORDER: PhotoSyncProgressStage[] = [
   'missing-in-db',
@@ -54,6 +61,9 @@ export const PhotoPage = () => {
   const [result, setResult] = useState<PhotoSyncResult | null>(null)
   const [lastWasDryRun, setLastWasDryRun] = useState<boolean | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [resolvingConflictId, setResolvingConflictId] = useState<string | null>(
+    null,
+  )
   const [syncProgress, setSyncProgress] =
     useState<PhotoSyncProgressState | null>(null)
 
@@ -61,6 +71,10 @@ export const PhotoPage = () => {
   const listQuery = usePhotoAssetListQuery({ enabled: activeTab === 'library' })
   const deleteMutation = useDeletePhotoAssetsMutation()
   const uploadMutation = useUploadPhotoAssetsMutation()
+  const conflictsQuery = usePhotoSyncConflictsQuery({
+    enabled: activeTab === 'sync',
+  })
+  const resolveConflictMutation = useResolvePhotoSyncConflictMutation()
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const isListLoading = listQuery.isLoading || listQuery.isFetching
@@ -220,6 +234,86 @@ export const PhotoPage = () => {
     }
   }
 
+  const handleResolveConflict = useCallback(
+    async (conflict: PhotoSyncConflict, strategy: PhotoSyncResolution) => {
+      if (!strategy) {
+        return
+      }
+      setResolvingConflictId(conflict.id)
+      try {
+        const action = await resolveConflictMutation.mutateAsync({
+          id: conflict.id,
+          strategy,
+        })
+        toast.success('冲突已处理', {
+          description:
+            action.reason ??
+            (strategy === 'prefer-storage'
+              ? '已以存储数据覆盖数据库记录。'
+              : '已保留数据库记录并忽略存储差异。'),
+        })
+        void conflictsQuery.refetch()
+        void summaryQuery.refetch()
+        void listQuery.refetch()
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : '处理冲突失败，请稍后重试。'
+        toast.error('处理冲突失败', { description: message })
+      } finally {
+        setResolvingConflictId(null)
+      }
+    },
+    [conflictsQuery, listQuery, resolveConflictMutation, summaryQuery],
+  )
+
+  const handleResolveConflictsBatch = useCallback(
+    async (conflicts: PhotoSyncConflict[], strategy: PhotoSyncResolution) => {
+      if (!strategy || conflicts.length === 0) {
+        toast.info('请选择至少一个冲突条目')
+        return
+      }
+
+      setResolvingConflictId(BATCH_RESOLVING_ID)
+      let processed = 0
+      const errors: string[] = []
+
+      try {
+        for (const conflict of conflicts) {
+          try {
+            await resolveConflictMutation.mutateAsync({
+              id: conflict.id,
+              strategy,
+            })
+            processed += 1
+          } catch (error) {
+            errors.push(error instanceof Error ? error.message : String(error))
+          }
+        }
+      } finally {
+        setResolvingConflictId(null)
+      }
+
+      if (processed > 0) {
+        toast.success(
+          `${strategy === 'prefer-storage' ? '以存储为准' : '以数据库为准'}处理 ${processed} 个冲突`,
+        )
+      }
+
+      if (errors.length > 0) {
+        toast.error('部分冲突处理失败', {
+          description: errors[0],
+        })
+      }
+
+      if (processed > 0 || errors.length > 0) {
+        void conflictsQuery.refetch()
+        void summaryQuery.refetch()
+        void listQuery.refetch()
+      }
+    },
+    [conflictsQuery, resolveConflictMutation, summaryQuery, listQuery],
+  )
+
   const handleOpenAsset = async (asset: PhotoAssetListItem) => {
     const manifest = asset.manifest?.data
     const candidate =
@@ -249,6 +343,11 @@ export const PhotoPage = () => {
       setSelectedIds([])
     }
   }
+
+  const showConflictsPanel =
+    conflictsQuery.isLoading ||
+    conflictsQuery.isFetching ||
+    (conflictsQuery.data?.length ?? 0) > 0
 
   return (
     <MainPageLayout
@@ -297,13 +396,28 @@ export const PhotoPage = () => {
         ) : null}
 
         {activeTab === 'sync' ? (
-          <PhotoSyncResultPanel
-            result={result}
-            lastWasDryRun={lastWasDryRun}
-            baselineSummary={summaryQuery.data}
-            isSummaryLoading={summaryQuery.isLoading}
-            onRequestStorageUrl={getPhotoStorageUrl}
-          />
+          <div className="space-y-6">
+            {showConflictsPanel ? (
+              <PhotoSyncConflictsPanel
+                conflicts={conflictsQuery.data}
+                isLoading={
+                  conflictsQuery.isLoading || conflictsQuery.isFetching
+                }
+                resolvingId={resolvingConflictId}
+                isBatchResolving={resolvingConflictId === BATCH_RESOLVING_ID}
+                onResolve={handleResolveConflict}
+                onResolveBatch={handleResolveConflictsBatch}
+                onRequestStorageUrl={getPhotoStorageUrl}
+              />
+            ) : null}
+            <PhotoSyncResultPanel
+              result={result}
+              lastWasDryRun={lastWasDryRun}
+              baselineSummary={summaryQuery.data}
+              isSummaryLoading={summaryQuery.isLoading}
+              onRequestStorageUrl={getPhotoStorageUrl}
+            />
+          </div>
         ) : (
           <PhotoLibraryGrid
             assets={listQuery.data}

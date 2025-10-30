@@ -1,4 +1,3 @@
-import { env } from '@afilmory/env'
 import { createLogger } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { injectable } from 'tsyringe'
@@ -8,7 +7,6 @@ import type { TenantAggregate, TenantContext, TenantDomainMatch, TenantResolutio
 
 @injectable()
 export class TenantService {
-  private readonly defaultTenantSlug = env.DEFAULT_TENANT_SLUG
   private readonly logger = createLogger('TenantService')
 
   constructor(private readonly repository: TenantRepository) {}
@@ -21,9 +19,10 @@ export class TenantService {
   }): Promise<TenantAggregate> {
     return await this.repository.createTenant(payload)
   }
-
-  async resolve(input: TenantResolutionInput): Promise<TenantContext> {
-    const fallbackToDefault = input.fallbackToDefault ?? true
+  async resolve(input: TenantResolutionInput, noThrow: boolean): Promise<TenantContext | null>
+  async resolve(input: TenantResolutionInput): Promise<TenantContext>
+  async resolve(input: TenantResolutionInput, noThrow = false): Promise<TenantContext | null> {
+    const fallbackToPrimary = input.fallbackToPrimary ?? true
     const tenantId = this.normalizeString(input.tenantId)
     const slug = this.normalizeSlug(input.slug)
     const domain = this.normalizeDomain(input.domain)
@@ -42,7 +41,7 @@ export class TenantService {
       aggregate = await this.repository.findByDomain(domain)
     }
 
-    if (!aggregate && fallbackToDefault) {
+    if (!aggregate && fallbackToPrimary) {
       aggregate = await this.repository.findPrimary()
 
       if (aggregate) {
@@ -59,8 +58,8 @@ export class TenantService {
       }
     }
 
-    if (!aggregate && fallbackToDefault) {
-      aggregate = await this.repository.findBySlug(this.defaultTenantSlug)
+    if (!aggregate && fallbackToPrimary) {
+      aggregate = await this.repository.findPrimary()
 
       if (aggregate) {
         this.logger.warn('Tenant resolution fallback to default tenant slug', {
@@ -70,13 +69,16 @@ export class TenantService {
             slug: slug ?? undefined,
             domain: domain ?? undefined,
           },
-          defaultTenantSlug: this.defaultTenantSlug,
+
           resolvedTenantId: aggregate.tenant.id,
         })
       }
     }
 
     if (!aggregate) {
+      if (noThrow) {
+        return null
+      }
       throw new BizException(ErrorCode.TENANT_NOT_FOUND)
     }
 
@@ -112,10 +114,6 @@ export class TenantService {
     }
     this.ensureTenantIsActive(aggregate.tenant)
     return aggregate
-  }
-
-  async getDefaultTenant(): Promise<TenantAggregate> {
-    return await this.getBySlug(this.defaultTenantSlug)
   }
 
   private ensureTenantIsActive(tenant: TenantAggregate['tenant']): void {

@@ -26,6 +26,8 @@ export interface PhotoSyncAction {
   applied: boolean
   resolution?: PhotoSyncResolution
   reason?: string
+  conflictId?: string | null
+  conflictPayload?: PhotoSyncConflictPayload | null
   snapshots?: {
     before?: PhotoSyncSnapshot | null
     after?: PhotoSyncSnapshot | null
@@ -47,6 +49,31 @@ export interface PhotoSyncResultSummary {
 export interface PhotoSyncResult {
   summary: PhotoSyncResultSummary
   actions: PhotoSyncAction[]
+}
+
+export type PhotoSyncConflictType =
+  | 'missing-in-storage'
+  | 'metadata-mismatch'
+  | 'photo-id-conflict'
+
+export interface PhotoSyncConflictPayload {
+  type: PhotoSyncConflictType
+  storageSnapshot?: PhotoSyncSnapshot | null
+  recordSnapshot?: PhotoSyncSnapshot | null
+  incomingStorageKey?: string | null
+}
+
+export interface PhotoSyncConflict {
+  id: string
+  storageKey: string
+  photoId: string | null
+  reason: string | null
+  payload: PhotoSyncConflictPayload | null
+  manifestVersion: string
+  manifest: PhotoAssetManifestPayload
+  storageProvider: string
+  syncedAt: string
+  updatedAt: string
 }
 
 export interface RunPhotoSyncPayload {

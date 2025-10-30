@@ -1,12 +1,13 @@
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 
+import { getConflictTypeLabel, PHOTO_ACTION_TYPE_CONFIG } from '../../constants'
 import type {
   PhotoSyncAction,
   PhotoSyncProgressStage,
   PhotoSyncProgressState,
 } from '../../types'
-import { actionTypeConfig,BorderOverlay } from './PhotoSyncResultPanel'
+import { BorderOverlay } from './PhotoSyncResultPanel'
 
 const STAGE_CONFIG: Record<
   PhotoSyncProgressStage,
@@ -60,7 +61,12 @@ type PhotoSyncProgressPanelProps = {
 }
 
 const formatActionLabel = (action: PhotoSyncAction) => {
-  const config = actionTypeConfig[action.type]
+  const config = PHOTO_ACTION_TYPE_CONFIG[action.type]
+  if (action.type === 'conflict' && action.conflictPayload) {
+    const conflictLabel = getConflictTypeLabel(action.conflictPayload.type)
+    const base = config?.label ?? '冲突'
+    return `${base} · ${conflictLabel}`
+  }
   return config?.label ?? action.type
 }
 
@@ -108,7 +114,7 @@ export const PhotoSyncProgressPanel = ({
     value: progress.summary[field.key],
   }))
 
-  const {lastAction} = progress
+  const { lastAction } = progress
 
   return (
     <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-6">

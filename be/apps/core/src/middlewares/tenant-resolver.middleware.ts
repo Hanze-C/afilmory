@@ -54,7 +54,7 @@ export class TenantResolverMiddleware implements HttpMiddleware {
       tenantId,
       slug: tenantSlug,
       domain: host,
-      fallbackToDefault: true,
+      fallbackToPrimary: true,
     })
   }
 }
