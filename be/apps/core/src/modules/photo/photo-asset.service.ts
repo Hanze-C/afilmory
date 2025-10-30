@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import type { PhotoManifestItem, StorageConfig, StorageObject } from '@afilmory/builder'
+import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageObject } from '@afilmory/builder'
 import { StorageManager } from '@afilmory/builder/storage/index.js'
 import type { PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
@@ -67,8 +67,8 @@ export class PhotoAssetService {
       return []
     }
 
-    const { storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
-    const storageManager = this.createStorageManager(storageConfig)
+    const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
+    const storageManager = this.createStorageManager(builderConfig, storageConfig)
 
     return await Promise.all(
       records.map(async (record) => {
@@ -140,8 +140,8 @@ export class PhotoAssetService {
       return
     }
 
-    const { storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
-    const storageManager = this.createStorageManager(storageConfig)
+    const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
+    const storageManager = this.createStorageManager(builderConfig, storageConfig)
 
     for (const record of records) {
       if (record.storageProvider !== DATABASE_ONLY_PROVIDER) {
@@ -275,13 +275,16 @@ export class PhotoAssetService {
 
   async generatePublicUrl(storageKey: string): Promise<string> {
     const tenant = requireTenantContext()
-    const { storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
-    const storageManager = this.createStorageManager(storageConfig)
+    const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
+    const storageManager = this.createStorageManager(builderConfig, storageConfig)
     return await Promise.resolve(storageManager.generatePublicUrl(storageKey))
   }
 
-  private createStorageManager(storageConfig: StorageConfig): StorageManager {
-    return new StorageManager(storageConfig)
+  private createStorageManager(builderConfig: BuilderConfig, storageConfig: StorageConfig): StorageManager {
+    const builder = this.photoBuilderService.createBuilder(builderConfig)
+    this.photoStorageService.registerStorageProviderPlugin(builder, storageConfig)
+    this.photoBuilderService.applyStorageConfig(builder, storageConfig)
+    return builder.getStorageManager()
   }
 
   private createStorageSnapshot(object: StorageObject) {
