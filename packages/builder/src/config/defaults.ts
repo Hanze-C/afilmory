@@ -19,9 +19,7 @@ export function createDefaultBuilderConfig(): BuilderConfig {
       prefix: process.env.S3_PREFIX,
       customDomain: process.env.S3_CUSTOM_DOMAIN,
       excludeRegex: process.env.S3_EXCLUDE_REGEX,
-      maxFileLimit: process.env.S3_MAX_FILE_LIMIT
-        ? Number.parseInt(process.env.S3_MAX_FILE_LIMIT, 10)
-        : 1000,
+      maxFileLimit: process.env.S3_MAX_FILE_LIMIT ? Number.parseInt(process.env.S3_MAX_FILE_LIMIT, 10) : 1000,
       keepAlive: true,
       maxSockets: 64,
       connectionTimeoutMs: 5_000,

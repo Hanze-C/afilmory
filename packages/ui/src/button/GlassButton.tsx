@@ -3,9 +3,7 @@ import type { HTMLMotionProps } from 'motion/react'
 import { m } from 'motion/react'
 import type { FC, PropsWithChildren } from 'react'
 
-export const GlassButton: FC<HTMLMotionProps<'button'> & PropsWithChildren> = (
-  props,
-) => {
+export const GlassButton: FC<HTMLMotionProps<'button'> & PropsWithChildren> = (props) => {
   return (
     <m.button
       type="button"

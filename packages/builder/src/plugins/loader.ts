@@ -25,9 +25,7 @@ interface NormalizedDescriptor {
   options?: unknown
 }
 
-function normalizeDescriptor(
-  ref: BuilderPluginReference,
-): NormalizedDescriptor | BuilderPluginESMImporter {
+function normalizeDescriptor(ref: BuilderPluginReference): NormalizedDescriptor | BuilderPluginESMImporter {
   if (typeof ref === 'string') {
     return { specifier: ref }
   }
@@ -35,19 +33,11 @@ function normalizeDescriptor(
   return ref
 }
 
-function resolveSpecifier(
-  specifier: string,
-  baseDir: string,
-): { resolvedPath: string } {
-  const isLocal =
-    specifier.startsWith('.') ||
-    specifier.startsWith('/') ||
-    specifier.startsWith('file:')
+function resolveSpecifier(specifier: string, baseDir: string): { resolvedPath: string } {
+  const isLocal = specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('file:')
 
   if (isLocal) {
-    const resolvedPath = specifier.startsWith('file:')
-      ? specifier
-      : path.resolve(baseDir, specifier)
+    const resolvedPath = specifier.startsWith('file:') ? specifier : path.resolve(baseDir, specifier)
     return { resolvedPath }
   }
 
@@ -67,10 +57,7 @@ async function importModule(resolvedPath: string): Promise<unknown> {
   return await import(url)
 }
 
-async function instantiatePlugin(
-  exportedValue: unknown,
-  options?: unknown,
-): Promise<BuilderPlugin> {
+async function instantiatePlugin(exportedValue: unknown, options?: unknown): Promise<BuilderPlugin> {
   const picked = [
     (exportedValue as { default?: unknown })?.default,
     (exportedValue as { plugin?: unknown }).plugin,
@@ -100,9 +87,9 @@ function normalizeHooks(plugin: BuilderPlugin): BuilderPluginHooks {
     Object.assign(hooks, plugin.hooks)
   }
 
-  const candidates = Object.entries(plugin).filter(
-    ([key]) => key !== 'name' && key !== 'hooks',
-  ) as Array<[string, unknown]>
+  const candidates = Object.entries(plugin).filter(([key]) => key !== 'name' && key !== 'hooks') as Array<
+    [string, unknown]
+  >
 
   for (const [key, value] of candidates) {
     if (typeof value === 'function' && !(key in hooks)) {
@@ -150,9 +137,7 @@ export async function loadPlugins(
       const name =
         plugin.name ||
         descriptor.name ||
-        (descriptor.specifier.startsWith('.')
-          ? path.basename(descriptor.specifier)
-          : descriptor.specifier)
+        (descriptor.specifier.startsWith('.') ? path.basename(descriptor.specifier) : descriptor.specifier)
 
       results.push({
         name,

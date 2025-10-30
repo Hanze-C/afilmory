@@ -17,6 +17,7 @@ export enum ErrorCode {
 
   // Image Processing
   IMAGE_PROCESSING_FAILED = 30,
+  PHOTO_MANIFEST_GENERATION_FAILED = 31,
 }
 
 export interface ErrorDescriptor {
@@ -69,5 +70,9 @@ export const ERROR_CODE_DESCRIPTORS: Record<ErrorCode, ErrorDescriptor> = {
   [ErrorCode.IMAGE_PROCESSING_FAILED]: {
     httpStatus: 500,
     message: 'Image processing failed',
+  },
+  [ErrorCode.PHOTO_MANIFEST_GENERATION_FAILED]: {
+    httpStatus: 500,
+    message: 'Photo manifest generation failed',
   },
 }

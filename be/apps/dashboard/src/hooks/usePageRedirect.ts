@@ -5,10 +5,7 @@ import { useLocation, useNavigate } from 'react-router'
 
 import { useSetAuthUser } from '~/atoms/auth'
 import type { SessionResponse } from '~/modules/auth/api/session'
-import {
-  AUTH_SESSION_QUERY_KEY,
-  fetchSession,
-} from '~/modules/auth/api/session'
+import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
 import { signOut } from '~/modules/auth/auth-client'
 import { getOnboardingStatus } from '~/modules/onboarding/api'
 

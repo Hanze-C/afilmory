@@ -89,12 +89,7 @@ async function generateTocData(options: Required<TocExtractorOptions>) {
     const allTocData: FileToc[] = []
 
     for (const file of files) {
-      const tocData = await extractTocFromFile(
-        file,
-        contentsDir,
-        maxDepth,
-        indexFile,
-      )
+      const tocData = await extractTocFromFile(file, contentsDir, maxDepth, indexFile)
       if (tocData) {
         allTocData.push(tocData)
       }
@@ -109,9 +104,7 @@ async function generateTocData(options: Required<TocExtractorOptions>) {
     const outputPath = path.join(outputDir, outputFile)
     await fs.writeFile(outputPath, tsContent, 'utf-8')
 
-    console.info(
-      `✓ Generated TOC data for ${allTocData.length} files to ${outputPath}`,
-    )
+    console.info(`✓ Generated TOC data for ${allTocData.length} files to ${outputPath}`)
   } catch (error) {
     console.error('Error generating TOC data:', error)
     throw error
@@ -144,10 +137,7 @@ async function extractTocFromFile(
     return {
       file: relativePath,
       path: routePath,
-      title:
-        frontmatterTitle ||
-        headings[0]?.text ||
-        path.basename(file, path.extname(file)),
+      title: frontmatterTitle || headings[0]?.text || path.basename(file, path.extname(file)),
       toc,
     }
   } catch (error) {
@@ -156,15 +146,9 @@ async function extractTocFromFile(
   }
 }
 
-function generateRoutePath(
-  file: string,
-  contentsDir: string,
-  indexFile: string,
-): string {
+function generateRoutePath(file: string, contentsDir: string, indexFile: string): string {
   // 移除 contents 前缀和文件扩展名（与 route-generator 保持一致）
-  let routePath = file
-    .replace(new RegExp(`^${contentsDir}/`), '')
-    .replace(/\.(md|mdx)$/, '')
+  let routePath = file.replace(new RegExp(`^${contentsDir}/`), '').replace(/\.(md|mdx)$/, '')
 
   // 处理 index 文件（与 route-generator 保持一致）
   if (routePath === indexFile) {
@@ -220,17 +204,11 @@ function removeCodeBlocks(content: string): string {
     if (inCodeBlock && isEmptyLine) {
       // 在代码块中的空行，检查下一行是否还是代码
       let nextNonEmptyIndex = i + 1
-      while (
-        nextNonEmptyIndex < lines.length &&
-        lines[nextNonEmptyIndex].trim() === ''
-      ) {
+      while (nextNonEmptyIndex < lines.length && lines[nextNonEmptyIndex].trim() === '') {
         nextNonEmptyIndex++
       }
 
-      if (
-        nextNonEmptyIndex < lines.length &&
-        /^(?: {4}|\t)/.test(lines[nextNonEmptyIndex])
-      ) {
+      if (nextNonEmptyIndex < lines.length && /^(?: {4}|\t)/.test(lines[nextNonEmptyIndex])) {
         // 下一个非空行还是代码，跳过这个空行
         continue
       } else {

@@ -1,4 +1,3 @@
-
 // 扫描进度接口
 export interface ScanProgress {
   currentPath: string
@@ -15,6 +14,10 @@ export interface StorageObject {
   size?: number
   lastModified?: Date
   etag?: string
+}
+
+export interface StorageUploadOptions {
+  contentType?: string
 }
 
 // 存储提供商的通用接口
@@ -38,9 +41,7 @@ export interface StorageProvider {
    * @param progressCallback 可选的进度回调函数
    * @returns 所有文件对象数组
    */
-  listAllFiles: (
-    progressCallback?: ProgressCallback,
-  ) => Promise<StorageObject[]>
+  listAllFiles: (progressCallback?: ProgressCallback) => Promise<StorageObject[]>
 
   /**
    * 生成文件的公共访问 URL
@@ -55,6 +56,19 @@ export interface StorageProvider {
    * @returns Live Photo 配对映射 (图片 key -> 视频对象)
    */
   detectLivePhotos: (allObjects: StorageObject[]) => Map<string, StorageObject>
+
+  /**
+   * 从存储中删除文件
+   */
+  deleteFile: (key: string) => Promise<void>
+
+  /**
+   * 向存储上传文件
+   * @param key 文件的键值/路径
+   * @param data 文件数据
+   * @param options 上传选项
+   */
+  uploadFile: (key: string, data: Buffer, options?: StorageUploadOptions) => Promise<StorageObject>
 }
 
 export type S3Config = {

@@ -1,42 +1,33 @@
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject } from '@afilmory/builder'
-import { createDefaultBuilderConfig, StorageFactory } from '@afilmory/builder'
-import {
-  EagleStorageProvider,
-  GitHubStorageProvider,
-  LocalStorageProvider,
-  S3StorageProvider,
-} from '@afilmory/builder/storage/index.js'
-import type {
-  EagleConfig,
-  EagleRule,
-  GitHubConfig,
-  LocalConfig,
-  S3Config,
-} from '@afilmory/builder/storage/interfaces.js'
 import type { PhotoAssetConflictPayload, PhotoAssetConflictSnapshot, PhotoAssetManifest } from '@afilmory/db'
-import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
+import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
 import { createLogger } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/photo/photo.service'
+import { PhotoStorageService } from 'core/modules/photo/photo-storage.service'
 import { and, eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
-import { SettingService } from '../setting/setting.service'
-import type { BuilderStorageProvider } from '../setting/storage-provider.utils'
 import { requireTenantContext } from '../tenant/tenant.context'
 import type {
   ConflictPayload,
   DataSyncAction,
   DataSyncConflict,
   DataSyncOptions,
+  DataSyncProgressEmitter,
+  DataSyncProgressStage,
   DataSyncResult,
+  DataSyncResultSummary,
+  DataSyncStageTotals,
   ResolveConflictOptions,
   SyncObjectSnapshot,
 } from './data-sync.types'
 import { ConflictResolutionStrategy } from './data-sync.types'
 
-const DATABASE_ONLY_PROVIDER = 'database-only'
+const UNIQUE_VIOLATION_CODE = '23505'
+const UNIQUE_CONSTRAINT_PHOTO_ID = 'uq_photo_asset_tenant_photo_id'
+const UNIQUE_CONSTRAINT_STORAGE_KEY = 'uq_photo_asset_tenant_storage_key'
 
 type PhotoAssetRecord = typeof photoAssets.$inferSelect
 type PhotoAssetInsert = typeof photoAssets.$inferInsert
@@ -76,25 +67,97 @@ export class DataSyncService {
   constructor(
     private readonly dbAccessor: DbAccessor,
     private readonly photoBuilderService: PhotoBuilderService,
-    private readonly settingService: SettingService,
+    private readonly photoStorageService: PhotoStorageService,
   ) {}
 
-  async runSync(options: DataSyncOptions): Promise<DataSyncResult> {
+  async runSync(options: DataSyncOptions, onProgress?: DataSyncProgressEmitter): Promise<DataSyncResult> {
     const tenant = requireTenantContext()
     const { builderConfig, storageConfig } = await this.resolveBuilderConfigForTenant(tenant.tenant.id, options)
     const context = await this.prepareSyncContext(tenant.tenant.id, builderConfig, storageConfig)
     const summary = this.createSummary(context)
     const actions: DataSyncAction[] = []
+    const totals = this.buildStageTotals(context)
 
-    await this.handleNewStorageObjects(context, summary, actions, options.dryRun)
-    await this.handleOrphanRecords(context, summary, actions, options.dryRun)
-    await this.handleMetadataConflicts(context, summary, actions, options.dryRun)
-    await this.handleStatusReconciliation(context, summary, actions, options.dryRun)
+    await this.emitStart(onProgress, summary, totals, options)
 
-    return {
+    await this.emitStageProgress(onProgress, {
+      stage: 'missing-in-db',
+      status: 'start',
+      total: totals['missing-in-db'],
+      processed: 0,
+      summary,
+    })
+    const missingProcessed = await this.handleNewStorageObjects(context, summary, actions, options.dryRun, onProgress)
+    await this.emitStageProgress(onProgress, {
+      stage: 'missing-in-db',
+      status: 'complete',
+      total: totals['missing-in-db'],
+      processed: missingProcessed,
+      summary,
+    })
+
+    await this.emitStageProgress(onProgress, {
+      stage: 'orphan-in-db',
+      status: 'start',
+      total: totals['orphan-in-db'],
+      processed: 0,
+      summary,
+    })
+    const orphanProcessed = await this.handleOrphanRecords(context, summary, actions, options.dryRun, onProgress)
+    await this.emitStageProgress(onProgress, {
+      stage: 'orphan-in-db',
+      status: 'complete',
+      total: totals['orphan-in-db'],
+      processed: orphanProcessed,
+      summary,
+    })
+
+    await this.emitStageProgress(onProgress, {
+      stage: 'metadata-conflicts',
+      status: 'start',
+      total: totals['metadata-conflicts'],
+      processed: 0,
+      summary,
+    })
+    const conflictProcessed = await this.handleMetadataConflicts(context, summary, actions, options.dryRun, onProgress)
+    await this.emitStageProgress(onProgress, {
+      stage: 'metadata-conflicts',
+      status: 'complete',
+      total: totals['metadata-conflicts'],
+      processed: conflictProcessed,
+      summary,
+    })
+
+    await this.emitStageProgress(onProgress, {
+      stage: 'status-reconciliation',
+      status: 'start',
+      total: totals['status-reconciliation'],
+      processed: 0,
+      summary,
+    })
+    const reconciliationProcessed = await this.handleStatusReconciliation(
+      context,
+      summary,
+      actions,
+      options.dryRun,
+      onProgress,
+    )
+    await this.emitStageProgress(onProgress, {
+      stage: 'status-reconciliation',
+      status: 'complete',
+      total: totals['status-reconciliation'],
+      processed: reconciliationProcessed,
+      summary,
+    })
+
+    const result: DataSyncResult = {
       summary,
       actions,
     }
+
+    await this.emitComplete(onProgress, result)
+
+    return result
   }
 
   async listConflicts(): Promise<DataSyncConflict[]> {
@@ -211,256 +274,14 @@ export class DataSyncService {
     builder: ReturnType<PhotoBuilderService['createBuilder']>,
     storageConfig: StorageConfig,
   ): void {
-    switch (storageConfig.provider) {
-      case 's3': {
-        builder.registerStorageProvider('s3', (config) => new S3StorageProvider(config as S3Config))
-        break
-      }
-      case 'github': {
-        builder.registerStorageProvider('github', (config) => new GitHubStorageProvider(config as GitHubConfig))
-        break
-      }
-      case 'local': {
-        builder.registerStorageProvider('local', (config) => new LocalStorageProvider(config as LocalConfig))
-        break
-      }
-      case 'eagle': {
-        builder.registerStorageProvider('eagle', (config) => new EagleStorageProvider(config as EagleConfig))
-        break
-      }
-      default: {
-        const provider = (storageConfig as StorageConfig)?.provider as string
-        const registered = StorageFactory.getRegisteredProviders()
-        if (!registered.includes(provider)) {
-          throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-            message: `Unsupported storage provider type: ${provider}`,
-          })
-        }
-      }
-    }
+    this.photoStorageService.registerStorageProviderPlugin(builder, storageConfig)
   }
 
   private async resolveBuilderConfigForTenant(
     tenantId: string,
     overrides: Pick<DataSyncOptions, 'builderConfig' | 'storageConfig'>,
   ): Promise<{ builderConfig: BuilderConfig; storageConfig: StorageConfig }> {
-    if (overrides.builderConfig) {
-      const storageConfig = overrides.storageConfig ?? overrides.builderConfig.storage
-      return { builderConfig: overrides.builderConfig, storageConfig }
-    }
-
-    const activeProvider = await this.settingService.getActiveStorageProvider({ tenantId })
-    if (!activeProvider) {
-      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-        message: 'Active storage provider is not configured. Configure storage settings before running sync.',
-      })
-    }
-
-    const storageConfig = this.mapProviderToStorageConfig(activeProvider)
-    const builderConfig = createDefaultBuilderConfig()
-    builderConfig.storage = storageConfig
-
-    return { builderConfig, storageConfig }
-  }
-
-  private mapProviderToStorageConfig(provider: BuilderStorageProvider): StorageConfig {
-    const config = provider.config ?? {}
-    switch (provider.type) {
-      case 's3': {
-        const bucket = this.requireString(config.bucket, 'Active S3 storage provider is missing `bucket`.')
-        const result: S3Config = {
-          provider: 's3',
-          bucket,
-        }
-
-        const region = this.normalizeString(config.region)
-        if (region) result.region = region
-        const endpoint = this.normalizeString(config.endpoint)
-        if (endpoint) result.endpoint = endpoint
-        const accessKeyId = this.normalizeString(config.accessKeyId)
-        if (accessKeyId) result.accessKeyId = accessKeyId
-        const secretAccessKey = this.normalizeString(config.secretAccessKey)
-        if (secretAccessKey) result.secretAccessKey = secretAccessKey
-        const prefix = this.normalizeString(config.prefix)
-        if (prefix) result.prefix = prefix
-        const customDomain = this.normalizeString(config.customDomain)
-        if (customDomain) result.customDomain = customDomain
-        const excludeRegex = this.normalizeString(config.excludeRegex)
-        if (excludeRegex) result.excludeRegex = excludeRegex
-
-        const maxFileLimit = this.parseNumber(config.maxFileLimit)
-        if (typeof maxFileLimit === 'number') result.maxFileLimit = maxFileLimit
-        const keepAlive = this.parseBoolean(config.keepAlive)
-        if (typeof keepAlive === 'boolean') result.keepAlive = keepAlive
-        const maxSockets = this.parseNumber(config.maxSockets)
-        if (typeof maxSockets === 'number') result.maxSockets = maxSockets
-        const connectionTimeoutMs = this.parseNumber(config.connectionTimeoutMs)
-        if (typeof connectionTimeoutMs === 'number') result.connectionTimeoutMs = connectionTimeoutMs
-        const socketTimeoutMs = this.parseNumber(config.socketTimeoutMs)
-        if (typeof socketTimeoutMs === 'number') result.socketTimeoutMs = socketTimeoutMs
-        const requestTimeoutMs = this.parseNumber(config.requestTimeoutMs)
-        if (typeof requestTimeoutMs === 'number') result.requestTimeoutMs = requestTimeoutMs
-        const idleTimeoutMs = this.parseNumber(config.idleTimeoutMs)
-        if (typeof idleTimeoutMs === 'number') result.idleTimeoutMs = idleTimeoutMs
-        const totalTimeoutMs = this.parseNumber(config.totalTimeoutMs)
-        if (typeof totalTimeoutMs === 'number') result.totalTimeoutMs = totalTimeoutMs
-        const retryMode = this.parseRetryMode(config.retryMode)
-        if (retryMode) result.retryMode = retryMode
-        const maxAttempts = this.parseNumber(config.maxAttempts)
-        if (typeof maxAttempts === 'number') result.maxAttempts = maxAttempts
-        const downloadConcurrency = this.parseNumber(config.downloadConcurrency)
-        if (typeof downloadConcurrency === 'number') result.downloadConcurrency = downloadConcurrency
-
-        return result
-      }
-      case 'github': {
-        const owner = this.requireString(config.owner, 'Active GitHub storage provider is missing `owner`.')
-        const repo = this.requireString(config.repo, 'Active GitHub storage provider is missing `repo`.')
-
-        const result: GitHubConfig = {
-          provider: 'github',
-          owner,
-          repo,
-        }
-
-        const branch = this.normalizeString(config.branch)
-        if (branch) result.branch = branch
-        const token = this.normalizeString(config.token)
-        if (token) result.token = token
-        const path = this.normalizeString(config.path)
-        if (path) result.path = path
-        const useRawUrl = this.parseBoolean(config.useRawUrl)
-        if (typeof useRawUrl === 'boolean') result.useRawUrl = useRawUrl
-
-        return result
-      }
-      case 'local': {
-        const basePath = this.normalizeString(config.basePath) ?? this.normalizeString(config.path)
-
-        const resolvedBasePath = this.requireString(
-          basePath,
-          'Active local storage provider is missing `basePath`. ' +
-            'Please provide a valid path to your photo directory.',
-        )
-
-        const result: LocalConfig = {
-          provider: 'local',
-          basePath: resolvedBasePath,
-        }
-
-        const baseUrl = this.normalizeString(config.baseUrl)
-        if (baseUrl) result.baseUrl = baseUrl
-        const distPath = this.normalizeString(config.distPath)
-        if (distPath) result.distPath = distPath
-        const excludeRegex = this.normalizeString(config.excludeRegex)
-        if (excludeRegex) result.excludeRegex = excludeRegex
-        const maxFileLimit = this.parseNumber(config.maxFileLimit)
-        if (typeof maxFileLimit === 'number') result.maxFileLimit = maxFileLimit
-
-        return result
-      }
-      case 'eagle': {
-        const libraryPath = this.requireString(
-          config.libraryPath,
-          'Active Eagle storage provider is missing `libraryPath`. Provide the path to your Eagle library.',
-        )
-
-        const result: EagleConfig = {
-          provider: 'eagle',
-          libraryPath,
-        }
-
-        const distPath = this.normalizeString(config.distPath)
-        if (distPath) result.distPath = distPath
-        const baseUrl = this.normalizeString(config.baseUrl)
-        if (baseUrl) result.baseUrl = baseUrl
-        const includeRules = this.parseJsonArray<EagleRule>(config.include)
-        if (includeRules) result.include = includeRules
-        const excludeRules = this.parseJsonArray<EagleRule>(config.exclude)
-        if (excludeRules) result.exclude = excludeRules
-
-        return result
-      }
-      default: {
-        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-          message: `Unsupported storage provider type: ${provider.type}`,
-        })
-      }
-    }
-  }
-
-  private normalizeString(value?: string | null): string | undefined {
-    if (typeof value !== 'string') {
-      return undefined
-    }
-
-    const normalized = value.trim()
-    return normalized.length > 0 ? normalized : undefined
-  }
-
-  private parseNumber(value?: string | null): number | undefined {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      return undefined
-    }
-
-    const parsed = Number(normalized)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }
-
-  private parseBoolean(value?: string | null): boolean | undefined {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      return undefined
-    }
-
-    const lowered = normalized.toLowerCase()
-    if (['true', '1', 'yes', 'y', 'on'].includes(lowered)) {
-      return true
-    }
-    if (['false', '0', 'no', 'n', 'off'].includes(lowered)) {
-      return false
-    }
-    return undefined
-  }
-
-  private parseRetryMode(value?: string | null): S3Config['retryMode'] | undefined {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      return undefined
-    }
-
-    if (normalized === 'standard' || normalized === 'adaptive' || normalized === 'legacy') {
-      return normalized
-    }
-
-    return undefined
-  }
-
-  private parseJsonArray<T>(value?: string | null): T[] | undefined {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      return undefined
-    }
-
-    try {
-      const parsed = JSON.parse(normalized)
-      if (Array.isArray(parsed)) {
-        return parsed as T[]
-      }
-    } catch {
-      /* ignore parse errors */
-    }
-
-    return undefined
-  }
-
-  private requireString(value: string | undefined | null, message: string): string {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message })
-    }
-    return normalized
+    return await this.photoStorageService.resolveConfigForTenant(tenantId, overrides)
   }
 
   private createSummary(context: SyncPreparation): DataSyncResult['summary'] {
@@ -480,20 +301,24 @@ export class DataSyncService {
     summary: DataSyncResult['summary'],
     actions: DataSyncAction[],
     dryRun: boolean,
-  ): Promise<void> {
-    if (context.missingInDb.length === 0) {
-      return
+    onProgress?: DataSyncProgressEmitter,
+  ): Promise<number> {
+    const total = context.missingInDb.length
+    if (total === 0) {
+      return 0
     }
 
     const livePhotoMap = await this.ensureLivePhotoMap(context, dryRun)
     const { db, tenantId, effectiveStorageConfig, builder } = context
+    let processed = 0
 
     for (const storageObject of context.missingInDb) {
+      processed += 1
       const storageSnapshot = this.createStorageSnapshot(storageObject)
 
       if (dryRun) {
         summary.inserted += 1
-        actions.push({
+        const action: DataSyncAction = {
           type: 'insert',
           storageKey: storageObject.key,
           photoId: null,
@@ -502,6 +327,15 @@ export class DataSyncService {
           snapshots: {
             after: storageSnapshot,
           },
+          manifestAfter: null,
+        }
+        actions.push(action)
+        await this.emitActionProgress(onProgress, {
+          stage: 'missing-in-db',
+          index: processed,
+          total,
+          action,
+          summary,
         })
         continue
       }
@@ -512,7 +346,7 @@ export class DataSyncService {
 
       if (!result?.item) {
         summary.conflicts += 1
-        actions.push({
+        const action: DataSyncAction = {
           type: 'conflict',
           storageKey: storageObject.key,
           photoId: null,
@@ -521,57 +355,297 @@ export class DataSyncService {
           snapshots: {
             after: storageSnapshot,
           },
+          manifestAfter: null,
+        }
+        actions.push(action)
+        await this.emitActionProgress(onProgress, {
+          stage: 'missing-in-db',
+          index: processed,
+          total,
+          action,
+          summary,
         })
         continue
       }
 
-      summary.inserted += 1
       const manifestPayload = this.createManifestPayload(result.item)
       const { metadataHash } = storageSnapshot
       const now = this.nowIso()
+      try {
+        await db
+          .insert(photoAssets)
+          .values(
+            this.buildInsertPayload({
+              tenantId,
+              storageObject,
+              manifest: manifestPayload,
+              metadataHash,
+              storageProvider: effectiveStorageConfig.provider,
+              photoId: result.item.id,
+              syncedAt: now,
+            }),
+          )
+          .onConflictDoUpdate({
+            target: [photoAssets.tenantId, photoAssets.storageKey],
+            set: {
+              photoId: result.item.id,
+              storageProvider: effectiveStorageConfig.provider,
+              size: storageSnapshot.size,
+              etag: storageSnapshot.etag,
+              lastModified: storageSnapshot.lastModified,
+              metadataHash,
+              manifestVersion: CURRENT_PHOTO_MANIFEST_VERSION,
+              manifest: manifestPayload,
+              syncStatus: 'synced',
+              conflictReason: null,
+              conflictPayload: null,
+              syncedAt: now,
+              updatedAt: now,
+            },
+          })
 
-      await db
-        .insert(photoAssets)
-        .values(
-          this.buildInsertPayload({
-            tenantId,
-            storageObject,
-            manifest: manifestPayload,
-            metadataHash,
-            storageProvider: effectiveStorageConfig.provider,
-            photoId: result.item.id,
-            syncedAt: now,
-          }),
-        )
-        .onConflictDoUpdate({
-          target: [photoAssets.tenantId, photoAssets.storageKey],
-          set: {
-            photoId: result.item.id,
-            storageProvider: effectiveStorageConfig.provider,
-            size: storageSnapshot.size,
-            etag: storageSnapshot.etag,
-            lastModified: storageSnapshot.lastModified,
-            metadataHash,
-            manifestVersion: CURRENT_PHOTO_MANIFEST_VERSION,
-            manifest: manifestPayload,
-            syncStatus: 'synced',
-            conflictReason: null,
-            conflictPayload: null,
-            syncedAt: now,
-            updatedAt: now,
+        summary.inserted += 1
+        const action: DataSyncAction = {
+          type: 'insert',
+          storageKey: storageObject.key,
+          photoId: result.item.id,
+          applied: true,
+          snapshots: {
+            after: storageSnapshot,
           },
+          manifestAfter: result.item,
+        }
+        actions.push(action)
+        await this.emitActionProgress(onProgress, {
+          stage: 'missing-in-db',
+          index: processed,
+          total,
+          action,
+          summary,
         })
+      } catch (error) {
+        const constraintError = this.extractConstraintViolation(error)
+        if (constraintError && this.isUniqueConstraintViolation(constraintError)) {
+          if (this.isPhotoIdConstraintViolation(constraintError)) {
+            await this.handlePhotoIdConflictDuringInsert(context, summary, actions, {
+              storageObject,
+              storageSnapshot,
+              manifestItem: result.item,
+              index: processed,
+              total,
+              onProgress,
+            })
+            continue
+          }
 
-      actions.push({
-        type: 'insert',
-        storageKey: storageObject.key,
-        photoId: result.item.id,
-        applied: true,
-        snapshots: {
-          after: storageSnapshot,
-        },
-      })
+          if (this.isStorageKeyConstraintViolation(constraintError)) {
+            await this.handleStorageKeyConflictDuringInsert(context, summary, actions, {
+              storageObject,
+              storageSnapshot,
+              manifestItem: result.item,
+              index: processed,
+              total,
+              onProgress,
+            })
+            continue
+          }
+        }
+
+        throw error
+      }
     }
+
+    return processed
+  }
+
+  private async handlePhotoIdConflictDuringInsert(
+    context: SyncPreparation,
+    summary: DataSyncResult['summary'],
+    actions: DataSyncAction[],
+    payload: {
+      storageObject: StorageObject
+      storageSnapshot: SyncObjectSnapshot
+      manifestItem: PhotoManifestItem
+      index: number
+      total: number
+      onProgress?: DataSyncProgressEmitter
+    },
+  ): Promise<void> {
+    const { db, tenantId } = context
+
+    const [existingRecord] = await db
+      .select()
+      .from(photoAssets)
+      .where(and(eq(photoAssets.tenantId, tenantId), eq(photoAssets.photoId, payload.manifestItem.id)))
+      .limit(1)
+
+    if (!existingRecord) {
+      this.logger.error('Detected photoId unique constraint violation but no existing record found. Skipping import.', {
+        tenantId,
+        photoId: payload.manifestItem.id,
+        storageKey: payload.storageObject.key,
+      })
+
+      summary.skipped += 1
+      const action: DataSyncAction = {
+        type: 'conflict',
+        storageKey: payload.storageObject.key,
+        photoId: payload.manifestItem.id,
+        applied: false,
+        reason: 'Photo ID conflict detected but existing record could not be loaded.',
+        conflictId: null,
+        conflictPayload: null,
+        snapshots: {
+          after: payload.storageSnapshot,
+        },
+        manifestAfter: payload.manifestItem,
+      }
+      actions.push(action)
+      await this.emitActionProgress(payload.onProgress, {
+        stage: 'missing-in-db',
+        index: payload.index,
+        total: payload.total,
+        action,
+        summary,
+      })
+      return
+    }
+
+    summary.conflicts += 1
+    const now = this.nowIso()
+    const conflictPayload = this.createConflictPayload('photo-id-conflict', {
+      storageSnapshot: payload.storageSnapshot,
+      recordSnapshot: this.createRecordSnapshot(existingRecord),
+      incomingStorageKey: payload.storageObject.key,
+    })
+    const conflictPayloadResponse = this.mapConflictPayloadToResponse(conflictPayload)
+
+    await db
+      .update(photoAssets)
+      .set({
+        syncStatus: 'conflict',
+        conflictReason: 'Photo ID already exists for this tenant.',
+        conflictPayload,
+        syncedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(photoAssets.id, existingRecord.id), eq(photoAssets.tenantId, tenantId)))
+
+    const action: DataSyncAction = {
+      type: 'conflict',
+      storageKey: payload.storageObject.key,
+      photoId: payload.manifestItem.id,
+      applied: true,
+      reason: 'Photo ID already exists for this tenant.',
+      conflictId: existingRecord.id,
+      conflictPayload: conflictPayloadResponse,
+      snapshots: {
+        before: this.createRecordSnapshot(existingRecord),
+        after: payload.storageSnapshot,
+      },
+      manifestBefore: existingRecord.manifest.data,
+      manifestAfter: payload.manifestItem,
+    }
+    actions.push(action)
+    await this.emitActionProgress(payload.onProgress, {
+      stage: 'missing-in-db',
+      index: payload.index,
+      total: payload.total,
+      action,
+      summary,
+    })
+  }
+
+  private async handleStorageKeyConflictDuringInsert(
+    context: SyncPreparation,
+    summary: DataSyncResult['summary'],
+    actions: DataSyncAction[],
+    payload: {
+      storageObject: StorageObject
+      storageSnapshot: SyncObjectSnapshot
+      manifestItem: PhotoManifestItem
+      index: number
+      total: number
+      onProgress?: DataSyncProgressEmitter
+    },
+  ): Promise<void> {
+    const { db, tenantId, recordByKey } = context
+
+    const existingRecord = recordByKey.get(payload.storageObject.key)
+
+    if (!existingRecord) {
+      this.logger.error('Detected storage key unique constraint violation but no record found. Marking as skipped.', {
+        tenantId,
+        storageKey: payload.storageObject.key,
+      })
+
+      summary.skipped += 1
+      const action: DataSyncAction = {
+        type: 'conflict',
+        storageKey: payload.storageObject.key,
+        photoId: payload.manifestItem.id,
+        applied: false,
+        reason: 'Storage key conflict detected but existing record could not be loaded.',
+        conflictId: null,
+        conflictPayload: null,
+        snapshots: {
+          after: payload.storageSnapshot,
+        },
+        manifestAfter: payload.manifestItem,
+      }
+      actions.push(action)
+      await this.emitActionProgress(payload.onProgress, {
+        stage: 'missing-in-db',
+        index: payload.index,
+        total: payload.total,
+        action,
+        summary,
+      })
+      return
+    }
+
+    summary.conflicts += 1
+    const now = this.nowIso()
+    const conflictPayload = this.createConflictPayload('metadata-mismatch', {
+      storageSnapshot: payload.storageSnapshot,
+      recordSnapshot: this.createRecordSnapshot(existingRecord),
+    })
+    const conflictPayloadResponse = this.mapConflictPayloadToResponse(conflictPayload)
+
+    await db
+      .update(photoAssets)
+      .set({
+        syncStatus: 'conflict',
+        conflictReason: 'Storage key already exists for this tenant.',
+        conflictPayload,
+        syncedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(photoAssets.id, existingRecord.id), eq(photoAssets.tenantId, tenantId)))
+
+    const action: DataSyncAction = {
+      type: 'conflict',
+      storageKey: payload.storageObject.key,
+      photoId: payload.manifestItem.id,
+      applied: true,
+      reason: 'Storage key already exists for this tenant.',
+      conflictId: existingRecord.id,
+      conflictPayload: conflictPayloadResponse,
+      snapshots: {
+        before: this.createRecordSnapshot(existingRecord),
+        after: payload.storageSnapshot,
+      },
+      manifestBefore: existingRecord.manifest.data,
+      manifestAfter: payload.manifestItem,
+    }
+    actions.push(action)
+    await this.emitActionProgress(payload.onProgress, {
+      stage: 'missing-in-db',
+      index: payload.index,
+      total: payload.total,
+      action,
+      summary,
+    })
   }
 
   private async handleOrphanRecords(
@@ -579,20 +653,25 @@ export class DataSyncService {
     summary: DataSyncResult['summary'],
     actions: DataSyncAction[],
     dryRun: boolean,
-  ): Promise<void> {
-    if (context.orphanInDb.length === 0) {
-      return
+    onProgress?: DataSyncProgressEmitter,
+  ): Promise<number> {
+    const total = context.orphanInDb.length
+    if (total === 0) {
+      return 0
     }
 
     const { db, tenantId } = context
+    let processed = 0
 
     for (const record of context.orphanInDb) {
+      processed += 1
       const recordSnapshot = this.createRecordSnapshot(record)
       summary.conflicts += 1
 
       const conflictPayload = this.createConflictPayload('missing-in-storage', {
         recordSnapshot,
       })
+      const conflictPayloadResponse = this.mapConflictPayloadToResponse(conflictPayload)
 
       if (!dryRun) {
         const now = this.nowIso()
@@ -608,17 +687,31 @@ export class DataSyncService {
           .where(and(eq(photoAssets.id, record.id), eq(photoAssets.tenantId, tenantId)))
       }
 
-      actions.push({
+      const action: DataSyncAction = {
         type: 'conflict',
         storageKey: record.storageKey,
         photoId: record.photoId,
         applied: !dryRun,
         reason: 'Storage object missing in provider.',
+        conflictId: record.id,
+        conflictPayload: conflictPayloadResponse,
         snapshots: {
           before: recordSnapshot,
         },
+        manifestBefore: record.manifest.data,
+        manifestAfter: null,
+      }
+      actions.push(action)
+      await this.emitActionProgress(onProgress, {
+        stage: 'orphan-in-db',
+        index: processed,
+        total,
+        action,
+        summary,
       })
     }
+
+    return processed
   }
 
   private async handleMetadataConflicts(
@@ -626,14 +719,18 @@ export class DataSyncService {
     summary: DataSyncResult['summary'],
     actions: DataSyncAction[],
     dryRun: boolean,
-  ): Promise<void> {
-    if (context.conflictCandidates.length === 0) {
-      return
+    onProgress?: DataSyncProgressEmitter,
+  ): Promise<number> {
+    const total = context.conflictCandidates.length
+    if (total === 0) {
+      return 0
     }
 
     const { db, tenantId } = context
+    let processed = 0
 
     for (const candidate of context.conflictCandidates) {
+      processed += 1
       const { record, storageObject, storageSnapshot, recordSnapshot } = candidate
       summary.conflicts += 1
 
@@ -641,6 +738,7 @@ export class DataSyncService {
         storageSnapshot,
         recordSnapshot,
       })
+      const conflictPayloadResponse = this.mapConflictPayloadToResponse(conflictPayload)
 
       if (!dryRun) {
         const now = this.nowIso()
@@ -656,18 +754,32 @@ export class DataSyncService {
           .where(and(eq(photoAssets.id, record.id), eq(photoAssets.tenantId, tenantId)))
       }
 
-      actions.push({
+      const action: DataSyncAction = {
         type: 'conflict',
         storageKey: storageObject.key,
         photoId: record.photoId,
         applied: !dryRun,
         reason: 'Storage metadata differs from database manifest.',
+        conflictId: record.id,
+        conflictPayload: conflictPayloadResponse,
         snapshots: {
           before: recordSnapshot,
           after: storageSnapshot,
         },
+        manifestBefore: record.manifest.data,
+        manifestAfter: null,
+      }
+      actions.push(action)
+      await this.emitActionProgress(onProgress, {
+        stage: 'metadata-conflicts',
+        index: processed,
+        total,
+        action,
+        summary,
       })
     }
+
+    return processed
   }
 
   private async handleStatusReconciliation(
@@ -675,14 +787,18 @@ export class DataSyncService {
     summary: DataSyncResult['summary'],
     actions: DataSyncAction[],
     dryRun: boolean,
-  ): Promise<void> {
-    if (context.statusReconciliation.length === 0) {
-      return
+    onProgress?: DataSyncProgressEmitter,
+  ): Promise<number> {
+    const total = context.statusReconciliation.length
+    if (total === 0) {
+      return 0
     }
 
     const { db, tenantId } = context
+    let processed = 0
 
     for (const entry of context.statusReconciliation) {
+      processed += 1
       const { record, storageSnapshot } = entry
       summary.updated += 1
 
@@ -704,7 +820,7 @@ export class DataSyncService {
           .where(and(eq(photoAssets.id, record.id), eq(photoAssets.tenantId, tenantId)))
       }
 
-      actions.push({
+      const action: DataSyncAction = {
         type: 'update',
         storageKey: record.storageKey,
         photoId: record.photoId,
@@ -714,7 +830,128 @@ export class DataSyncService {
           before: this.createRecordSnapshot(record),
           after: storageSnapshot,
         },
+        manifestBefore: record.manifest.data,
+        manifestAfter: record.manifest.data,
+      }
+      actions.push(action)
+      await this.emitActionProgress(onProgress, {
+        stage: 'status-reconciliation',
+        index: processed,
+        total,
+        action,
+        summary,
       })
+    }
+
+    return processed
+  }
+
+  private async emitStart(
+    emitter: DataSyncProgressEmitter | undefined,
+    summary: DataSyncResult['summary'],
+    totals: DataSyncStageTotals,
+    options: DataSyncOptions,
+  ): Promise<void> {
+    if (!emitter) {
+      return
+    }
+
+    await emitter({
+      type: 'start',
+      payload: {
+        summary: this.cloneSummary(summary),
+        totals,
+        options: { dryRun: options.dryRun },
+      },
+    })
+  }
+
+  private async emitStageProgress(
+    emitter: DataSyncProgressEmitter | undefined,
+    payload: {
+      stage: DataSyncProgressStage
+      status: 'start' | 'complete'
+      processed: number
+      total: number
+      summary: DataSyncResult['summary']
+    },
+  ): Promise<void> {
+    if (!emitter) {
+      return
+    }
+
+    await emitter({
+      type: 'stage',
+      payload: {
+        stage: payload.stage,
+        status: payload.status,
+        processed: payload.processed,
+        total: payload.total,
+        summary: this.cloneSummary(payload.summary),
+      },
+    })
+  }
+
+  private async emitActionProgress(
+    emitter: DataSyncProgressEmitter | undefined,
+    payload: {
+      stage: DataSyncProgressStage
+      index: number
+      total: number
+      action: DataSyncAction
+      summary: DataSyncResult['summary']
+    },
+  ): Promise<void> {
+    if (!emitter) {
+      return
+    }
+
+    await emitter({
+      type: 'action',
+      payload: {
+        stage: payload.stage,
+        index: payload.index,
+        total: payload.total,
+        action: this.cloneAction(payload.action),
+        summary: this.cloneSummary(payload.summary),
+      },
+    })
+  }
+
+  private async emitComplete(emitter: DataSyncProgressEmitter | undefined, result: DataSyncResult): Promise<void> {
+    if (!emitter) {
+      return
+    }
+
+    await emitter({
+      type: 'complete',
+      payload: {
+        summary: this.cloneSummary(result.summary),
+        actions: result.actions.map((action) => this.cloneAction(action)),
+      },
+    })
+  }
+
+  private cloneSummary(summary: DataSyncResult['summary']): DataSyncResultSummary {
+    return { ...summary }
+  }
+
+  private cloneAction(action: DataSyncAction): DataSyncAction {
+    const structuredCloneFn = (globalThis as { structuredClone?: <T>(value: T) => T }).structuredClone
+
+    if (!structuredCloneFn) {
+      throw new Error('structuredClone is not available in the current runtime environment.')
+    }
+
+    return structuredCloneFn(action) as DataSyncAction
+  }
+
+  private buildStageTotals(context: SyncPreparation): DataSyncStageTotals {
+    return {
+      'missing-in-db': context.missingInDb.length,
+      'orphan-in-db': context.orphanInDb.length,
+      'metadata-conflicts': context.conflictCandidates.length,
+      'status-reconciliation': context.statusReconciliation.length,
     }
   }
 
@@ -866,18 +1103,108 @@ export class DataSyncService {
       type: payload.type,
       storageSnapshot: this.fromConflictSnapshot(payload.storageSnapshot),
       recordSnapshot: this.fromConflictSnapshot(payload.recordSnapshot),
+      incomingStorageKey: payload.incomingStorageKey ?? null,
     }
   }
 
   private createConflictPayload(
     type: PhotoAssetConflictPayload['type'],
-    payload: { storageSnapshot?: SyncObjectSnapshot | null; recordSnapshot?: SyncObjectSnapshot | null },
+    payload: {
+      storageSnapshot?: SyncObjectSnapshot | null
+      recordSnapshot?: SyncObjectSnapshot | null
+      incomingStorageKey?: string | null
+    },
   ): PhotoAssetConflictPayload {
     return {
       type,
       storageSnapshot: this.toConflictSnapshot(payload.storageSnapshot ?? null),
       recordSnapshot: this.toConflictSnapshot(payload.recordSnapshot ?? null),
+      incomingStorageKey: payload.incomingStorageKey ?? null,
     }
+  }
+
+  private extractConstraintViolation(error: unknown): { code?: string; constraint?: string; message?: string } | null {
+    if (!error) {
+      return null
+    }
+
+    if (typeof error === 'string') {
+      return { message: error }
+    }
+
+    if (typeof error !== 'object') {
+      return null
+    }
+
+    const candidate = error as {
+      code?: unknown
+      constraint?: unknown
+      constraint_name?: unknown
+      message?: unknown
+      cause?: unknown
+    }
+
+    const code = typeof candidate.code === 'string' ? candidate.code : undefined
+    const constraint =
+      typeof candidate.constraint === 'string'
+        ? candidate.constraint
+        : typeof candidate.constraint_name === 'string'
+          ? candidate.constraint_name
+          : undefined
+    const message = typeof candidate.message === 'string' ? candidate.message : undefined
+
+    if (code || constraint) {
+      return { code, constraint, message }
+    }
+
+    if ('cause' in candidate && candidate.cause) {
+      const causeResult = this.extractConstraintViolation(candidate.cause)
+      if (causeResult) {
+        return causeResult
+      }
+    }
+
+    if (message && (message.includes('duplicate key value') || message.includes('unique constraint'))) {
+      return { message }
+    }
+
+    return null
+  }
+
+  private isUniqueConstraintViolation(error: { code?: string; message?: string }): boolean {
+    if (error.code === UNIQUE_VIOLATION_CODE) {
+      return true
+    }
+
+    if (error.message?.includes('duplicate key value') && error.message.includes('unique constraint')) {
+      return true
+    }
+
+    return false
+  }
+
+  private isPhotoIdConstraintViolation(error: { constraint?: string; message?: string }): boolean {
+    if (error.constraint === UNIQUE_CONSTRAINT_PHOTO_ID) {
+      return true
+    }
+
+    if (error.message?.includes(UNIQUE_CONSTRAINT_PHOTO_ID)) {
+      return true
+    }
+
+    return false
+  }
+
+  private isStorageKeyConstraintViolation(error: { constraint?: string; message?: string }): boolean {
+    if (error.constraint === UNIQUE_CONSTRAINT_STORAGE_KEY) {
+      return true
+    }
+
+    if (error.message?.includes(UNIQUE_CONSTRAINT_STORAGE_KEY)) {
+      return true
+    }
+
+    return false
   }
 
   private toConflictSnapshot(snapshot: SyncObjectSnapshot | null): PhotoAssetConflictSnapshot | null {
@@ -950,6 +1277,8 @@ export class DataSyncService {
           snapshots: {
             before: this.createRecordSnapshot(record),
           },
+          manifestBefore: record.manifest.data,
+          manifestAfter: null,
         }
       }
 
@@ -965,6 +1294,76 @@ export class DataSyncService {
         snapshots: {
           before: this.createRecordSnapshot(record),
         },
+        manifestBefore: record.manifest.data,
+        manifestAfter: null,
+      }
+    }
+
+    if (payload.type === 'photo-id-conflict') {
+      const targetStorageKey = payload.incomingStorageKey
+      if (!targetStorageKey) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+          message: 'Conflict payload missing incoming storage key. Rerun data sync before resolving.',
+        })
+      }
+
+      const storageObjects = await storageManager.listImages()
+      const storageObject = storageObjects.find((object) => object.key === targetStorageKey)
+
+      if (!storageObject) {
+        throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
+          message: 'Incoming storage object no longer exists; rerun data sync before resolving.',
+        })
+      }
+
+      const processResult = await this.safeProcessStorageObject(storageObject, builder, {
+        existing: record.manifest?.data as PhotoManifestItem | undefined,
+      })
+      if (!processResult?.item) {
+        throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
+          message: 'Failed to reprocess incoming storage object.',
+        })
+      }
+
+      const storageSnapshot = this.createStorageSnapshot(storageObject)
+      const manifestPayload = this.createManifestPayload(processResult.item)
+      const now = this.nowIso()
+
+      if (!dryRun) {
+        await db
+          .update(photoAssets)
+          .set({
+            photoId: processResult.item.id,
+            storageKey: targetStorageKey,
+            storageProvider: effectiveStorageConfig.provider,
+            size: storageSnapshot.size,
+            etag: storageSnapshot.etag,
+            lastModified: storageSnapshot.lastModified,
+            metadataHash: storageSnapshot.metadataHash,
+            manifestVersion: CURRENT_PHOTO_MANIFEST_VERSION,
+            manifest: manifestPayload,
+            syncStatus: 'synced',
+            conflictReason: null,
+            conflictPayload: null,
+            syncedAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(photoAssets.id, record.id), eq(photoAssets.tenantId, tenantId)))
+      }
+
+      return {
+        type: 'update',
+        storageKey: targetStorageKey,
+        photoId: processResult.item.id,
+        applied: !dryRun,
+        resolution: ConflictResolutionStrategy.PREFER_STORAGE,
+        reason: 'Updated record using incoming storage object after photo ID conflict.',
+        snapshots: {
+          before: this.createRecordSnapshot(record),
+          after: storageSnapshot,
+        },
+        manifestBefore: record.manifest.data,
+        manifestAfter: processResult.item,
       }
     }
 
@@ -1020,6 +1419,8 @@ export class DataSyncService {
         before: this.createRecordSnapshot(record),
         after: storageSnapshot,
       },
+      manifestBefore: record.manifest.data,
+      manifestAfter: processResult.item,
     }
   }
 
@@ -1044,6 +1445,8 @@ export class DataSyncService {
           snapshots: {
             before: recordSnapshot,
           },
+          manifestBefore: record.manifest.data,
+          manifestAfter: record.manifest.data,
         }
       }
 
@@ -1070,6 +1473,8 @@ export class DataSyncService {
         snapshots: {
           before: recordSnapshot,
         },
+        manifestBefore: record.manifest.data,
+        manifestAfter: record.manifest.data,
       }
     }
 
@@ -1078,6 +1483,52 @@ export class DataSyncService {
       throw new BizException(ErrorCode.COMMON_CONFLICT, {
         message: 'Missing storage snapshot to resolve metadata mismatch.',
       })
+    }
+
+    if (payload.type === 'photo-id-conflict') {
+      if (dryRun) {
+        return {
+          type: 'update',
+          storageKey: record.storageKey,
+          photoId: record.photoId,
+          applied: false,
+          resolution: ConflictResolutionStrategy.PREFER_DATABASE,
+          reason: 'Preview - would keep existing database record despite duplicate photo ID.',
+          snapshots: {
+            before: recordSnapshot,
+            after: storageSnapshot,
+          },
+          manifestBefore: record.manifest.data,
+          manifestAfter: record.manifest.data,
+        }
+      }
+
+      const now = this.nowIso()
+      await db
+        .update(photoAssets)
+        .set({
+          syncStatus: 'synced',
+          conflictReason: null,
+          conflictPayload: null,
+          syncedAt: now,
+          updatedAt: now,
+        })
+        .where(and(eq(photoAssets.id, record.id), eq(photoAssets.tenantId, tenantId)))
+
+      return {
+        type: 'update',
+        storageKey: record.storageKey,
+        photoId: record.photoId,
+        applied: true,
+        resolution: ConflictResolutionStrategy.PREFER_DATABASE,
+        reason: 'Kept existing database record despite duplicate photo ID.',
+        snapshots: {
+          before: recordSnapshot,
+          after: storageSnapshot,
+        },
+        manifestBefore: record.manifest.data,
+        manifestAfter: record.manifest.data,
+      }
     }
 
     if (!dryRun) {
@@ -1109,6 +1560,8 @@ export class DataSyncService {
         before: recordSnapshot,
         after: storageSnapshot,
       },
+      manifestBefore: record.manifest.data,
+      manifestAfter: record.manifest.data,
     }
   }
 }

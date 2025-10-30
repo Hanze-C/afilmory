@@ -7,10 +7,7 @@ import { photoLoader } from '~/lib/photo-loader'
 import geistFont from './Geist-Medium.ttf'
 import Sans from './PingFangSC.ttf'
 
-export const GET = async (
-  request: NextRequest,
-  { params }: { params: Promise<{ photoId: string }> },
-) => {
+export const GET = async (request: NextRequest, { params }: { params: Promise<{ photoId: string }> }) => {
   const { photoId } = await params
 
   const photo = photoLoader.getPhoto(photoId)
@@ -21,9 +18,7 @@ export const GET = async (
   try {
     // 格式化拍摄时间
     const dateTaken = photo.exif?.DateTimeOriginal || photo.lastModified
-    const formattedDate = dateTaken
-      ? new Date(dateTaken).toLocaleDateString('en-US')
-      : ''
+    const formattedDate = dateTaken ? new Date(dateTaken).toLocaleDateString('en-US') : ''
 
     // 处理标签
     const tags = photo.tags?.slice(0, 3).join(' • ') || ''
@@ -32,15 +27,11 @@ export const GET = async (
       if (!photo.exif) return null
 
       const info = {
-        focalLength:
-          photo.exif.FocalLengthIn35mmFormat || photo.exif.FocalLength,
+        focalLength: photo.exif.FocalLengthIn35mmFormat || photo.exif.FocalLength,
         aperture: photo.exif.FNumber ? `f/${photo.exif.FNumber}` : null,
         iso: photo.exif.ISO || null,
         shutterSpeed: `${photo.exif.ExposureTime}s`,
-        camera:
-          photo.exif.Make && photo.exif.Model
-            ? `${photo.exif.Make} ${photo.exif.Model}`
-            : null,
+        camera: photo.exif.Make && photo.exif.Model ? `${photo.exif.Make} ${photo.exif.Model}` : null,
       }
 
       return info
@@ -48,17 +39,15 @@ export const GET = async (
 
     const exifInfo = formatExifInfo()
     const thumbnailBuffer = await Promise.any([
-      fetch(
-        `http://localhost:13333${photo.thumbnailUrl.replace('.webp', '.jpg')}`,
-      ).then((res) => res.arrayBuffer()),
+      fetch(`http://localhost:13333${photo.thumbnailUrl.replace('.webp', '.jpg')}`).then((res) => res.arrayBuffer()),
       process.env.NEXT_PUBLIC_APP_URL
-        ? fetch(
-            `http://${process.env.NEXT_PUBLIC_APP_URL}${photo.thumbnailUrl.replace('.webp', '.jpg')}`,
-          ).then((res) => res.arrayBuffer())
+        ? fetch(`http://${process.env.NEXT_PUBLIC_APP_URL}${photo.thumbnailUrl.replace('.webp', '.jpg')}`).then((res) =>
+            res.arrayBuffer(),
+          )
         : Promise.reject(),
-      fetch(
-        `http://${request.nextUrl.host}${photo.thumbnailUrl.replace('.webp', '.jpg')}`,
-      ).then((res) => res.arrayBuffer()),
+      fetch(`http://${request.nextUrl.host}${photo.thumbnailUrl.replace('.webp', '.jpg')}`).then((res) =>
+        res.arrayBuffer(),
+      ),
     ])
 
     // 计算图片显示尺寸以保持原始比例
@@ -141,8 +130,7 @@ export const GET = async (
               width: '240px',
               height: '240px',
               borderRadius: '50%',
-              background:
-                'radial-gradient(circle, rgba(60,60,70,0.15) 0%, rgba(40,40,50,0.08) 40%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(60,60,70,0.15) 0%, rgba(40,40,50,0.08) 40%, transparent 70%)',
             }}
           />
 
@@ -155,8 +143,7 @@ export const GET = async (
               width: '300px',
               height: '300px',
               borderRadius: '50%',
-              background:
-                'radial-gradient(circle, rgba(45,45,55,0.12) 0%, rgba(30,30,40,0.06) 50%, transparent 80%)',
+              background: 'radial-gradient(circle, rgba(45,45,55,0.12) 0%, rgba(30,30,40,0.06) 50%, transparent 80%)',
             }}
           />
 
@@ -182,8 +169,7 @@ export const GET = async (
               right: '5%',
               width: '30px',
               height: '180px',
-              background:
-                'linear-gradient(0deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)',
+              background: 'linear-gradient(0deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '3px',
               display: 'flex',
@@ -410,8 +396,7 @@ export const GET = async (
                 background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)',
                 borderRadius: '6px',
                 border: '1px solid #2a2a2a',
-                boxShadow:
-                  '0 12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
+                boxShadow: '0 12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
 
                 display: 'flex',
                 overflow: 'hidden',
@@ -439,8 +424,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -449,8 +433,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -459,8 +442,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -469,8 +451,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -479,8 +460,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -489,8 +469,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -499,8 +478,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -529,8 +507,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -539,8 +516,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -549,8 +525,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -559,8 +534,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -569,8 +543,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -579,8 +552,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -589,8 +561,7 @@ export const GET = async (
                   style={{
                     width: '10px',
                     height: '10px',
-                    background:
-                      'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
+                    background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
                     borderRadius: '50%',
                     boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
                   }}
@@ -658,8 +629,7 @@ export const GET = async (
                   left: '30px',
                   width: `${imageAreaWidth}px`,
                   height: '30px',
-                  background:
-                    'linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 30%, #1a1a1a 100%)',
+                  background: 'linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 30%, #1a1a1a 100%)',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
                 }}
               />
@@ -670,8 +640,7 @@ export const GET = async (
                   left: '30px',
                   width: `${imageAreaWidth}px`,
                   height: '30px',
-                  background:
-                    'linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 30%, #1a1a1a 100%)',
+                  background: 'linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 30%, #1a1a1a 100%)',
                   borderTop: '1px solid rgba(255,255,255,0.05)',
                 }}
               />
@@ -700,8 +669,7 @@ export const GET = async (
                   left: '0',
                   width: '100%',
                   height: '100%',
-                  background:
-                    'linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.01) 50%, transparent 100%)',
+                  background: 'linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.01) 50%, transparent 100%)',
                   pointerEvents: 'none',
                 }}
               />
@@ -746,85 +714,81 @@ export const GET = async (
               </div>
             )}
             {/* EXIF 信息 */}
-            {exifInfo &&
-              (exifInfo.aperture ||
-                exifInfo.shutterSpeed ||
-                exifInfo.iso ||
-                exifInfo.focalLength) && (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '18px',
-                    fontSize: '25px',
-                    color: 'rgba(255,255,255,0.8)',
-                  }}
-                >
-                  {exifInfo.aperture && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                        padding: '12px 18px',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(8px)',
-                      }}
-                    >
-                      ⚫ {exifInfo.aperture}
-                    </div>
-                  )}
+            {exifInfo && (exifInfo.aperture || exifInfo.shutterSpeed || exifInfo.iso || exifInfo.focalLength) && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '18px',
+                  fontSize: '25px',
+                  color: 'rgba(255,255,255,0.8)',
+                }}
+              >
+                {exifInfo.aperture && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    ⚫ {exifInfo.aperture}
+                  </div>
+                )}
 
-                  {exifInfo.shutterSpeed && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                        padding: '12px 18px',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(8px)',
-                      }}
-                    >
-                      ⏱️ {exifInfo.shutterSpeed}
-                    </div>
-                  )}
+                {exifInfo.shutterSpeed && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    ⏱️ {exifInfo.shutterSpeed}
+                  </div>
+                )}
 
-                  {exifInfo.iso && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                        padding: '12px 18px',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(8px)',
-                      }}
-                    >
-                      📊 ISO {exifInfo.iso}
-                    </div>
-                  )}
+                {exifInfo.iso && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    📊 ISO {exifInfo.iso}
+                  </div>
+                )}
 
-                  {exifInfo.focalLength && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                        padding: '12px 18px',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(8px)',
-                      }}
-                    >
-                      🔍 {exifInfo.focalLength}
-                    </div>
-                  )}
-                </div>
-              )}
+                {exifInfo.focalLength && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    🔍 {exifInfo.focalLength}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       ),
@@ -848,10 +812,8 @@ export const GET = async (
         ],
         headers: {
           // Cache 1 years
-          'Cache-Control':
-            'public, max-age=31536000, stale-while-revalidate=31536000',
-          'Cloudflare-CDN-Cache-Control':
-            'public, max-age=31536000, stale-while-revalidate=31536000',
+          'Cache-Control': 'public, max-age=31536000, stale-while-revalidate=31536000',
+          'Cloudflare-CDN-Cache-Control': 'public, max-age=31536000, stale-while-revalidate=31536000',
         },
       },
     )

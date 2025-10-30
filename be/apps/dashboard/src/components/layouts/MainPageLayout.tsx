@@ -1,14 +1,7 @@
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
-import {
-  createContext,
-  use,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type HeaderActionState = {
@@ -28,9 +21,7 @@ type MainPageLayoutContextValue = {
   registerPortalPresence: (mounted: boolean) => void
 }
 
-const MainPageLayoutContext = createContext<MainPageLayoutContextValue | null>(
-  null,
-)
+const MainPageLayoutContext = createContext<MainPageLayoutContextValue | null>(null)
 
 export const useMainPageLayout = () => {
   const context = use(MainPageLayoutContext)
@@ -50,19 +41,10 @@ type MainPageLayoutProps = {
   children: ReactNode
 }
 
-const MainPageLayoutBase = ({
-  title,
-  description,
-  actions,
-  footer,
-  children,
-}: MainPageLayoutProps) => {
-  const [headerActionsContainer, setHeaderActionsContainer] =
-    useState<HTMLDivElement | null>(null)
+const MainPageLayoutBase = ({ title, description, actions, footer, children }: MainPageLayoutProps) => {
+  const [headerActionsContainer, setHeaderActionsContainer] = useState<HTMLDivElement | null>(null)
   const [portalMountCount, setPortalMountCount] = useState(0)
-  const [headerActionState, setHeaderActionState] = useState<HeaderActionState>(
-    defaultHeaderActionState,
-  )
+  const [headerActionState, setHeaderActionState] = useState<HeaderActionState>(defaultHeaderActionState)
 
   const registerPortalPresence = useCallback((mounted: boolean) => {
     setPortalMountCount((count) => count + (mounted ? 1 : -1))
@@ -98,24 +80,16 @@ const MainPageLayoutBase = ({
 
           <div className="relative space-y-1.5">
             <h1 className="text-text text-2xl font-semibold">{title}</h1>
-            {description ? (
-              <p className="text-text-secondary text-sm">{description}</p>
-            ) : null}
+            {description ? <p className="text-text-secondary text-sm">{description}</p> : null}
           </div>
 
           {showHeaderActions ? (
             <div className="relative flex flex-wrap items-center gap-2 md:justify-end">
               {actions}
-              <div
-                ref={assignActionsContainer}
-                className="flex flex-wrap items-center gap-2"
-              />
+              <div ref={assignActionsContainer} className="flex flex-wrap items-center gap-2" />
             </div>
           ) : (
-            <div
-              ref={assignActionsContainer}
-              className="relative hidden flex-wrap items-center gap-2 md:flex"
-            />
+            <div ref={assignActionsContainer} className="relative hidden flex-wrap items-center gap-2 md:flex" />
           )}
         </header>
 

@@ -1,5 +1,4 @@
-import { clsxm } from '@afilmory/utils'
-import { NavLink } from 'react-router'
+import { PageTabs } from '~/components/navigation/PageTabs'
 
 const SETTINGS_TABS = [
   {
@@ -16,32 +15,20 @@ const SETTINGS_TABS = [
   },
 ] as const
 
-interface SettingsNavigationProps {
+type SettingsNavigationProps = {
   active: (typeof SETTINGS_TABS)[number]['id']
 }
 
 export const SettingsNavigation = ({ active }: SettingsNavigationProps) => {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {SETTINGS_TABS.map((tab) => (
-        <NavLink key={tab.id} to={tab.path} end={tab.end}>
-          {({ isActive }) => {
-            const selected = isActive || active === tab.id
-            return (
-              <span
-                className={clsxm(
-                  'inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-                  selected
-                    ? 'bg-accent/15 text-accent'
-                    : 'bg-fill/10 text-text-secondary hover:bg-fill/20 hover:text-text',
-                )}
-              >
-                {tab.label}
-              </span>
-            )
-          }}
-        </NavLink>
-      ))}
-    </div>
+    <PageTabs
+      activeId={active}
+      items={SETTINGS_TABS.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        to: tab.path,
+        end: tab.end,
+      }))}
+    />
   )
 }

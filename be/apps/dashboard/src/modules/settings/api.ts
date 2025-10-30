@@ -10,8 +10,9 @@ export const getSettings = async (keys: ReadonlyArray<string>) => {
   return await coreApi<{
     keys: string[]
     values: Record<string, string | null>
-  }>('/settings', {
-    query: { keys },
+  }>('/settings/batch', {
+    body: { keys },
+    method: 'POST',
   })
 }
 

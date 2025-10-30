@@ -11,26 +11,15 @@ type CheckboxProps = React.ComponentProps<typeof CheckboxPrimitive.Root> &
     indeterminate?: boolean
   }
 
-function Checkbox({
-  className,
-  onCheckedChange,
-  indeterminate,
-  ...props
-}: CheckboxProps) {
-  const [isChecked, setIsChecked] = React.useState(
-    props?.checked ?? props?.defaultChecked ?? false,
-  )
+function Checkbox({ className, onCheckedChange, indeterminate, ...props }: CheckboxProps) {
+  const [isChecked, setIsChecked] = React.useState(props?.checked ?? props?.defaultChecked ?? false)
 
   React.useEffect(() => {
     if (props?.checked !== undefined) setIsChecked(props.checked)
   }, [props?.checked])
 
   // Determine the actual state including indeterminate
-  const checkboxState = indeterminate
-    ? 'indeterminate'
-    : isChecked
-      ? 'checked'
-      : 'unchecked'
+  const checkboxState = indeterminate ? 'indeterminate' : isChecked ? 'checked' : 'unchecked'
 
   const handleCheckedChange = React.useCallback(
     (checked: boolean) => {
@@ -41,11 +30,7 @@ function Checkbox({
   )
 
   return (
-    <CheckboxPrimitive.Root
-      {...props}
-      onCheckedChange={handleCheckedChange}
-      asChild
-    >
+    <CheckboxPrimitive.Root {...props} onCheckedChange={handleCheckedChange} asChild>
       <motion.button
         data-slot="checkbox"
         className={clsxm(

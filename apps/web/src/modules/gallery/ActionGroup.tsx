@@ -15,8 +15,7 @@ export const ActionGroup = () => {
   const navigate = useNavigate()
 
   // 计算视图设置是否有自定义配置
-  const hasViewCustomization =
-    gallerySetting.columns !== 'auto' || gallerySetting.sortOrder !== 'desc'
+  const hasViewCustomization = gallerySetting.columns !== 'auto' || gallerySetting.sortOrder !== 'desc'
 
   // 计算过滤器数量
   const filterCount =

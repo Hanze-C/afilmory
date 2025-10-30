@@ -105,10 +105,7 @@ export interface PhotoProcessingLoggers {
 /**
  * 创建照片处理 Logger 集合
  */
-export function createPhotoProcessingLoggers(
-  workerId: number,
-  baseLogger: Logger,
-): PhotoProcessingLoggers {
+export function createPhotoProcessingLoggers(workerId: number, baseLogger: Logger): PhotoProcessingLoggers {
   const workerLogger = baseLogger.worker(workerId)
   return {
     image: new CompatibleLoggerAdapter(workerLogger.withTag('IMAGE')),
@@ -137,9 +134,7 @@ export function setGlobalLoggers(loggers: PhotoProcessingLoggers): void {
  */
 export function getGlobalLoggers(): PhotoProcessingLoggers {
   if (!globalLoggers) {
-    throw new Error(
-      'Global loggers not initialized. Call setGlobalLoggers first.',
-    )
+    throw new Error('Global loggers not initialized. Call setGlobalLoggers first.')
   }
   return globalLoggers
 }

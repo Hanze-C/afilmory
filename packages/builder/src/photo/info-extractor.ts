@@ -6,10 +6,7 @@ import type { PhotoInfo, PickedExif } from '../types/photo.js'
 import { getGlobalLoggers } from './logger-adapter.js'
 
 // 从文件名提取照片信息
-export function extractPhotoInfo(
-  key: string,
-  exifData?: PickedExif | null,
-): PhotoInfo {
+export function extractPhotoInfo(key: string, exifData?: PickedExif | null): PhotoInfo {
   const log = getGlobalLoggers().image
 
   log.info(`提取照片信息：${key}`)
@@ -36,9 +33,7 @@ export function extractPhotoInfo(
 
     if (relativePath) {
       // 分割路径并过滤空字符串
-      const pathParts = relativePath
-        .split('/')
-        .filter((part) => part.trim() !== '')
+      const pathParts = relativePath.split('/').filter((part) => part.trim() !== '')
       tags = pathParts.map((part) => part.trim())
 
       log.info(`从路径提取标签：[${tags.join(', ')}]`)
@@ -55,16 +50,10 @@ export function extractPhotoInfo(
         dateTaken = dateTimeOriginal.toISOString()
         log.info('使用 EXIF Date 对象作为拍摄时间')
       } else {
-        log?.warn(
-          `未知的 DateTimeOriginal 类型：${typeof dateTimeOriginal}`,
-          dateTimeOriginal,
-        )
+        log?.warn(`未知的 DateTimeOriginal 类型：${typeof dateTimeOriginal}`, dateTimeOriginal)
       }
     } catch (error) {
-      log?.warn(
-        `解析 EXIF DateTimeOriginal 失败：${exifData.DateTimeOriginal}`,
-        error,
-      )
+      log?.warn(`解析 EXIF DateTimeOriginal 失败：${exifData.DateTimeOriginal}`, error)
     }
   } else {
     // 如果 EXIF 中没有日期，尝试从文件名解析

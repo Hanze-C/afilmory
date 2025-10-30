@@ -6,9 +6,7 @@ export interface LocalStoragePluginOptions {
   provider?: string
 }
 
-export default function localStoragePlugin(
-  options: LocalStoragePluginOptions = {},
-): BuilderPlugin {
+export default function localStoragePlugin(options: LocalStoragePluginOptions = {}): BuilderPlugin {
   const providerName = options.provider ?? 'local'
 
   return {

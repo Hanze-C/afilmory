@@ -2,10 +2,7 @@ import { MainPageLayout } from '~/components/layouts/MainPageLayout'
 
 export const Component = () => {
   return (
-    <MainPageLayout
-      title="Analytics"
-      description="Track your photo collection statistics and trends"
-    >
+    <MainPageLayout title="Analytics" description="Track your photo collection statistics and trends">
       <div className="grid gap-4 md:grid-cols-2">
         {/* Upload Trends */}
         <div className="bg-background-tertiary relative p-5">
@@ -14,12 +11,8 @@ export const Component = () => {
           <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
           <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-gradient-to-b from-transparent to-transparent" />
 
-          <h2 className="text-text mb-4 text-sm font-semibold">
-            Upload Trends
-          </h2>
-          <div className="text-text-tertiary flex h-64 items-center justify-center text-[13px]">
-            Chart placeholder
-          </div>
+          <h2 className="text-text mb-4 text-sm font-semibold">Upload Trends</h2>
+          <div className="text-text-tertiary flex h-64 items-center justify-center text-[13px]">Chart placeholder</div>
         </div>
 
         {/* Storage Usage */}
@@ -29,12 +22,8 @@ export const Component = () => {
           <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent to-transparent" />
           <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-gradient-to-b from-transparent to-transparent" />
 
-          <h2 className="text-text mb-4 text-sm font-semibold">
-            Storage Usage
-          </h2>
-          <div className="text-text-tertiary flex h-64 items-center justify-center text-[13px]">
-            Chart placeholder
-          </div>
+          <h2 className="text-text mb-4 text-sm font-semibold">Storage Usage</h2>
+          <div className="text-text-tertiary flex h-64 items-center justify-center text-[13px]">Chart placeholder</div>
         </div>
 
         {/* Popular Tags */}
@@ -57,9 +46,7 @@ export const Component = () => {
                 className="bg-fill/10 hover:bg-fill/20 flex items-center justify-between px-3 py-2 transition-colors"
               >
                 <span className="text-text text-[13px]">{item.tag}</span>
-                <span className="text-accent text-[13px] font-medium">
-                  {item.count}
-                </span>
+                <span className="text-accent text-[13px] font-medium">{item.count}</span>
               </div>
             ))}
           </div>
@@ -85,9 +72,7 @@ export const Component = () => {
                 className="bg-fill/10 hover:bg-fill/20 flex items-center justify-between px-3 py-2 transition-colors"
               >
                 <span className="text-text text-[13px]">{item.device}</span>
-                <span className="text-accent text-[13px] font-medium">
-                  {item.count}
-                </span>
+                <span className="text-accent text-[13px] font-medium">{item.count}</span>
               </div>
             ))}
           </div>

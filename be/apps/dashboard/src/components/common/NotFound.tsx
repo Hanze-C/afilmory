@@ -31,12 +31,8 @@ export const NotFound = () => {
               </svg>
             </div>
             <h1 className="text-text mb-2 text-6xl font-bold">404</h1>
-            <h2 className="text-text mb-2 text-2xl font-medium">
-              Page not found
-            </h2>
-            <p className="text-text-secondary text-lg">
-              The page you're looking for doesn't exist
-            </p>
+            <h2 className="text-text mb-2 text-2xl font-medium">Page not found</h2>
+            <p className="text-text-secondary text-lg">The page you're looking for doesn't exist</p>
           </div>
 
           {/* Current path info */}
@@ -56,9 +52,7 @@ export const NotFound = () => {
                 />
               </svg>
               <div className="min-w-0 flex-1">
-                <p className="text-text-secondary mb-1 text-sm">
-                  Requested URL
-                </p>
+                <p className="text-text-secondary mb-1 text-sm">Requested URL</p>
                 <code className="text-text bg-material-thin rounded px-2 py-1 font-mono text-sm break-all">
                   {location.pathname}
                 </code>
@@ -85,8 +79,7 @@ export const NotFound = () => {
           {/* Help text */}
           <div className="text-center">
             <p className="text-text-secondary text-sm">
-              If you think this is a mistake, please check the URL or contact
-              support.
+              If you think this is a mistake, please check the URL or contact support.
             </p>
           </div>
         </div>
@@ -94,9 +87,7 @@ export const NotFound = () => {
 
       {/* Footer */}
       <div className="flex h-16 items-center justify-center">
-        <p className="text-text-secondary/50 text-xs">
-          Error 404 • Page not found
-        </p>
+        <p className="text-text-secondary/50 text-xs">Error 404 • Page not found</p>
       </div>
     </div>
   )

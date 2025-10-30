@@ -6,10 +6,7 @@ import type { PluginRunState } from '../plugins/manager.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import type { PhotoProcessingContext } from './image-pipeline.js'
 import { processPhotoWithPipeline } from './image-pipeline.js'
-import {
-  createPhotoProcessingLoggers,
-  setGlobalLoggers,
-} from './logger-adapter.js'
+import { createPhotoProcessingLoggers, setGlobalLoggers } from './logger-adapter.js'
 
 export interface PhotoProcessorOptions {
   isForceMode: boolean

@@ -1,9 +1,5 @@
 import { StorageFactory } from './factory.js'
-import type {
-  StorageConfig,
-  StorageObject,
-  StorageProvider,
-} from './interfaces.js'
+import type { StorageConfig, StorageObject, StorageProvider, StorageUploadOptions } from './interfaces.js'
 
 export class StorageManager {
   private provider: StorageProvider
@@ -52,11 +48,17 @@ export class StorageManager {
    * @param allObjects 所有文件对象（可选，如果不提供则自动获取）
    * @returns Live Photo 配对映射 (图片 key -> 视频对象)
    */
-  async detectLivePhotos(
-    allObjects?: StorageObject[],
-  ): Promise<Map<string, StorageObject>> {
+  async detectLivePhotos(allObjects?: StorageObject[]): Promise<Map<string, StorageObject>> {
     const objects = allObjects || (await this.listAllFiles())
     return this.provider.detectLivePhotos(objects)
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    await this.provider.deleteFile(key)
+  }
+
+  async uploadFile(key: string, data: Buffer, options?: StorageUploadOptions): Promise<StorageObject> {
+    return await this.provider.uploadFile(key, data, options)
   }
 
   /**

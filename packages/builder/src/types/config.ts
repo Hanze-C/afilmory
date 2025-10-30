@@ -33,9 +33,7 @@ export interface BuilderConfig {
   plugins?: BuilderPluginConfigEntry[]
 }
 
-type DeepPartial<T> = T extends object
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : T
+type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T
 
 export type BuilderConfigInput = DeepPartial<Omit<BuilderConfig, 'plugins'>> & {
   plugins?: BuilderPluginConfigEntry[]

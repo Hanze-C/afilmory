@@ -99,13 +99,12 @@ export const runDataSyncSchema = z
 
 const conflictResolutionSchema = z.nativeEnum(ConflictResolutionStrategy)
 
-export const resolveConflictSchema = z
-  .object({
-    strategy: conflictResolutionSchema,
-    builderConfig: builderConfigSchema.optional(),
-    storageConfig: storageConfigSchema.optional(),
-    dryRun: z.boolean().optional().default(false),
-  })
+export const resolveConflictSchema = z.object({
+  strategy: conflictResolutionSchema,
+  builderConfig: builderConfigSchema.optional(),
+  storageConfig: storageConfigSchema.optional(),
+  dryRun: z.boolean().optional().default(false),
+})
 
 export type RunDataSyncInput = z.infer<typeof runDataSyncSchema>
 export type ResolveConflictInput = z.infer<typeof resolveConflictSchema>

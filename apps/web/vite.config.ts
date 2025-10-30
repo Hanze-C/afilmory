@@ -29,11 +29,7 @@ const devPrint = (): PluginOption => ({
   name: 'dev-print',
   configureServer(server: ViteDevServer) {
     server.printUrls = () => {
-      console.info(
-        `  ${green('➜')}  ${dim('Next.js SSR')}: ${cyan(
-          'http://localhost:1924',
-        )}`,
-      )
+      console.info(`  ${green('➜')}  ${dim('Next.js SSR')}: ${cyan('http://localhost:1924')}`)
     }
   },
 })

@@ -45,15 +45,8 @@ type ProviderCardProps = {
   onToggleActive: () => void
 }
 
-export const ProviderCard: FC<ProviderCardProps> = ({
-  provider,
-  isActive,
-  onEdit,
-  onToggleActive,
-}) => {
-  const config =
-    providerTypeConfig[provider.type as keyof typeof providerTypeConfig] ||
-    providerTypeConfig.s3
+export const ProviderCard: FC<ProviderCardProps> = ({ provider, isActive, onEdit, onToggleActive }) => {
+  const config = providerTypeConfig[provider.type as keyof typeof providerTypeConfig] || providerTypeConfig.s3
 
   // Extract preview info based on provider type
   const getPreviewInfo = () => {
@@ -102,32 +95,20 @@ export const ProviderCard: FC<ProviderCardProps> = ({
 
       {/* Provider Icon */}
       <div className="relative">
-        <div
-          className={clsxm(
-            'inline-flex h-12 w-12 items-center justify-center rounded-lg',
-            config.bgColor,
-          )}
-        >
-          <DynamicIcon
-            name={config.icon as any}
-            className={clsxm('h-6 w-6', config.color)}
-          />
+        <div className={clsxm('inline-flex h-12 w-12 items-center justify-center rounded-lg', config.bgColor)}>
+          <DynamicIcon name={config.icon as any} className={clsxm('h-6 w-6', config.color)} />
         </div>
       </div>
 
       {/* Provider Info */}
       <div className="relative flex-1 space-y-1">
-        <h3 className="text-text text-sm font-semibold">
-          {provider.name || '未命名存储'}
-        </h3>
+        <h3 className="text-text text-sm font-semibold">{provider.name || '未命名存储'}</h3>
         <p className="text-text-tertiary text-xs font-medium">{config.label}</p>
-        <p className="text-text-tertiary/70 truncate text-xs">
-          {getPreviewInfo()}
-        </p>
+        <p className="text-text-tertiary/70 truncate text-xs">{getPreviewInfo()}</p>
       </div>
 
       {/* Actions - bottom right */}
-      <div className="absolute bottom-3 right-3 flex items-center">
+      <div className="absolute right-3 bottom-3 flex items-center">
         {isActive ? (
           <Button
             type="button"
@@ -136,7 +117,7 @@ export const ProviderCard: FC<ProviderCardProps> = ({
             className="text-text-secondary hover:text-text"
             onClick={onToggleActive}
           >
-            <DynamicIcon name="x-circle" className="h-3.5 w-3.5 mr-1" />
+            <DynamicIcon name="x-circle" className="mr-1 h-3.5 w-3.5" />
             <span>Make Inactive</span>
           </Button>
         ) : (
@@ -152,7 +133,7 @@ export const ProviderCard: FC<ProviderCardProps> = ({
           </Button>
         )}
         <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-          <DynamicIcon name="pencil" className="h-3.5 w-3.5 mr-1" />
+          <DynamicIcon name="pencil" className="mr-1 h-3.5 w-3.5" />
           <span>Edit</span>
         </Button>
       </div>

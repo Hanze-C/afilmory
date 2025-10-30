@@ -5,12 +5,7 @@ export const STORAGE_SETTING_KEYS = {
   activeProvider: 'builder.storage.activeProvider',
 } as const
 
-export const STORAGE_PROVIDER_TYPES: readonly StorageProviderType[] = [
-  's3',
-  'github',
-  'local',
-  'eagle',
-]
+export const STORAGE_PROVIDER_TYPES: readonly StorageProviderType[] = ['s3', 'github', 'local', 'eagle']
 
 export const STORAGE_PROVIDER_TYPE_OPTIONS: ReadonlyArray<{
   value: StorageProviderType

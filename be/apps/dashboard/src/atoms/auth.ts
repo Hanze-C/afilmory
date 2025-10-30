@@ -5,14 +5,8 @@ import type { BetterAuthUser } from '~/modules/auth/types'
 
 const baseAuthUserAtom = atom<BetterAuthUser | null>(null)
 
-export const [
-  authUserAtom,
-  useAuthUser,
-  useAuthUserValue,
-  useSetAuthUser,
-  getAuthUser,
-  setAuthUser,
-] = createAtomHooks(baseAuthUserAtom)
+export const [authUserAtom, useAuthUser, useAuthUserValue, useSetAuthUser, getAuthUser, setAuthUser] =
+  createAtomHooks(baseAuthUserAtom)
 
 // Selectors
 export const useIsAuthenticated = () => {

@@ -13,11 +13,11 @@ import { AES_ALGORITHM, AUTH_TAG_LENGTH, DEFAULT_SETTING_METADATA, IV_LENGTH } f
 import type { SettingKeyType, SettingRecord, SettingUiSchemaResponse, SettingValueMap } from './setting.type'
 import { SETTING_UI_SCHEMA, SETTING_UI_SCHEMA_KEYS } from './setting.ui-schema'
 import { STORAGE_PROVIDERS_SETTING_KEY } from './storage-provider.constants'
+import type { BuilderStorageProvider } from './storage-provider.utils'
 import {
   parseStorageProviders,
   prepareStorageProvidersForPersist,
   sanitizeStorageProviders,
-  type BuilderStorageProvider,
 } from './storage-provider.utils'
 
 export type SettingOption = {
@@ -120,11 +120,10 @@ export class SettingService {
     return parseStorageProviders(rawValue)
   }
 
-  async getActiveStorageProvider(options?: SettingOption): Promise<BuilderStorageProvider | null> {
+  async getActiveStorageProvider(options: SettingOption): Promise<BuilderStorageProvider | null> {
     const providers = await this.getStorageProvidersRaw(options)
     const activeIdRaw = await this.get('builder.storage.activeProvider', options)
-    const activeId =
-      typeof activeIdRaw === 'string' && activeIdRaw.trim().length > 0 ? activeIdRaw.trim() : null
+    const activeId = typeof activeIdRaw === 'string' && activeIdRaw.trim().length > 0 ? activeIdRaw.trim() : null
 
     if (!activeId) {
       return null
@@ -250,7 +249,7 @@ export class SettingService {
       return tenant.tenant.id
     }
 
-    const fallback = await this.tenantService.resolve({ fallbackToDefault: true })
+    const fallback = await this.tenantService.resolve({ fallbackToPrimary: true })
     return fallback.tenant.id
   }
 
