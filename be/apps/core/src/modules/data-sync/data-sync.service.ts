@@ -1,6 +1,6 @@
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject } from '@afilmory/builder'
 import type { PhotoAssetConflictPayload, PhotoAssetConflictSnapshot, PhotoAssetManifest } from '@afilmory/db'
-import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
+import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
 import { createLogger } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/photo/photo.service'
@@ -25,7 +25,6 @@ import type {
 } from './data-sync.types'
 import { ConflictResolutionStrategy } from './data-sync.types'
 
-const DATABASE_ONLY_PROVIDER = 'database-only'
 const UNIQUE_VIOLATION_CODE = '23505'
 const UNIQUE_CONSTRAINT_PHOTO_ID = 'uq_photo_asset_tenant_photo_id'
 const UNIQUE_CONSTRAINT_STORAGE_KEY = 'uq_photo_asset_tenant_storage_key'

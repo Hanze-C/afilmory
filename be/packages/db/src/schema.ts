@@ -19,6 +19,10 @@ export const photoSyncStatusEnum = pgEnum('photo_sync_status', ['pending', 'sync
 export const CURRENT_PHOTO_MANIFEST_VERSION = 'v7' as const
 
 export type PhotoAssetConflictType = 'missing-in-storage' | 'metadata-mismatch' | 'photo-id-conflict'
+/**
+ * For conflict resolution, we use this provider to mark the record as database-only. Mark it as orphan item.
+ */
+export const DATABASE_ONLY_PROVIDER = 'database-only'
 
 export interface PhotoAssetConflictSnapshot {
   size: number | null

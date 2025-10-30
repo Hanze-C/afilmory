@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageObject } from '@afilmory/builder'
 import { StorageManager } from '@afilmory/builder/storage/index.js'
 import type { PhotoAssetManifest } from '@afilmory/db'
-import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
+import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/photo/photo.service'
 import { requireTenantContext } from 'core/modules/tenant/tenant.context'
@@ -42,8 +42,6 @@ export interface UploadAssetInput {
   contentType?: string
   directory?: string | null
 }
-
-const DATABASE_ONLY_PROVIDER = 'database-only'
 
 @injectable()
 export class PhotoAssetService {

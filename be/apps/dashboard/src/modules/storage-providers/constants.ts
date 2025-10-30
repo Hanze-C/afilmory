@@ -1,4 +1,7 @@
-import type { StorageProviderFieldDefinition, StorageProviderType } from './types'
+import type {
+  StorageProviderFieldDefinition,
+  StorageProviderType,
+} from './types'
 
 export const STORAGE_SETTING_KEYS = {
   providers: 'builder.storage.providers',
