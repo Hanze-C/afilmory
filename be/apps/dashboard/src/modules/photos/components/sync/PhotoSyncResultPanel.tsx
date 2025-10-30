@@ -1,4 +1,4 @@
-import { Button, Skeleton } from '@afilmory/ui'
+import { Button } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { useMemo } from 'react'
@@ -232,7 +232,7 @@ export const PhotoSyncResultPanel = ({
                   <img
                     src={beforeManifest.thumbnailUrl}
                     alt={beforeManifest.id}
-                    className="mt-2 aspect-[4/3] w-full rounded-md object-cover"
+                    className="mt-2 aspect-4/3 w-full rounded-md object-cover"
                   />
                 ) : null}
                 {renderManifestMetadata(beforeManifest)}
@@ -245,7 +245,7 @@ export const PhotoSyncResultPanel = ({
                   <img
                     src={afterManifest.thumbnailUrl}
                     alt={afterManifest.id}
-                    className="mt-2 aspect-[4/3] w-full rounded-md object-cover"
+                    className="mt-2 aspect-4/3 w-full rounded-md object-cover"
                   />
                 ) : null}
                 {renderManifestMetadata(afterManifest)}
@@ -297,7 +297,10 @@ export const PhotoSyncResultPanel = ({
           {isSummaryLoading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {SUMMARY_SKELETON_KEYS.map((key) => (
-                <Skeleton key={key} className="h-24 rounded-lg" />
+                <div
+                  key={key}
+                  className="bg-fill/30 h-24 animate-pulse rounded-lg"
+                />
               ))}
             </div>
           ) : summaryItems.length > 0 ? (

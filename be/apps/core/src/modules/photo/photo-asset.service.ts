@@ -148,7 +148,7 @@ export class PhotoAssetService {
         try {
           await storageManager.deleteFile(record.storageKey)
         } catch (error) {
-          throw new BizException(ErrorCode.COMMON_INTERNAL_ERROR, {
+          throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
             message: `无法删除存储中的文件 ${record.storageKey}: ${String(error)}`,
           })
         }
@@ -192,7 +192,7 @@ export class PhotoAssetService {
 
       const item = processed?.item
       if (!item) {
-        throw new BizException(ErrorCode.COMMON_INTERNAL_ERROR, {
+        throw new BizException(ErrorCode.PHOTO_MANIFEST_GENERATION_FAILED, {
           message: `无法为文件 ${key} 生成照片清单`,
         })
       }
