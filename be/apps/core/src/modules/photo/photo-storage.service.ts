@@ -1,18 +1,7 @@
 import type { BuilderConfig, StorageConfig } from '@afilmory/builder'
 import { createDefaultBuilderConfig, StorageFactory } from '@afilmory/builder'
-import {
-  EagleStorageProvider,
-  GitHubStorageProvider,
-  LocalStorageProvider,
-  S3StorageProvider,
-} from '@afilmory/builder/storage/index.js'
-import type {
-  EagleConfig,
-  EagleRule,
-  GitHubConfig,
-  LocalConfig,
-  S3Config,
-} from '@afilmory/builder/storage/interfaces.js'
+import { GitHubStorageProvider, S3StorageProvider } from '@afilmory/builder/storage/index.js'
+import type { GitHubConfig, S3Config } from '@afilmory/builder/storage/interfaces.js'
 import { BizException, ErrorCode } from 'core/errors'
 import type { BuilderStorageProvider } from 'core/modules/setting/storage-provider.utils'
 import { injectable } from 'tsyringe'
@@ -56,6 +45,8 @@ export class PhotoStorageService {
     builder: ReturnType<PhotoBuilderService['createBuilder']>,
     storageConfig: StorageConfig,
   ): void {
+    this.assertProviderSupported(storageConfig.provider)
+
     switch (storageConfig.provider) {
       case 's3': {
         builder.registerStorageProvider('s3', (config) => new S3StorageProvider(config as S3Config))
@@ -63,14 +54,6 @@ export class PhotoStorageService {
       }
       case 'github': {
         builder.registerStorageProvider('github', (config) => new GitHubStorageProvider(config as GitHubConfig))
-        break
-      }
-      case 'local': {
-        builder.registerStorageProvider('local', (config) => new LocalStorageProvider(config as LocalConfig))
-        break
-      }
-      case 'eagle': {
-        builder.registerStorageProvider('eagle', (config) => new EagleStorageProvider(config as EagleConfig))
         break
       }
       default: {
@@ -86,6 +69,8 @@ export class PhotoStorageService {
   }
 
   private mapProviderToStorageConfig(provider: BuilderStorageProvider): StorageConfig {
+    this.assertProviderSupported(provider.type)
+
     const config = provider.config ?? {}
     switch (provider.type) {
       case 's3': {
@@ -156,57 +141,19 @@ export class PhotoStorageService {
 
         return result
       }
-      case 'local': {
-        const basePath = this.normalizeString(config.basePath) ?? this.normalizeString(config.path)
-
-        const resolvedBasePath = this.requireString(
-          basePath,
-          'Active local storage provider is missing `basePath`. Please provide a valid path to your photo directory.',
-        )
-
-        const result: LocalConfig = {
-          provider: 'local',
-          basePath: resolvedBasePath,
-        }
-
-        const baseUrl = this.normalizeString(config.baseUrl)
-        if (baseUrl) result.baseUrl = baseUrl
-        const distPath = this.normalizeString(config.distPath)
-        if (distPath) result.distPath = distPath
-        const excludeRegex = this.normalizeString(config.excludeRegex)
-        if (excludeRegex) result.excludeRegex = excludeRegex
-        const maxFileLimit = this.parseNumber(config.maxFileLimit)
-        if (typeof maxFileLimit === 'number') result.maxFileLimit = maxFileLimit
-
-        return result
-      }
-      case 'eagle': {
-        const libraryPath = this.requireString(
-          config.libraryPath,
-          'Active Eagle storage provider is missing `libraryPath`. Provide the path to your Eagle library.',
-        )
-
-        const result: EagleConfig = {
-          provider: 'eagle',
-          libraryPath,
-        }
-
-        const distPath = this.normalizeString(config.distPath)
-        if (distPath) result.distPath = distPath
-        const baseUrl = this.normalizeString(config.baseUrl)
-        if (baseUrl) result.baseUrl = baseUrl
-        const includeRules = this.parseJsonArray<EagleRule>(config.include)
-        if (includeRules) result.include = includeRules
-        const excludeRules = this.parseJsonArray<EagleRule>(config.exclude)
-        if (excludeRules) result.exclude = excludeRules
-
-        return result
-      }
       default: {
         throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
           message: `Unsupported storage provider type: ${provider.type}`,
         })
       }
+    }
+  }
+
+  private assertProviderSupported(provider: string): void {
+    if (provider === 'local' || provider === 'eagle') {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+        message: `云端服务不支持 ${provider === 'local' ? 'Local' : 'Eagle'} 存储提供商`,
+      })
     }
   }
 
@@ -253,24 +200,6 @@ export class PhotoStorageService {
 
     if (normalized === 'standard' || normalized === 'adaptive' || normalized === 'legacy') {
       return normalized
-    }
-
-    return undefined
-  }
-
-  private parseJsonArray<T>(value?: string | null): T[] | undefined {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      return undefined
-    }
-
-    try {
-      const parsed = JSON.parse(normalized)
-      if (Array.isArray(parsed)) {
-        return parsed as T[]
-      }
-    } catch {
-      /* ignore parse errors */
     }
 
     return undefined

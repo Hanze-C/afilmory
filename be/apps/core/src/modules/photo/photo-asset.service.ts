@@ -40,7 +40,6 @@ export interface UploadAssetInput {
   filename: string
   buffer: Buffer
   contentType?: string
-  directory?: string | null
 }
 
 @injectable()
@@ -173,7 +172,7 @@ export class PhotoAssetService {
     const results: PhotoAssetListItem[] = []
 
     for (const input of inputs) {
-      const key = this.createStorageKey(input)
+      const key = this.createStorageKey(input, storageConfig)
       const storageObject = await storageManager.uploadFile(key, input.buffer, {
         contentType: input.contentType,
       })
@@ -320,15 +319,59 @@ export class PhotoAssetService {
     return new Date().toISOString()
   }
 
-  private createStorageKey(input: UploadAssetInput): string {
+  private createStorageKey(input: UploadAssetInput, storageConfig: StorageConfig): string {
     const ext = path.extname(input.filename)
-    const base = path.basename(input.filename, ext)
-    const slug = base
-      .toLowerCase()
-      .replaceAll(/[^a-z0-9]+/g, '-')
-      .replaceAll(/^-+|-+$/g, '')
-    const timestamp = Date.now()
-    const dir = input.directory?.trim() ? input.directory.trim().replaceAll(/\\+/g, '/') : 'uploads'
-    return `${dir}/${timestamp}-${slug || 'photo'}${ext}`.replaceAll(/\\+/g, '/')
+    const base = path.basename(input.filename, ext).trim()
+
+    const timestamp = Date.now().toString()
+    const directory = this.resolveStorageDirectory(storageConfig)
+    const keySegment = base || timestamp
+    const normalized = directory ? `${directory}/${keySegment}${ext}` : `${keySegment}${ext}`
+    return this.normalizeKeyPath(normalized)
+  }
+
+  private resolveStorageDirectory(storageConfig: StorageConfig): string | null {
+    switch (storageConfig.provider) {
+      case 's3': {
+        return this.normalizeDirectory(storageConfig.prefix)
+      }
+      case 'github': {
+        return this.normalizeDirectory(storageConfig.path)
+      }
+      default: {
+        return null
+      }
+    }
+  }
+
+  private normalizeDirectory(value?: string | null): string | null {
+    if (!value) {
+      return null
+    }
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      return null
+    }
+    const normalized = this.normalizeKeyPath(trimmed)
+    return normalized.length > 0 ? normalized : null
+  }
+
+  private normalizeKeyPath(raw: string): string {
+    if (!raw) {
+      return ''
+    }
+
+    const segments = raw.split(/[\\/]+/)
+    const safeSegments: string[] = []
+
+    for (const segment of segments) {
+      const trimmed = segment.trim()
+      if (!trimmed || trimmed === '.' || trimmed === '..') {
+        continue
+      }
+      safeSegments.push(trimmed)
+    }
+
+    return safeSegments.join('/')
   }
 }
