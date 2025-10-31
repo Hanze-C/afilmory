@@ -7,7 +7,12 @@ import type {
   StorageConfig,
   StorageObject,
 } from '@afilmory/builder'
-import { AfilmoryBuilder, processPhotoWithPipeline, thumbnailStoragePlugin } from '@afilmory/builder'
+import {
+  AfilmoryBuilder,
+  processPhotoWithPipeline,
+  THUMBNAIL_PLUGIN_SYMBOL,
+  thumbnailStoragePlugin,
+} from '@afilmory/builder'
 import type { Logger as BuilderLogger } from '@afilmory/builder/logger/index.js'
 import type { PhotoProcessingLoggers } from '@afilmory/builder/photo/index.js'
 import { createPhotoProcessingLoggers, setGlobalLoggers } from '@afilmory/builder/photo/index.js'
@@ -144,13 +149,11 @@ export class PhotoBuilderService {
   private ensureThumbnailPlugin(config: BuilderConfig): BuilderConfig {
     const existingPlugins = config.plugins ?? []
     const hasPlugin = existingPlugins.some((entry) => {
-      if (typeof entry === 'string') {
-        return entry.includes('thumbnail-storage')
+      // Check for the unique Symbol identifier for reliable detection
+      if (typeof entry === 'object' && entry !== null && THUMBNAIL_PLUGIN_SYMBOL in entry) {
+        return true
       }
-      if (typeof entry === 'function') {
-        const fnName = entry.name ?? ''
-        return fnName.includes('thumbnailStorage') || entry.toString().includes('thumbnail-storage')
-      }
+      // Fallback: check by name property for backward compatibility
       return entry?.name === 'afilmory:thumbnail-storage'
     })
 

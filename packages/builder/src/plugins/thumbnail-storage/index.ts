@@ -2,7 +2,12 @@ import { StorageManager } from '../../storage/index.js'
 import type { StorageConfig } from '../../storage/interfaces.js'
 import type { BuilderPlugin } from '../types.js'
 import type { ThumbnailPluginData } from './shared.js'
-import { DEFAULT_CONTENT_TYPE, DEFAULT_DIRECTORY, THUMBNAIL_PLUGIN_DATA_KEY } from './shared.js'
+import {
+  DEFAULT_CONTENT_TYPE,
+  DEFAULT_DIRECTORY,
+  THUMBNAIL_PLUGIN_DATA_KEY,
+  THUMBNAIL_PLUGIN_SYMBOL,
+} from './shared.js'
 
 const PLUGIN_NAME = 'afilmory:thumbnail-storage'
 const RUN_STATE_KEY = 'state'
@@ -82,8 +87,9 @@ export default function thumbnailStoragePlugin(options: ThumbnailStoragePluginOp
   let resolved: ResolvedPluginConfig | null = null
   let externalStorageManager: StorageManager | null = null
 
-  return {
+  const plugin: BuilderPlugin & { [THUMBNAIL_PLUGIN_SYMBOL]: true } = {
     name: PLUGIN_NAME,
+    [THUMBNAIL_PLUGIN_SYMBOL]: true,
     hooks: {
       onInit: ({ builder, config, logger }) => {
         const storageConfig = (options.storageConfig ?? config.storage) as StorageConfig
@@ -175,6 +181,10 @@ export default function thumbnailStoragePlugin(options: ThumbnailStoragePluginOp
       },
     },
   }
+
+  return plugin
 }
 
 export type { ThumbnailStoragePluginOptions }
+
+export { THUMBNAIL_PLUGIN_SYMBOL } from './shared.js'

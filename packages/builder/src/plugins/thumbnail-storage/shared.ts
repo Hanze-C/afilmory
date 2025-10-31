@@ -2,6 +2,12 @@ import type { Buffer } from 'node:buffer'
 
 export const THUMBNAIL_PLUGIN_DATA_KEY = 'afilmory:thumbnail-storage:data'
 
+/**
+ * Unique symbol identifier for the thumbnail storage plugin.
+ * Used for reliable plugin detection without fragile string matching.
+ */
+export const THUMBNAIL_PLUGIN_SYMBOL = Symbol.for('afilmory:thumbnail-storage')
+
 export interface ThumbnailPluginData {
   photoId: string
   fileName: string
