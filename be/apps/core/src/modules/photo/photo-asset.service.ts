@@ -49,8 +49,6 @@ export interface UploadAssetInput {
   contentType?: string
 }
 
-// const DEFAULT_THUMBNAIL_DIRECTORY = '.afilmory/thumbnails'
-// const DEFAULT_THUMBNAIL_EXTENSION = '.jpg'
 
 @injectable()
 export class PhotoAssetService {
