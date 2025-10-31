@@ -196,7 +196,7 @@ export class PhotoAssetService {
 
       const manifest = this.createManifestPayload(item)
       const snapshot = this.createStorageSnapshot(storageObject)
-      const now = this.nowIso()
+      const now = new Date().toISOString()
 
       const insertPayload: typeof photoAssets.$inferInsert = {
         tenantId: tenant.tenant.id,
@@ -313,10 +313,6 @@ export class PhotoAssetService {
       version: CURRENT_PHOTO_MANIFEST_VERSION,
       data: structuredClone(item),
     }
-  }
-
-  private nowIso(): string {
-    return new Date().toISOString()
   }
 
   private createStorageKey(input: UploadAssetInput, storageConfig: StorageConfig): string {

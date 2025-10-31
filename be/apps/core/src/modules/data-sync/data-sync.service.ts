@@ -1263,6 +1263,7 @@ export class DataSyncService {
       this.photoBuilderService.applyStorageConfig(builder, options.storageConfig)
     }
 
+    this.photoStorageService.registerStorageProviderPlugin(builder, effectiveStorageConfig)
     const storageManager = builder.getStorageManager()
 
     if (payload.type === 'missing-in-storage') {

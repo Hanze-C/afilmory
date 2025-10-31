@@ -8,6 +8,7 @@ import { RedisAccessor } from 'core/redis/redis.provider'
 import { DatabaseModule } from '../database/database.module'
 import { RedisModule } from '../redis/redis.module'
 import { AuthModule } from './auth/auth.module'
+import { DashboardModule } from './dashboard/dashboard.module'
 import { DataSyncModule } from './data-sync/data-sync.module'
 import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
@@ -32,6 +33,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
     SuperAdminModule,
     OnboardingModule,
     PhotoModule,
+    DashboardModule,
     TenantModule,
     DataSyncModule,
     EventModule.forRootAsync({
