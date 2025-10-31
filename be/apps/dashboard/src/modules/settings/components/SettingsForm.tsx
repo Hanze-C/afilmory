@@ -3,10 +3,11 @@ import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { startTransition, useCallback, useEffect, useId, useMemo, useState } from 'react'
 
+import { LinearBorderPanel } from '~/components/common/GlassPanel'
 import { MainPageLayout, useMainPageLayout } from '~/components/layouts/MainPageLayout'
 
 import type { SchemaFormRendererProps } from '../../schema-form/SchemaFormRenderer'
-import { GlassPanel, SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
+import { SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
 import type { SchemaFormValue } from '../../schema-form/types'
 import { collectFieldNodes } from '../../schema-form/utils'
 import { useSettingUiSchemaQuery, useUpdateSettingsMutation } from '../hooks'
@@ -145,7 +146,7 @@ export const SettingsForm = () => {
     return (
       <>
         {headerActionPortal}
-        <GlassPanel className="p-6">
+        <LinearBorderPanel className="p-6">
           <div className="space-y-4">
             <div className="bg-fill/40 h-5 w-1/2 animate-pulse rounded-lg" />
             <div className="space-y-3">
@@ -154,7 +155,7 @@ export const SettingsForm = () => {
               ))}
             </div>
           </div>
-        </GlassPanel>
+        </LinearBorderPanel>
       </>
     )
   }
@@ -163,12 +164,12 @@ export const SettingsForm = () => {
     return (
       <>
         {headerActionPortal}
-        <GlassPanel className="p-6">
+        <LinearBorderPanel className="p-6">
           <div className="text-red flex items-center gap-3 text-sm">
             <i className="i-mingcute-close-circle-fill text-lg" />
             <span>{`无法加载设置：${error instanceof Error ? error.message : '未知错误'}`}</span>
           </div>
-        </GlassPanel>
+        </LinearBorderPanel>
       </>
     )
   }

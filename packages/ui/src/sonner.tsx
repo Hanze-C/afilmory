@@ -7,7 +7,6 @@ const toastStyles = {
     group relative flex w-full items-center justify-between gap-3 rounded-2xl p-4
     backdrop-blur-2xl duration-300 ease-out overflow-hidden
     max-w-md min-w-[320px]
-    font-theme
     [&]:border [&]:border-solid
     [&]:data-[type=default]:border-[rgba(255,92,0,0.2)]
     [&]:data-[type=success]:border-[rgba(40,205,65,0.2)]

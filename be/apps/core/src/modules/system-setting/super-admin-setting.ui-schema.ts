@@ -23,8 +23,6 @@ export const SUPER_ADMIN_SETTING_UI_SCHEMA: UiSchema<SuperAdminSettingField> = {
           key: 'allowRegistration',
           component: {
             type: 'switch',
-            trueLabel: '允许',
-            falseLabel: '禁止',
           },
         },
         {
@@ -35,8 +33,6 @@ export const SUPER_ADMIN_SETTING_UI_SCHEMA: UiSchema<SuperAdminSettingField> = {
           key: 'localProviderEnabled',
           component: {
             type: 'switch',
-            trueLabel: '启用',
-            falseLabel: '禁用',
           },
         },
         {

@@ -16,6 +16,7 @@ import { DynamicIcon } from 'lucide-react/dynamic'
 import type { ReactNode } from 'react'
 import { Fragment, useState } from 'react'
 
+import { LinearBorderPanel } from '../../components/common/GlassPanel'
 import type {
   SchemaFormState,
   SchemaFormValue,
@@ -26,18 +27,6 @@ import type {
   UiSchema,
   UiSlotComponent,
 } from './types'
-
-export const GlassPanel = ({ className, children }: { className?: string; children: ReactNode }) => (
-  <div className={clsxm('group relative overflow-hidden -mx-6', className)}>
-    {/* Linear gradient borders - sharp edges */}
-    <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-    <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-
-    <div className="relative">{children}</div>
-  </div>
-)
 
 const FieldDescription = ({ description }: { description?: string | null }) => {
   if (!description) {
@@ -237,7 +226,7 @@ const renderField = <Key extends string>(
     const helper = helperText ? <FormHelperText>{helperText}</FormHelperText> : null
 
     return (
-      <div key={field.id} className="border-fill/30 bg-background/40 rounded-lg border p-4">
+      <div key={field.id} className="border-border bg-background/40 rounded-lg border p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Label className="text-text text-sm font-medium">{field.title}</Label>
@@ -259,7 +248,7 @@ const renderField = <Key extends string>(
   const showSensitiveHint = isSensitive && typeof value === 'string' && value.length === 0
 
   return (
-    <div key={field.id} className="border-fill-tertiary/40 bg-background/30 space-y-2 rounded-lg border p-4">
+    <div key={field.id} className="border-border bg-background/30 space-y-2 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Label className="text-text text-sm font-medium">{field.title}</Label>
@@ -354,7 +343,7 @@ export const SchemaFormRenderer = <Key extends string>({
         }
 
         return (
-          <GlassPanel key={section.id} className="p-6">
+          <LinearBorderPanel key={section.id} className="p-6">
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -366,7 +355,7 @@ export const SchemaFormRenderer = <Key extends string>({
 
               <div className="space-y-4">{renderedChildren}</div>
             </div>
-          </GlassPanel>
+          </LinearBorderPanel>
         )
       })}
     </>
