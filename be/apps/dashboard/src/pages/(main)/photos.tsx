@@ -1,5 +1,5 @@
 import { PhotoPage } from '~/modules/photos'
 
-export const Component = () => {
+export function Component() {
   return <PhotoPage />
 }

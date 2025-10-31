@@ -9,7 +9,7 @@ import { usePageRedirect } from '~/hooks/usePageRedirect'
 
 const navigationTabs = [{ label: '系统设置', path: '/superadmin/settings' }] as const
 
-export const Component = () => {
+export function Component() {
   const { logout } = usePageRedirect()
   const user = useAuthUserValue()
   const isSuperAdmin = useIsSuperAdmin()

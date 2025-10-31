@@ -18,7 +18,7 @@ const DEFAULT_CONFIRM_TEXT = '继续离开'
 const DEFAULT_CANCEL_TEXT = '留在此页'
 const DEFAULT_BEFORE_UNLOAD_MESSAGE = '您有未保存的更改，确定要离开吗？'
 
-export const useBlock = ({
+export function useBlock({
   when,
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
@@ -26,7 +26,7 @@ export const useBlock = ({
   cancelText = DEFAULT_CANCEL_TEXT,
   variant = 'danger',
   beforeUnloadMessage = DEFAULT_BEFORE_UNLOAD_MESSAGE,
-}: UseBlockOptions) => {
+}: UseBlockOptions) {
   const promptIdRef = useRef<string | null>(null)
   const isPromptOpenRef = useRef(false)
 

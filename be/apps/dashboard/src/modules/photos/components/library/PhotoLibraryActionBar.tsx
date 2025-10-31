@@ -13,14 +13,14 @@ type PhotoLibraryActionBarProps = {
   onClearSelection: () => void
 }
 
-export const PhotoLibraryActionBar = ({
+export function PhotoLibraryActionBar({
   selectionCount,
   isUploading,
   isDeleting,
   onUpload,
   onDeleteSelected,
   onClearSelection,
-}: PhotoLibraryActionBarProps) => {
+}: PhotoLibraryActionBarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleUploadClick = () => {

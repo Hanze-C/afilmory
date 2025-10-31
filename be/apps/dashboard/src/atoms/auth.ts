@@ -9,22 +9,22 @@ export const [authUserAtom, useAuthUser, useAuthUserValue, useSetAuthUser, getAu
   createAtomHooks(baseAuthUserAtom)
 
 // Selectors
-export const useIsAuthenticated = () => {
+export function useIsAuthenticated() {
   const user = useAuthUserValue()
   return !!user
 }
 
-export const useUserRole = () => {
+export function useUserRole() {
   const user = useAuthUserValue()
   return user?.role ?? null
 }
 
-export const useIsAdmin = () => {
+export function useIsAdmin() {
   const user = useAuthUserValue()
   return user?.role === 'admin' || user?.role === 'superadmin'
 }
 
-export const useIsSuperAdmin = () => {
+export function useIsSuperAdmin() {
   const user = useAuthUserValue()
   return user?.role === 'superadmin'
 }

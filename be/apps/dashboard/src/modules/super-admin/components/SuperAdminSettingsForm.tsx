@@ -19,13 +19,15 @@ type FormState = Record<SuperAdminSettingField, SchemaFormValue>
 
 const BOOLEAN_FIELDS = new Set<SuperAdminSettingField>(['allowRegistration', 'localProviderEnabled'])
 
-const toFormState = (settings: SuperAdminSettings): FormState => ({
-  allowRegistration: settings.allowRegistration,
-  localProviderEnabled: settings.localProviderEnabled,
-  maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
-})
+function toFormState(settings: SuperAdminSettings): FormState {
+  return {
+    allowRegistration: settings.allowRegistration,
+    localProviderEnabled: settings.localProviderEnabled,
+    maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
+  }
+}
 
-const areFormStatesEqual = (left: FormState | null, right: FormState | null): boolean => {
+function areFormStatesEqual(left: FormState | null, right: FormState | null): boolean {
   if (left === right) {
     return true
   }
@@ -41,7 +43,7 @@ const areFormStatesEqual = (left: FormState | null, right: FormState | null): bo
   )
 }
 
-const normalizeMaxUsers = (value: SchemaFormValue): string => {
+function normalizeMaxUsers(value: SchemaFormValue): string {
   if (typeof value === 'string') {
     return value
   }
@@ -61,7 +63,7 @@ type PossiblySnakeCaseSettings = Partial<
   }
 >
 
-const coerceMaxUsers = (value: unknown): number | null => {
+function coerceMaxUsers(value: unknown): number | null {
   if (value === undefined || value === null) {
     return null
   }
@@ -74,7 +76,7 @@ const coerceMaxUsers = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const normalizeServerSettings = (input: PossiblySnakeCaseSettings | null): SuperAdminSettings | null => {
+function normalizeServerSettings(input: PossiblySnakeCaseSettings | null): SuperAdminSettings | null {
   if (!input) {
     return null
   }
@@ -98,7 +100,7 @@ const normalizeServerSettings = (input: PossiblySnakeCaseSettings | null): Super
   return null
 }
 
-const extractServerValues = (payload: SuperAdminSettingsResponse): SuperAdminSettings | null => {
+function extractServerValues(payload: SuperAdminSettingsResponse): SuperAdminSettings | null {
   if ('values' in payload) {
     return normalizeServerSettings(payload.values ?? null)
   }
@@ -110,7 +112,7 @@ const extractServerValues = (payload: SuperAdminSettingsResponse): SuperAdminSet
   return null
 }
 
-export const SuperAdminSettingsForm = () => {
+export function SuperAdminSettingsForm() {
   const { data, isLoading, isError, error } = useSuperAdminSettingsQuery()
   const [formState, setFormState] = useState<FormState | null>(null)
   const [initialState, setInitialState] = useState<FormState | null>(null)

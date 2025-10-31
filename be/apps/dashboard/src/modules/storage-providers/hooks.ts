@@ -13,7 +13,7 @@ import {
 
 export const STORAGE_PROVIDERS_QUERY_KEY = ['settings', 'storage-providers'] as const
 
-export const useStorageProvidersQuery = () => {
+export function useStorageProvidersQuery() {
   return useQuery({
     queryKey: STORAGE_PROVIDERS_QUERY_KEY,
     queryFn: async () => {
@@ -33,7 +33,7 @@ export const useStorageProvidersQuery = () => {
   })
 }
 
-export const useUpdateStorageProvidersMutation = () => {
+export function useUpdateStorageProvidersMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -65,10 +65,10 @@ export const useUpdateStorageProvidersMutation = () => {
   })
 }
 
-const restoreProviderSecrets = (
+function restoreProviderSecrets(
   nextProviders: StorageProvider[],
   previousProviders: StorageProvider[],
-): StorageProvider[] => {
+): StorageProvider[] {
   const previousMap = new Map(previousProviders.map((provider) => [provider.id, provider]))
 
   return nextProviders.map((provider) => {

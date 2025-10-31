@@ -18,7 +18,7 @@ export interface PageTabsProps {
   className?: string
 }
 
-export const PageTabs = ({ items, activeId, onSelect, className }: PageTabsProps) => {
+export function PageTabs({ items, activeId, onSelect, className }: PageTabsProps) {
   const renderTabContent = (selected: boolean, label: ReactNode) => (
     <span
       className={clsxm(

@@ -24,7 +24,7 @@ export interface UiTextareaComponent extends UiFieldComponentBase<'textarea'> {
 
 export interface UiSelectComponent extends UiFieldComponentBase<'select'> {
   readonly placeholder?: string
-  readonly options?: ReadonlyArray<string>
+  readonly options?: readonly string[]
   readonly allowCustom?: boolean
 }
 

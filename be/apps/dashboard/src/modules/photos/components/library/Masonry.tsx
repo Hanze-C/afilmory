@@ -26,7 +26,7 @@ export interface MasonryRef {
  *
  * @param props
  */
-export const Masonry = <Item,>(props: MasonryProps<Item> & { ref?: React.Ref<MasonryRef> }) => {
+export function Masonry<Item>(props: MasonryProps<Item> & { ref?: React.Ref<MasonryRef> }) {
   const [scrollTop, setScrollTop] = React.useState(0)
   const [isScrolling, setIsScrolling] = React.useState(false)
   const scrollElement = useScrollViewElement()

@@ -21,7 +21,7 @@ const AUTH_FAILURE_STATUSES = new Set([401, 403, 419])
 
 const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH])
 
-export const usePageRedirect = () => {
+export function usePageRedirect() {
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()

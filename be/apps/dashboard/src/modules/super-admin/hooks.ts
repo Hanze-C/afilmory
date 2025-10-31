@@ -5,18 +5,19 @@ import type { SuperAdminSettingsResponse, UpdateSuperAdminSettingsPayload } from
 
 export const SUPER_ADMIN_SETTINGS_QUERY_KEY = ['super-admin', 'settings'] as const
 
-export const useSuperAdminSettingsQuery = () =>
-  useQuery<SuperAdminSettingsResponse>({
+export function useSuperAdminSettingsQuery() {
+  return useQuery<SuperAdminSettingsResponse>({
     queryKey: SUPER_ADMIN_SETTINGS_QUERY_KEY,
     queryFn: fetchSuperAdminSettings,
     staleTime: 60 * 1000,
   })
+}
 
 type SuperAdminSettingsMutationOptions = {
   onSuccess?: (data: SuperAdminSettingsResponse) => void
 }
 
-export const useUpdateSuperAdminSettingsMutation = (options?: SuperAdminSettingsMutationOptions) => {
+export function useUpdateSuperAdminSettingsMutation(options?: SuperAdminSettingsMutationOptions) {
   const queryClient = useQueryClient()
 
   return useMutation({

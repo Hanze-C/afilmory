@@ -1,6 +1,6 @@
 const CAMELIZE_PATTERN = /[_.-](\w|$)/g
 
-const camelCase = (value: string): string => {
+function camelCase(value: string): string {
   if (!value || (!value.includes('_') && !value.includes('-') && !value.includes('.'))) {
     return value
   }
@@ -8,7 +8,7 @@ const camelCase = (value: string): string => {
   return value.replaceAll(CAMELIZE_PATTERN, (_match, group: string) => group.toUpperCase())
 }
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null) {
     return false
   }
@@ -17,7 +17,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return prototype === Object.prototype || prototype === null
 }
 
-export const camelCaseKeys = <T>(input: unknown): T => {
+export function camelCaseKeys<T>(input: unknown): T {
   if (Array.isArray(input)) {
     return input.map((item) => camelCaseKeys(item)) as unknown as T
   }

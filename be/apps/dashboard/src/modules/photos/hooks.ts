@@ -14,14 +14,14 @@ export const PHOTO_ASSET_SUMMARY_QUERY_KEY = ['photo-assets', 'summary'] as cons
 export const PHOTO_ASSET_LIST_QUERY_KEY = ['photo-assets', 'list'] as const
 export const PHOTO_SYNC_CONFLICTS_QUERY_KEY = ['photo-sync', 'conflicts'] as const
 
-export const usePhotoAssetSummaryQuery = () => {
+export function usePhotoAssetSummaryQuery() {
   return useQuery({
     queryKey: PHOTO_ASSET_SUMMARY_QUERY_KEY,
     queryFn: getPhotoAssetSummary,
   })
 }
 
-export const usePhotoAssetListQuery = (options?: { enabled?: boolean }) => {
+export function usePhotoAssetListQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: PHOTO_ASSET_LIST_QUERY_KEY,
     queryFn: listPhotoAssets,
@@ -29,7 +29,7 @@ export const usePhotoAssetListQuery = (options?: { enabled?: boolean }) => {
   })
 }
 
-export const usePhotoSyncConflictsQuery = (options?: { enabled?: boolean }) => {
+export function usePhotoSyncConflictsQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: PHOTO_SYNC_CONFLICTS_QUERY_KEY,
     queryFn: listPhotoSyncConflicts,
@@ -37,7 +37,7 @@ export const usePhotoSyncConflictsQuery = (options?: { enabled?: boolean }) => {
   })
 }
 
-export const useDeletePhotoAssetsMutation = () => {
+export function useDeletePhotoAssetsMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -61,7 +61,7 @@ export const useDeletePhotoAssetsMutation = () => {
   })
 }
 
-export const useUploadPhotoAssetsMutation = () => {
+export function useUploadPhotoAssetsMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -79,7 +79,7 @@ export const useUploadPhotoAssetsMutation = () => {
   })
 }
 
-export const useResolvePhotoSyncConflictMutation = () => {
+export function useResolvePhotoSyncConflictMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({

@@ -14,7 +14,7 @@ export interface LoginRequest {
   rememberMe?: boolean
 }
 
-export const useLogin = () => {
+export function useLogin() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const setAuthUser = useSetAuthUser()
