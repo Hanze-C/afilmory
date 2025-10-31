@@ -8,8 +8,9 @@ import { serialize } from 'node:v8'
 import type { Logger } from '../logger/index.js'
 import { logger } from '../logger/index.js'
 import type { BuilderConfig } from '../types/config.js'
+import type { TaskCompletedPayload } from './pool.js'
 
-export interface ClusterPoolOptions {
+export interface ClusterPoolOptions<T> {
   concurrency: number
   totalTasks: number
   workerEnv?: Record<string, string> // 传递给 worker 的环境变量
@@ -21,6 +22,7 @@ export interface ClusterPoolOptions {
     imageObjects: any[]
     builderConfig: BuilderConfig
   }
+  onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void
 }
 
 export interface WorkerReadyMessage {
@@ -78,7 +80,8 @@ export class ClusterPool<T> extends EventEmitter {
   private workerEnv: Record<string, string>
   private workerConcurrency: number
   private logger: Logger
-  private sharedData?: ClusterPoolOptions['sharedData']
+  private sharedData?: ClusterPoolOptions<T>['sharedData']
+  private onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void
 
   private taskQueue: Array<{ taskIndex: number }> = []
   private workers = new Map<number, Worker>()
@@ -95,7 +98,7 @@ export class ClusterPool<T> extends EventEmitter {
     Map<string, number> // taskId -> taskIndex
   >() // 跟踪每个 worker 正在处理的任务，以便在崩溃时重入队
 
-  constructor(options: ClusterPoolOptions) {
+  constructor(options: ClusterPoolOptions<T>) {
     super()
     this.concurrency = options.concurrency
     this.totalTasks = options.totalTasks
@@ -103,6 +106,7 @@ export class ClusterPool<T> extends EventEmitter {
     this.workerConcurrency = options.workerConcurrency || 5 // 默认每个 worker 同时处理 5 个任务
     this.logger = logger
     this.sharedData = options.sharedData
+    this.onTaskCompleted = options.onTaskCompleted
 
     this.results = Array.from({ length: this.totalTasks })
   }
@@ -406,6 +410,13 @@ export class ClusterPool<T> extends EventEmitter {
         successfulInBatch++
 
         this.completedTasks++
+
+        this.onTaskCompleted?.({
+          taskIndex,
+          completed: this.completedTasks,
+          total: this.totalTasks,
+          result: taskResult.result as T,
+        })
       } else if (taskResult.type === 'error') {
         workerLogger.error(`任务执行失败：${taskResult.taskId}`, taskResult.error)
         pendingTask.reject(new Error(taskResult.error))
@@ -461,6 +472,12 @@ export class ClusterPool<T> extends EventEmitter {
       stats.processedTasks++
 
       this.completedTasks++
+      this.onTaskCompleted?.({
+        taskIndex,
+        completed: this.completedTasks,
+        total: this.totalTasks,
+        result: message.result as T,
+      })
       workerLogger.info(
         `完成任务 ${taskIndex + 1}/${this.totalTasks} (已完成：${this.completedTasks}，当前处理中：${newTaskCount})`,
       )

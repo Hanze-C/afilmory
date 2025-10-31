@@ -1,17 +1,21 @@
 import path from 'node:path'
 
-import { env } from '@env'
-
 import type { PhotoInfo, PickedExif } from '../types/photo.js'
+import { getPhotoExecutionContext } from './execution-context.js'
 import { getGlobalLoggers } from './logger-adapter.js'
 
 // 从文件名提取照片信息
 export function extractPhotoInfo(key: string, exifData?: PickedExif | null): PhotoInfo {
   const log = getGlobalLoggers().image
+  const { normalizeStorageKey } = getPhotoExecutionContext()
 
   log.info(`提取照片信息：${key}`)
 
-  const fileName = path.basename(key, path.extname(key))
+  const sanitizedKey = key.replaceAll('\\', '/')
+  const relativeKey = normalizeStorageKey(sanitizedKey)
+  const keyForParsing = relativeKey || sanitizedKey
+  const extname = path.posix.extname(keyForParsing)
+  const fileName = path.posix.basename(keyForParsing, extname)
 
   // 尝试从文件名解析信息，格式示例："2024-01-15_城市夜景_1250views"
   let title = fileName
@@ -20,22 +24,16 @@ export function extractPhotoInfo(key: string, exifData?: PickedExif | null): Pho
   let tags: string[] = []
 
   // 从目录路径中提取 tags
-  const dirPath = path.dirname(key)
-  if (dirPath && dirPath !== '.' && dirPath !== '/') {
-    // 移除前缀（如果有的话）
-    let relativePath = dirPath
-    if (env.S3_PREFIX && dirPath.startsWith(env.S3_PREFIX)) {
-      relativePath = dirPath.slice(env.S3_PREFIX.length)
-    }
+  const dirPathRaw = relativeKey ? path.posix.dirname(relativeKey) : path.posix.dirname(keyForParsing)
+  const dirPath = dirPathRaw === '.' || dirPathRaw === '/' ? '' : dirPathRaw
+  if (dirPath) {
+    const relativePath = dirPath.replaceAll(/^\/+|\/+$/g, '')
 
-    // 清理路径分隔符
-    relativePath = relativePath.replaceAll(/^\/+|\/+$/g, '')
+    // 分割路径并过滤空字符串
+    const pathParts = relativePath.split('/').filter((part) => part.trim() !== '')
+    tags = pathParts.map((part) => part.trim())
 
-    if (relativePath) {
-      // 分割路径并过滤空字符串
-      const pathParts = relativePath.split('/').filter((part) => part.trim() !== '')
-      tags = pathParts.map((part) => part.trim())
-
+    if (tags.length > 0) {
       log.info(`从路径提取标签：[${tags.join(', ')}]`)
     }
   }
@@ -80,7 +78,7 @@ export function extractPhotoInfo(key: string, exifData?: PickedExif | null): Pho
 
   // 如果标题为空，使用文件名
   if (!title) {
-    title = path.basename(key, path.extname(key))
+    title = path.posix.basename(keyForParsing, extname)
   }
 
   log.info(`照片信息提取完成："${title}"`)

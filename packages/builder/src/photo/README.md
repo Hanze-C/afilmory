@@ -50,7 +50,7 @@ class CompatibleLoggerAdapter implements PhotoLogger {
 ### 主要改进
 
 1. **模块化分离**: 将不同的处理逻辑分离到专门的模块中
-2. **Logger 适配器**: 不再通过参数传递 logger，使用全局 logger 适配器
+2. **Logger 适配器**: 使用异步执行上下文管理 logger，避免全局状态污染
 3. **缓存管理**: 统一管理各种数据的缓存和复用逻辑
 4. **Live Photo 处理**: 专门的模块处理 Live Photo 检测和匹配
 5. **类型安全**: 完善的 TypeScript 类型定义
@@ -60,13 +60,10 @@ class CompatibleLoggerAdapter implements PhotoLogger {
 #### 基本使用
 
 ```typescript
-import { processPhoto, setGlobalLoggers, createPhotoProcessingLoggers } from './index.js'
+import { processPhoto, createPhotoProcessingLoggers } from './index.js'
 
-// 设置全局 logger
 const loggers = createPhotoProcessingLoggers(workerId, baseLogger)
-setGlobalLoggers(loggers)
 
-// 处理照片
 const result = await processPhoto(
   obj,
   index,
@@ -76,6 +73,7 @@ const result = await processPhoto(
   livePhotoMap,
   options,
   builder,
+  pluginRuntime,
 )
 ```
 

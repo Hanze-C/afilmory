@@ -25,6 +25,8 @@ interface NormalizedDescriptor {
   options?: unknown
 }
 
+function normalizeDescriptor(ref: string): NormalizedDescriptor
+function normalizeDescriptor(ref: BuilderPluginReference): NormalizedDescriptor | BuilderPluginESMImporter
 function normalizeDescriptor(ref: BuilderPluginReference): NormalizedDescriptor | BuilderPluginESMImporter {
   if (typeof ref === 'string') {
     return { specifier: ref }
@@ -111,22 +113,22 @@ export async function loadPlugins(
   const results: LoadedPluginDefinition[] = []
 
   for (const entry of entries) {
+    if (isPluginESMImporter(entry)) {
+      const { default: pluginFactoryOrPlugin } = await entry()
+      const plugin = await instantiatePlugin(pluginFactoryOrPlugin)
+      const hooks = normalizeHooks(plugin)
+      const name = plugin.name || `lazy-loaded-plugin-${results.length}`
+
+      results.push({
+        name,
+        hooks,
+        pluginOptions: undefined,
+      })
+      continue
+    }
+
     if (typeof entry === 'string') {
       const descriptor = normalizeDescriptor(entry)
-
-      if (isPluginESMImporter(descriptor)) {
-        const { default: pluginFactoryOrPlugin } = await descriptor()
-        const plugin = await instantiatePlugin(pluginFactoryOrPlugin)
-        const hooks = normalizeHooks(plugin)
-        const name = plugin.name || `lazy-loaded-plugin-${results.length}`
-
-        results.push({
-          name,
-          hooks,
-          pluginOptions: undefined,
-        })
-        continue
-      }
 
       const { resolvedPath } = resolveSpecifier(descriptor.specifier, baseDir)
 

@@ -19,6 +19,7 @@ import type { BuilderConfig } from '../types/config.js'
 import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { ClusterPool } from '../worker/cluster-pool.js'
+import type { TaskCompletedPayload } from '../worker/pool.js'
 import { WorkerPool } from '../worker/pool.js'
 
 export interface BuilderOptions {
@@ -26,6 +27,7 @@ export interface BuilderOptions {
   isForceManifest: boolean
   isForceThumbnails: boolean
   concurrencyLimit?: number // 可选，如果未提供则使用配置文件中的默认值
+  progressListener?: BuildProgressListener
 }
 
 export interface BuilderResult {
@@ -35,6 +37,29 @@ export interface BuilderResult {
   skippedCount: number
   deletedCount: number
   totalPhotos: number
+}
+
+export interface BuildProgressStartPayload {
+  total: number
+  mode: 'worker' | 'cluster'
+  concurrency: number
+}
+
+export interface BuildProgressSnapshot {
+  total: number
+  completed: number
+  newCount: number
+  processedCount: number
+  skippedCount: number
+  failedCount: number
+  currentKey?: string
+}
+
+export interface BuildProgressListener {
+  onStart?: (payload: BuildProgressStartPayload) => void
+  onProgress?: (snapshot: BuildProgressSnapshot) => void
+  onComplete?: (summary: BuildProgressSnapshot) => void
+  onError?: (error: unknown) => void
 }
 
 export class AfilmoryBuilder {
@@ -51,13 +76,6 @@ export class AfilmoryBuilder {
     this.pluginManager = new PluginManager(this.pluginReferences, {
       baseDir: process.cwd(),
     })
-
-    // 配置日志级别（保留接口以便未来扩展）
-    this.configureLogging()
-  }
-
-  private configureLogging(): void {
-    // 日志配置在 logger 模块中处理，保留方法以兼容未来扩展
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {
@@ -82,6 +100,7 @@ export class AfilmoryBuilder {
     let processedCount = 0
     let skippedCount = 0
     let newCount = 0
+    let failedCount = 0
     let deletedCount = 0
 
     try {
@@ -189,6 +208,7 @@ export class AfilmoryBuilder {
       const concurrency = options.concurrencyLimit ?? this.config.options.defaultConcurrency
       const { useClusterMode } = this.config.performance.worker
       const shouldUseCluster = useClusterMode && tasksToProcess.length >= concurrency * 2
+      const {progressListener} = options
 
       await this.emitPluginEvent(runState, 'beforeProcessTasks', {
         options,
@@ -213,11 +233,71 @@ export class AfilmoryBuilder {
           manifest.push(item)
         }
       } else {
+        const totalTasks = tasksToProcess.length
+        let completedTaskCount = 0
+
+        const applyResultCounters = (result: ProcessPhotoResult | null | undefined): void => {
+          if (!result) return
+
+          switch (result.type) {
+            case 'new': {
+              newCount++
+              processedCount++
+              break
+            }
+            case 'processed': {
+              processedCount++
+              break
+            }
+            case 'skipped': {
+              skippedCount++
+              break
+            }
+            case 'failed': {
+              failedCount++
+              break
+            }
+          }
+        }
+
+        const emitProgress = (currentKey?: string): void => {
+          progressListener?.onProgress?.({
+            total: totalTasks,
+            completed: completedTaskCount,
+            newCount,
+            processedCount,
+            skippedCount,
+            failedCount,
+            currentKey,
+          })
+        }
+
+        const handleTaskCompleted = ({
+          result,
+          taskIndex,
+          completed,
+        }: TaskCompletedPayload<ProcessPhotoResult>): void => {
+          if (result) {
+            applyResultCounters(result)
+          }
+
+          completedTaskCount = completed
+          const key = tasksToProcess[taskIndex]?.key
+          emitProgress(key)
+        }
+
+        progressListener?.onStart?.({
+          total: totalTasks,
+          mode: shouldUseCluster ? 'cluster' : 'worker',
+          concurrency,
+        })
+        emitProgress()
+
+        let results: ProcessPhotoResult[]
+
         logger.main.info(
           `开始${shouldUseCluster ? '多进程' : '并发'}处理任务，${shouldUseCluster ? '进程' : 'Worker'}数：${concurrency}${shouldUseCluster ? `，每进程并发：${this.config.performance.worker.workerConcurrency}` : ''}`,
         )
-
-        let results: ProcessPhotoResult[]
 
         if (shouldUseCluster) {
           const clusterPool = new ClusterPool<ProcessPhotoResult>({
@@ -235,6 +315,7 @@ export class AfilmoryBuilder {
               imageObjects: tasksToProcess,
               builderConfig: this.getConfig(),
             },
+            onTaskCompleted: handleTaskCompleted,
           })
 
           results = await clusterPool.execute()
@@ -242,6 +323,7 @@ export class AfilmoryBuilder {
           const workerPool = new WorkerPool<ProcessPhotoResult>({
             concurrency,
             totalTasks: tasksToProcess.length,
+            onTaskCompleted: handleTaskCompleted,
           })
 
           results = await workerPool.execute(async (taskIndex, workerId) => {
@@ -294,23 +376,18 @@ export class AfilmoryBuilder {
           })
 
           manifest.push(result.item)
-
-          switch (result.type) {
-            case 'new': {
-              newCount++
-              processedCount++
-              break
-            }
-            case 'processed': {
-              processedCount++
-              break
-            }
-            case 'skipped': {
-              skippedCount++
-              break
-            }
-          }
         }
+
+        completedTaskCount = Math.max(completedTaskCount, totalTasks)
+        emitProgress()
+        progressListener?.onComplete?.({
+          total: totalTasks,
+          completed: completedTaskCount,
+          newCount,
+          processedCount,
+          skippedCount,
+          failedCount,
+        })
 
         for (const [key, item] of existingManifestMap) {
           if (s3ImageKeys.has(key) && !manifest.some((m) => m.s3Key === key)) {
@@ -325,6 +402,17 @@ export class AfilmoryBuilder {
             skippedCount++
           }
         }
+      }
+
+      if (tasksToProcess.length === 0 && progressListener) {
+        progressListener.onComplete?.({
+          total: 0,
+          completed: 0,
+          newCount,
+          processedCount,
+          skippedCount,
+          failedCount,
+        })
       }
 
       await this.emitPluginEvent(runState, 'afterProcessTasks', {
@@ -399,6 +487,7 @@ export class AfilmoryBuilder {
 
       return result
     } catch (error) {
+      options.progressListener?.onError?.(error)
       await this.emitPluginEvent(runState, 'onError', {
         options,
         error,

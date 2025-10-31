@@ -6,10 +6,13 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
+import type { BuildProgressListener } from './builder/builder.js'
 import { AfilmoryBuilder } from './builder/index.js'
 import { loadBuilderConfig } from './config/index.js'
-import { logger } from './logger/index.js'
+import { logger, setLogListener } from './logger/index.js'
 import { runAsWorker } from './runAsWorker.js'
+
+type BuilderTUI = import('./cli/tui.js').BuilderTUI
 
 async function main() {
   // 检查是否作为 cluster worker 运行
@@ -29,6 +32,7 @@ async function main() {
   const isForceMode = args.has('--force')
   const isForceManifest = args.has('--force-manifest')
   const isForceThumbnails = args.has('--force-thumbnails')
+  const disableUi = args.has('--no-ui')
 
   // 显示帮助信息
   if (args.has('--help') || args.has('-h')) {
@@ -43,6 +47,7 @@ async function main() {
   --force-thumbnails   强制重新生成缩略图
   --config             显示当前配置信息
   --help, -h          显示帮助信息
+  --no-ui             使用传统日志输出（禁用 TUI）
 
 示例：
   tsx src/core/cli.ts                           # 增量更新
@@ -118,6 +123,24 @@ async function main() {
   const concurrencyLimit = config.performance.worker.workerCount
   const finalConcurrency = concurrencyLimit ?? config.options.defaultConcurrency
   const processingMode = config.performance.worker.useClusterMode ? '多进程集群' : '并发线程池'
+  const processingModeKey = config.performance.worker.useClusterMode ? 'cluster' : 'worker'
+
+  const useTui = process.stdout.isTTY && !disableUi
+  let tui: BuilderTUI | null = null
+  let progressListener: BuildProgressListener | undefined
+
+  if (useTui) {
+    const { BuilderTUI } = await import('./cli/tui.js')
+    tui = new BuilderTUI()
+    tui.attach()
+    tui.setRunMetadata({
+      runMode,
+      concurrency: finalConcurrency,
+      processingMode: processingModeKey,
+    })
+    progressListener = tui.createProgressListener()
+    setLogListener((message) => tui?.handleLog(message), { forwardToConsole: false })
+  }
 
   logger.main.info(`🚀 运行模式：${runMode}`)
   logger.main.info(`⚡ 最大并发数：${finalConcurrency}`)
@@ -127,12 +150,25 @@ async function main() {
   environmentCheck()
 
   // 启动构建过程
-  await cliBuilder.buildManifest({
-    isForceMode,
-    isForceManifest,
-    isForceThumbnails,
-    concurrencyLimit,
-  })
+  try {
+    const result = await cliBuilder.buildManifest({
+      isForceMode,
+      isForceManifest,
+      isForceThumbnails,
+      concurrencyLimit,
+      progressListener,
+    })
+
+    tui?.markSuccess(result)
+  } catch (error) {
+    tui?.markError(error)
+    throw error
+  } finally {
+    if (useTui) {
+      setLogListener(null, { forwardToConsole: true })
+      tui?.detach()
+    }
+  }
 
   // eslint-disable-next-line unicorn/no-process-exit
   process.exit(0)

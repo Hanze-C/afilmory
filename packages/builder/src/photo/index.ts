@@ -14,6 +14,13 @@ export { processExifData, processThumbnailAndBlurhash, processToneAnalysis } fro
 export type { LivePhotoResult } from './live-photo-handler.js'
 export { createLivePhotoMap, processLivePhoto } from './live-photo-handler.js'
 
+// 执行上下文
+export {
+  createStorageKeyNormalizer,
+  getPhotoExecutionContext,
+  runWithPhotoExecutionContext,
+} from './execution-context.js'
+
 // Logger 适配器
 export type { PhotoLogger, PhotoProcessingLoggers } from './logger-adapter.js'
 export {

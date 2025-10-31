@@ -5,7 +5,7 @@ import { compressUint8Array } from '@afilmory/utils'
 import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
-import type { AfilmoryBuilder, BuilderOptions } from '../builder/builder.js'
+import type { BuilderOptions } from '../builder/builder.js'
 import {
   convertBmpToJpegSharpInstance,
   getImageMetadataWithSharp,
@@ -17,6 +17,7 @@ import { THUMBNAIL_PLUGIN_DATA_KEY } from '../plugins/thumbnail-storage/shared.j
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { shouldProcessPhoto } from './cache-manager.js'
 import { processExifData, processThumbnailAndBlurhash, processToneAnalysis } from './data-processors.js'
+import { getPhotoExecutionContext } from './execution-context.js'
 import { extractPhotoInfo } from './info-extractor.js'
 import { processLivePhoto } from './live-photo-handler.js'
 import { getGlobalLoggers } from './logger-adapter.js'
@@ -43,13 +44,13 @@ export interface PhotoProcessingContext {
  */
 export async function preprocessImage(
   photoKey: string,
-  builder: AfilmoryBuilder,
 ): Promise<{ rawBuffer: Buffer; processedBuffer: Buffer } | null> {
   const loggers = getGlobalLoggers()
+  const { storageManager } = getPhotoExecutionContext()
 
   try {
     // 获取图片数据
-    const rawImageBuffer = await builder.getStorageManager().getFile(photoKey)
+    const rawImageBuffer = await storageManager.getFile(photoKey)
     if (!rawImageBuffer) {
       loggers.image.error(`无法获取图片数据：${photoKey}`)
       return null
@@ -122,7 +123,8 @@ export async function processImageWithSharp(imageBuffer: Buffer, photoKey: strin
  * @param s3Key S3 键
  * @returns 带摘要后缀的 ID
  */
-async function generatePhotoId(s3Key: string, builder: AfilmoryBuilder): Promise<string> {
+async function generatePhotoId(s3Key: string): Promise<string> {
+  const { builder } = getPhotoExecutionContext()
   const { options } = builder.getConfig()
   const { digestSuffixLength } = options
   if (!digestSuffixLength || digestSuffixLength <= 0) {
@@ -141,17 +143,16 @@ async function generatePhotoId(s3Key: string, builder: AfilmoryBuilder): Promise
  */
 export async function executePhotoProcessingPipeline(
   context: PhotoProcessingContext,
-  builder: AfilmoryBuilder,
 ): Promise<PhotoManifestItem | null> {
   const { photoKey, obj, existingItem, livePhotoMap, options } = context
+  const { storageManager } = getPhotoExecutionContext()
   const loggers = getGlobalLoggers()
   // Generate the actual photo ID with digest suffix
-  const photoId = await generatePhotoId(photoKey, builder)
-  const storageManager = builder.getStorageManager()
+  const photoId = await generatePhotoId(photoKey)
 
   try {
     // 1. 预处理图片
-    const imageData = await preprocessImage(photoKey, builder)
+    const imageData = await preprocessImage(photoKey)
     if (!imageData) return null
 
     // 2. 处理图片并创建 Sharp 实例
@@ -223,7 +224,6 @@ export async function executePhotoProcessingPipeline(
  */
 export async function processPhotoWithPipeline(
   context: PhotoProcessingContext,
-  builder: AfilmoryBuilder,
   runtime: { runState: PluginRunState; builderOptions: BuilderOptions },
 ): Promise<{
   item: PhotoManifestItem | null
@@ -231,9 +231,10 @@ export async function processPhotoWithPipeline(
   pluginData: Record<string, unknown>
 }> {
   const { photoKey, existingItem, obj, options } = context
+  const { builder } = getPhotoExecutionContext()
   const loggers = getGlobalLoggers()
 
-  const photoId = await generatePhotoId(photoKey, builder)
+  const photoId = await generatePhotoId(photoKey)
 
   await builder.emitPluginEvent(runtime.runState, 'beforePhotoProcess', {
     options: runtime.builderOptions,
@@ -270,7 +271,7 @@ export async function processPhotoWithPipeline(
   let resultType: ProcessPhotoResult['type'] = isNewPhoto ? 'new' : 'processed'
 
   try {
-    processedItem = await executePhotoProcessingPipeline(context, builder)
+    processedItem = await executePhotoProcessingPipeline(context)
     if (!processedItem) {
       resultType = 'failed'
     }

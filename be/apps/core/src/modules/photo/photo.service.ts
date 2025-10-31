@@ -14,8 +14,11 @@ import {
   thumbnailStoragePlugin,
 } from '@afilmory/builder'
 import type { Logger as BuilderLogger } from '@afilmory/builder/logger/index.js'
-import type { PhotoProcessingLoggers } from '@afilmory/builder/photo/index.js'
-import { createPhotoProcessingLoggers, setGlobalLoggers } from '@afilmory/builder/photo/index.js'
+import {
+  createPhotoProcessingLoggers,
+  createStorageKeyNormalizer,
+  runWithPhotoExecutionContext,
+} from '@afilmory/builder/photo/index.js'
 import type { _Object } from '@aws-sdk/client-s3'
 import { injectable } from 'tsyringe'
 
@@ -40,7 +43,6 @@ export type ProcessPhotoOptions = {
 export class PhotoBuilderService {
   private readonly baseLogger = coreLogger.extend('PhotoBuilder')
   private readonly builderLogger: BuilderLogger = createBuilderLoggerAdapter(this.baseLogger)
-  private photoLoggers: PhotoProcessingLoggers | null = null
 
   createBuilder(config: BuilderConfig): AfilmoryBuilder {
     const enhancedConfig = this.ensureThumbnailPlugin(config)
@@ -56,7 +58,6 @@ export class PhotoBuilderService {
     options?: ProcessPhotoOptions,
   ): Promise<Awaited<ReturnType<typeof processPhotoWithPipeline>>> {
     const { existingItem, livePhotoMap, processorOptions, builder, builderConfig } = options ?? {}
-    this.ensureGlobalPhotoLoggers()
     const activeBuilder = this.resolveBuilder(builder, builderConfig)
     await activeBuilder.ensurePluginsReady()
 
@@ -65,6 +66,7 @@ export class PhotoBuilderService {
       ...processorOptions,
     }
 
+    const photoLoggers = createPhotoProcessingLoggers(0, this.builderLogger)
     const context: PhotoProcessingContext = {
       photoKey: object.key,
       obj: this.toLegacyObject(object),
@@ -74,19 +76,20 @@ export class PhotoBuilderService {
       pluginData: {},
     }
 
-    return await processPhotoWithPipeline(
-      context,
-      activeBuilder,
-      this.createPluginRuntime(activeBuilder, mergedOptions, builderConfig),
+    const runtime = this.createPluginRuntime(activeBuilder, mergedOptions, builderConfig)
+    const storageManager = activeBuilder.getStorageManager()
+    const storageConfig = activeBuilder.getConfig().storage
+
+    return await runWithPhotoExecutionContext(
+      {
+        builder: activeBuilder,
+        storageManager,
+        storageConfig,
+        normalizeStorageKey: createStorageKeyNormalizer(storageConfig),
+        loggers: photoLoggers,
+      },
+      async () => await processPhotoWithPipeline(context, runtime),
     )
-  }
-
-  private ensureGlobalPhotoLoggers(): void {
-    if (!this.photoLoggers) {
-      this.photoLoggers = createPhotoProcessingLoggers(0, this.builderLogger)
-    }
-
-    setGlobalLoggers(this.photoLoggers)
   }
 
   private resolveBuilder(builder?: AfilmoryBuilder, builderConfig?: BuilderConfig): AfilmoryBuilder {
@@ -153,8 +156,7 @@ export class PhotoBuilderService {
       if (typeof entry === 'object' && entry !== null && THUMBNAIL_PLUGIN_SYMBOL in entry) {
         return true
       }
-      // Fallback: check by name property for backward compatibility
-      return entry?.name === 'afilmory:thumbnail-storage'
+      return false
     })
 
     if (hasPlugin) {
