@@ -23,7 +23,7 @@ export { default as localStoragePlugin } from './plugins/storage/local.js'
 export type { S3StoragePluginOptions } from './plugins/storage/s3.js'
 export { default as s3StoragePlugin } from './plugins/storage/s3.js'
 export type { ThumbnailStoragePluginOptions } from './plugins/thumbnail-storage/index.js'
-export { default as thumbnailStoragePlugin } from './plugins/thumbnail-storage/index.js'
+export { THUMBNAIL_PLUGIN_SYMBOL, default as thumbnailStoragePlugin } from './plugins/thumbnail-storage/index.js'
 export type {
   BuilderPlugin,
   BuilderPluginConfigEntry,
