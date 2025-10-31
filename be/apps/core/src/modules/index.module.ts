@@ -14,6 +14,7 @@ import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
 import { ReactionModule } from './reaction/reaction.module'
 import { SettingModule } from './setting/setting.module'
+import { StaticWebModule } from './static-web/static-web.module'
 import { SuperAdminModule } from './super-admin/super-admin.module'
 import { SystemSettingModule } from './system-setting/system-setting.module'
 import { TenantModule } from './tenant/tenant.module'
@@ -38,6 +39,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
     DashboardModule,
     TenantModule,
     DataSyncModule,
+    StaticWebModule,
     EventModule.forRootAsync({
       useFactory: createEventModuleOptions,
       inject: [RedisAccessor],
