@@ -8,3 +8,5 @@ export interface ThumbnailPluginData {
   buffer: Buffer | null
   localUrl: string | null
 }
+export const DEFAULT_DIRECTORY = '.afilmory/thumbnails'
+export const DEFAULT_CONTENT_TYPE = 'image/jpeg'

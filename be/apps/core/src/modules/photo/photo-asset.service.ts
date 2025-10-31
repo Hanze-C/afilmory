@@ -1,6 +1,10 @@
 import path from 'node:path'
 
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageObject } from '@afilmory/builder'
+import {
+  DEFAULT_CONTENT_TYPE,
+  DEFAULT_DIRECTORY as DEFAULT_THUMBNAIL_DIRECTORY,
+} from '@afilmory/builder/plugins/thumbnail-storage/shared.js'
 import { StorageManager } from '@afilmory/builder/storage/index.js'
 import type { PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
@@ -15,6 +19,9 @@ import { PhotoStorageService } from './photo-storage.service'
 
 type PhotoAssetRecord = typeof photoAssets.$inferSelect
 
+const DEFAULT_THUMBNAIL_EXTENSION = {
+  'image/jpeg': '.jpg',
+}[DEFAULT_CONTENT_TYPE]
 export interface PhotoAssetListItem {
   id: string
   photoId: string
@@ -41,6 +48,9 @@ export interface UploadAssetInput {
   buffer: Buffer
   contentType?: string
 }
+
+// const DEFAULT_THUMBNAIL_DIRECTORY = '.afilmory/thumbnails'
+// const DEFAULT_THUMBNAIL_EXTENSION = '.jpg'
 
 @injectable()
 export class PhotoAssetService {
@@ -139,6 +149,8 @@ export class PhotoAssetService {
 
     const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
     const storageManager = this.createStorageManager(builderConfig, storageConfig)
+    const thumbnailRemotePrefix = this.resolveThumbnailRemotePrefix(storageConfig)
+    const deletedThumbnailKeys = new Set<string>()
 
     for (const record of records) {
       if (record.storageProvider !== DATABASE_ONLY_PROVIDER) {
@@ -148,6 +160,18 @@ export class PhotoAssetService {
           throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
             message: `无法删除存储中的文件 ${record.storageKey}: ${String(error)}`,
           })
+        }
+
+        const thumbnailKey = this.resolveThumbnailStorageKey(record, thumbnailRemotePrefix)
+        if (thumbnailKey && !deletedThumbnailKeys.has(thumbnailKey)) {
+          try {
+            await storageManager.deleteFile(thumbnailKey)
+            deletedThumbnailKeys.add(thumbnailKey)
+          } catch (error) {
+            throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
+              message: `无法删除缩略图文件 ${thumbnailKey}: ${String(error)}`,
+            })
+          }
         }
       }
     }
@@ -369,5 +393,72 @@ export class PhotoAssetService {
     }
 
     return safeSegments.join('/')
+  }
+
+  private resolveThumbnailStorageKey(record: PhotoAssetRecord, remotePrefix: string | null): string | null {
+    const thumbnailUrl = record.manifest?.data?.thumbnailUrl
+    if (!thumbnailUrl) {
+      return null
+    }
+
+    const photoId = record.photoId ?? record.manifest?.data?.id
+    if (!photoId) {
+      return null
+    }
+
+    const fileName = `${photoId}${DEFAULT_THUMBNAIL_EXTENSION}`
+    if (!remotePrefix) {
+      return fileName
+    }
+
+    return this.joinStorageSegments(remotePrefix, fileName)
+  }
+
+  private resolveThumbnailRemotePrefix(storageConfig: StorageConfig): string | null {
+    const directory = this.normalizeStorageSegment(DEFAULT_THUMBNAIL_DIRECTORY)
+    if (!directory) {
+      return null
+    }
+
+    if (storageConfig.provider === 's3') {
+      const base = this.normalizeStorageSegment(storageConfig.prefix)
+      return this.joinStorageSegments(base, directory)
+    }
+
+    if (storageConfig.provider === 'github') {
+      return directory
+    }
+
+    return directory
+  }
+
+  private normalizeStorageSegment(value?: string | null): string | null {
+    if (typeof value !== 'string') {
+      return null
+    }
+
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return null
+    }
+
+    const normalized = trimmed.replaceAll('\\', '/').replaceAll(/^\/+|\/+$/g, '')
+    return normalized.length > 0 ? normalized : null
+  }
+
+  private joinStorageSegments(...segments: Array<string | null | undefined>): string {
+    const filtered: string[] = []
+    for (const segment of segments) {
+      if (!segment) {
+        continue
+      }
+      filtered.push(segment.replaceAll(/^\/+|\/+$/g, ''))
+    }
+
+    if (filtered.length === 0) {
+      return ''
+    }
+
+    return filtered.join('/')
   }
 }

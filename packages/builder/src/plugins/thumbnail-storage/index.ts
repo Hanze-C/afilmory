@@ -1,11 +1,9 @@
 import { StorageManager } from '../../storage/index.js'
 import type { StorageConfig } from '../../storage/interfaces.js'
 import type { BuilderPlugin } from '../types.js'
-import type {ThumbnailPluginData} from './shared.js';
-import { THUMBNAIL_PLUGIN_DATA_KEY  } from './shared.js'
+import type { ThumbnailPluginData } from './shared.js'
+import { DEFAULT_CONTENT_TYPE, DEFAULT_DIRECTORY, THUMBNAIL_PLUGIN_DATA_KEY } from './shared.js'
 
-const DEFAULT_DIRECTORY = '.afilmory/thumbnails'
-const DEFAULT_CONTENT_TYPE = 'image/jpeg'
 const PLUGIN_NAME = 'afilmory:thumbnail-storage'
 const RUN_STATE_KEY = 'state'
 
