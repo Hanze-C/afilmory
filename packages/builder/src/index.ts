@@ -2,8 +2,8 @@ export * from '../../utils/src/u8array.js'
 export type { BuilderOptions, BuilderResult } from './builder/index.js'
 export { AfilmoryBuilder } from './builder/index.js'
 export { createDefaultBuilderConfig } from './config/defaults.js'
+export { defineBuilderConfig } from './config/helper.js'
 export type { LoadBuilderConfigOptions } from './config/index.js'
-export { defineBuilderConfig, loadBuilderConfig } from './config/index.js'
 export type { PhotoProcessingContext, ProcessedImageData } from './photo/image-pipeline.js'
 export {
   executePhotoProcessingPipeline,
