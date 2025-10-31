@@ -6,14 +6,16 @@ import { useMemo, useState } from 'react'
 import { getConflictTypeLabel, PHOTO_ACTION_TYPE_CONFIG } from '../../constants'
 import type { PhotoAssetSummary, PhotoSyncAction, PhotoSyncResult, PhotoSyncSnapshot } from '../../types'
 
-export const BorderOverlay = () => (
-  <>
-    <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-    <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-  </>
-)
+export function BorderOverlay() {
+  return (
+    <>
+      <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+      <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
+      <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+      <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
+    </>
+  )
+}
 
 type SummaryCardProps = {
   label: string
@@ -21,7 +23,7 @@ type SummaryCardProps = {
   tone?: 'accent' | 'warning' | 'muted'
 }
 
-const SummaryCard = ({ label, value, tone }: SummaryCardProps) => {
+function SummaryCard({ label, value, tone }: SummaryCardProps) {
   const toneClass =
     tone === 'accent'
       ? 'text-accent'
@@ -52,13 +54,13 @@ const actionTypeConfig = PHOTO_ACTION_TYPE_CONFIG
 
 const SUMMARY_SKELETON_KEYS = ['summary-skeleton-1', 'summary-skeleton-2', 'summary-skeleton-3', 'summary-skeleton-4']
 
-export const PhotoSyncResultPanel = ({
+export function PhotoSyncResultPanel({
   result,
   lastWasDryRun,
   baselineSummary,
   isSummaryLoading,
   onRequestStorageUrl,
-}: PhotoSyncResultPanelProps) => {
+}: PhotoSyncResultPanelProps) {
   const summaryItems = useMemo(() => {
     if (result) {
       return [
@@ -439,7 +441,7 @@ export const PhotoSyncResultPanel = ({
   )
 }
 
-const ManifestPreview = ({
+function ManifestPreview({
   title,
   manifest,
   onOpenOriginal,
@@ -447,7 +449,7 @@ const ManifestPreview = ({
   title: string
   manifest: PhotoSyncAction['manifestAfter'] | PhotoSyncAction['manifestBefore']
   onOpenOriginal?: () => void
-}) => {
+}) {
   if (!manifest) {
     return (
       <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
@@ -501,7 +503,7 @@ type MetadataSnapshotProps = {
   snapshot: PhotoSyncSnapshot | null | undefined
 }
 
-export const MetadataSnapshot = ({ snapshot }: MetadataSnapshotProps) => {
+export function MetadataSnapshot({ snapshot }: MetadataSnapshotProps) {
   if (!snapshot) return null
   return (
     <dl className="mt-2 space-y-1">

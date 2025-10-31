@@ -1,5 +1,5 @@
 declare const APP_DEV_CWD: string
-export const attachOpenInEditor = (stack: string) => {
+export function attachOpenInEditor(stack: string) {
   const lines = stack.split('\n')
   return lines.map((line) => {
     // A line like this: at App (http://localhost:5173/src/App.tsx?t=1720527056591:41:9)
@@ -47,6 +47,6 @@ export const attachOpenInEditor = (stack: string) => {
   })
 }
 // http://localhost:5173/src/App.tsx?t=1720527056591:41:9
-const openInEditor = (file: string) => {
+function openInEditor(file: string) {
   fetch(`/__open-in-editor?file=${encodeURIComponent(`${file}`)}`)
 }

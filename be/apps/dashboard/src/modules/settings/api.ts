@@ -2,11 +2,11 @@ import { coreApi } from '~/lib/api-client'
 
 import type { SettingEntryInput, SettingUiSchemaResponse } from './types'
 
-export const getSettingUiSchema = async () => {
+export async function getSettingUiSchema() {
   return await coreApi<SettingUiSchemaResponse>('/settings/ui-schema')
 }
 
-export const getSettings = async (keys: ReadonlyArray<string>) => {
+export async function getSettings(keys: readonly string[]) {
   return await coreApi<{
     keys: string[]
     values: Record<string, string | null>
@@ -16,8 +16,8 @@ export const getSettings = async (keys: ReadonlyArray<string>) => {
   })
 }
 
-export const updateSettings = async (entries: ReadonlyArray<SettingEntryInput>) => {
-  return await coreApi<{ updated: ReadonlyArray<SettingEntryInput> }>('/settings', {
+export async function updateSettings(entries: readonly SettingEntryInput[]) {
+  return await coreApi<{ updated: readonly SettingEntryInput[] }>('/settings', {
     method: 'POST',
     body: { entries },
   })

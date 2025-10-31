@@ -24,7 +24,7 @@ export const ContextMenuProvider: Component = ({ children }) => (
   </>
 )
 
-const Handler = () => {
+function Handler() {
   const ref = useRef<HTMLSpanElement>(null)
   const [contextMenuState, setContextMenuState] = useContextMenuState()
 

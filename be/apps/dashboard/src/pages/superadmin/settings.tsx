@@ -3,7 +3,7 @@ import { m } from 'motion/react'
 
 import { SuperAdminSettingsForm } from '~/modules/super-admin'
 
-export const Component = () => {
+export function Component() {
   return (
     <m.div
       initial={{ opacity: 0, y: 8 }}

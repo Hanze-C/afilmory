@@ -20,10 +20,10 @@ const providerGroupVisibility: Record<string, string> = {
   'builder-storage-eagle': 'eagle',
 }
 
-const buildInitialState = (
+function buildInitialState(
   schema: SettingUiSchemaResponse['schema'],
   values: SettingUiSchemaResponse['values'],
-): SettingValueState<string> => {
+): SettingValueState<string> {
   const state: SettingValueState<string> = {} as SettingValueState<string>
   const fields = collectFieldNodes(schema.sections)
 
@@ -35,7 +35,7 @@ const buildInitialState = (
   return state
 }
 
-export const SettingsForm = () => {
+export function SettingsForm() {
   const { data, isLoading, isError, error } = useSettingUiSchemaQuery()
   const updateSettingsMutation = useUpdateSettingsMutation()
   const { setHeaderActionState } = useMainPageLayout()

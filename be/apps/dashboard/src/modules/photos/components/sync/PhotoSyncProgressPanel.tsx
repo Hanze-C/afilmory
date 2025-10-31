@@ -50,7 +50,7 @@ type PhotoSyncProgressPanelProps = {
   progress: PhotoSyncProgressState
 }
 
-const formatActionLabel = (action: PhotoSyncAction) => {
+function formatActionLabel(action: PhotoSyncAction) {
   const config = PHOTO_ACTION_TYPE_CONFIG[action.type]
   if (action.type === 'conflict' && action.conflictPayload) {
     const conflictLabel = getConflictTypeLabel(action.conflictPayload.type)
@@ -60,7 +60,7 @@ const formatActionLabel = (action: PhotoSyncAction) => {
   return config?.label ?? action.type
 }
 
-export const PhotoSyncProgressPanel = ({ progress }: PhotoSyncProgressPanelProps) => {
+export function PhotoSyncProgressPanel({ progress }: PhotoSyncProgressPanelProps) {
   const isErrored = Boolean(progress.error)
   const heading = isErrored ? '同步失败' : progress.dryRun ? '同步预览进行中' : '同步进行中'
   const subtitle = isErrored

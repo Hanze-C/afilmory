@@ -23,7 +23,7 @@ window.router = {
  * And use our router hooks will not re-render the component when the router has any changes.
  * Also it can access values outside of the component and provide a value selector
  */
-export const StableRouterProvider = () => {
+export function StableRouterProvider() {
   const [searchParams] = useSearchParams()
   const params = useParams()
   const nav = useNavigate()

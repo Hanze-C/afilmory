@@ -2,7 +2,7 @@ import { MainPageLayout } from '~/components/layouts/MainPageLayout'
 import { SettingsNavigation } from '~/modules/settings'
 import { StorageProvidersManager } from '~/modules/storage-providers'
 
-export const Component = () => {
+export function Component() {
   return (
     <MainPageLayout
       title="素材存储与 Builder"

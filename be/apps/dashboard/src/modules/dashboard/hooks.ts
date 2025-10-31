@@ -5,9 +5,10 @@ import type { DashboardOverviewResponse } from './types'
 
 export const DASHBOARD_OVERVIEW_QUERY_KEY = ['dashboard', 'overview'] as const
 
-export const useDashboardOverviewQuery = () =>
-  useQuery<DashboardOverviewResponse>({
+export function useDashboardOverviewQuery() {
+  return useQuery<DashboardOverviewResponse>({
     queryKey: DASHBOARD_OVERVIEW_QUERY_KEY,
     queryFn: fetchDashboardOverview,
     staleTime: 60 * 1000,
   })
+}

@@ -15,7 +15,7 @@ export const PHOTO_CONFLICT_TYPE_CONFIG: Record<PhotoSyncConflictType, { label: 
   },
 }
 
-export const getConflictTypeLabel = (type: PhotoSyncConflictType | null | undefined): string => {
+export function getConflictTypeLabel(type: PhotoSyncConflictType | null | undefined): string {
   if (!type) {
     return '冲突'
   }

@@ -28,7 +28,7 @@ import type {
   UiSlotComponent,
 } from './types'
 
-const FieldDescription = ({ description }: { description?: string | null }) => {
+function FieldDescription({ description }: { description?: string | null }) {
   if (!description) {
     return null
   }
@@ -36,7 +36,7 @@ const FieldDescription = ({ description }: { description?: string | null }) => {
   return <p className="text-text-tertiary mt-1 text-xs">{description}</p>
 }
 
-const SchemaIcon = ({ name, className }: { name?: string | null; className?: string }) => {
+function SchemaIcon({ name, className }: { name?: string | null; className?: string }) {
   if (!name) {
     return null
   }
@@ -44,7 +44,7 @@ const SchemaIcon = ({ name, className }: { name?: string | null; className?: str
   return <DynamicIcon name={name as any} className={clsxm('h-4 w-4', className)} />
 }
 
-const SecretFieldInput = <Key extends string>({
+function SecretFieldInput<Key extends string>({
   component,
   fieldKey,
   value,
@@ -54,7 +54,7 @@ const SecretFieldInput = <Key extends string>({
   fieldKey: Key
   value: string
   onChange: (key: Key, value: SchemaFormValue) => void
-}) => {
+}) {
   const [revealed, setRevealed] = useState(false)
 
   return (
@@ -96,13 +96,7 @@ type FieldRendererProps<Key extends string> = {
   context: SchemaRendererContext<Key>
 }
 
-const FieldRenderer = <Key extends string>({
-  field,
-  value,
-  onChange,
-  renderSlot,
-  context,
-}: FieldRendererProps<Key>) => {
+function FieldRenderer<Key extends string>({ field, value, onChange, renderSlot, context }: FieldRendererProps<Key>) {
   const { component } = field
 
   if (component.type === 'slot') {
@@ -173,14 +167,14 @@ const FieldRenderer = <Key extends string>({
   )
 }
 
-const renderGroup = <Key extends string>(
+function renderGroup<Key extends string>(
   node: UiGroupNode<Key>,
   context: SchemaRendererContext<Key>,
   formState: SchemaFormState<Key>,
   handleChange: (key: Key, value: SchemaFormValue) => void,
   shouldRenderNode?: SchemaFormRendererProps<Key>['shouldRenderNode'],
   renderSlot?: SlotRenderer<Key>,
-) => {
+) {
   const renderedChildren = node.children
     .map((child) => renderNode(child, context, formState, handleChange, shouldRenderNode, renderSlot))
     .filter(Boolean)
@@ -208,13 +202,13 @@ const renderGroup = <Key extends string>(
   )
 }
 
-const renderField = <Key extends string>(
+function renderField<Key extends string>(
   field: UiFieldNode<Key>,
   formState: SchemaFormState<Key>,
   handleChange: (key: Key, value: SchemaFormValue) => void,
   renderSlot: SlotRenderer<Key> | undefined,
   context: SchemaRendererContext<Key>,
-) => {
+) {
   if (field.hidden) {
     return null
   }
@@ -266,14 +260,14 @@ const renderField = <Key extends string>(
   )
 }
 
-const renderNode = <Key extends string>(
+function renderNode<Key extends string>(
   node: UiNode<Key>,
   context: SchemaRendererContext<Key>,
   formState: SchemaFormState<Key>,
   handleChange: (key: Key, value: SchemaFormValue) => void,
   shouldRenderNode?: SchemaFormRendererProps<Key>['shouldRenderNode'],
   renderSlot?: SlotRenderer<Key>,
-): ReactNode => {
+): ReactNode {
   if (shouldRenderNode && !shouldRenderNode(node, context)) {
     return null
   }
@@ -318,13 +312,13 @@ export interface SchemaFormRendererProps<Key extends string> {
   renderSlot?: SlotRenderer<Key>
 }
 
-export const SchemaFormRenderer = <Key extends string>({
+export function SchemaFormRenderer<Key extends string>({
   schema,
   values,
   onChange,
   shouldRenderNode,
   renderSlot,
-}: SchemaFormRendererProps<Key>) => {
+}: SchemaFormRendererProps<Key>) {
   const context: SchemaRendererContext<Key> = { values }
 
   return (

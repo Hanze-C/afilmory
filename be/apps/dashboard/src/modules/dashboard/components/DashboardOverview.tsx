@@ -125,30 +125,34 @@ const EMPTY_STATS = {
   },
 } as const
 
-const ActivitySkeleton = () => (
-  <div className="bg-fill/10 animate-pulse rounded-lg border border-fill-tertiary px-3.5 py-3">
-    <div className="flex items-start gap-3">
-      <div className="bg-fill/20 h-11 w-11 shrink-0 rounded-lg" />
-      <div className="flex-1 space-y-2">
-        <div className="bg-fill/20 h-3.5 w-32 rounded-full" />
-        <div className="bg-fill/15 h-3 w-48 rounded-full" />
-        <div className="bg-fill/15 h-3 w-40 rounded-full" />
+function ActivitySkeleton() {
+  return (
+    <div className="bg-fill/10 border-fill-tertiary animate-pulse rounded-lg border px-3.5 py-3">
+      <div className="flex items-start gap-3">
+        <div className="bg-fill/20 h-11 w-11 shrink-0 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <div className="bg-fill/20 h-3.5 w-32 rounded-full" />
+          <div className="bg-fill/15 h-3 w-48 rounded-full" />
+          <div className="bg-fill/15 h-3 w-40 rounded-full" />
+        </div>
       </div>
     </div>
-  </div>
-)
+  )
+}
 
-const StatSkeleton = () => (
-  <LinearBorderPanel className="bg-background-tertiary/60 relative overflow-hidden p-5">
-    <div className="space-y-2.5">
-      <div className="bg-fill/20 h-3 w-20 rounded-full" />
-      <div className="bg-fill/30 h-7 w-24 rounded-md" />
-      <div className="bg-fill/20 h-3 w-32 rounded-full" />
-    </div>
-  </LinearBorderPanel>
-)
+function StatSkeleton() {
+  return (
+    <LinearBorderPanel className="bg-background-tertiary/60 relative overflow-hidden p-5">
+      <div className="space-y-2.5">
+        <div className="bg-fill/20 h-3 w-20 rounded-full" />
+        <div className="bg-fill/30 h-7 w-24 rounded-md" />
+        <div className="bg-fill/20 h-3 w-32 rounded-full" />
+      </div>
+    </LinearBorderPanel>
+  )
+}
 
-const ActivityList = ({ items }: { items: DashboardRecentActivityItem[] }) => {
+function ActivityList({ items }: { items: DashboardRecentActivityItem[] }) {
   if (items.length === 0) {
     return <div className="text-text-tertiary mt-5 text-sm">暂无最近活动，上传照片后即可看到这里的动态。</div>
   }
@@ -165,7 +169,7 @@ const ActivityList = ({ items }: { items: DashboardRecentActivityItem[] }) => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...Spring.presets.snappy, delay: index * 0.04 }}
-            className="bg-fill/5 hover:bg-fill/10 group rounded-lg border border-fill-tertiary px-3.5 py-3 transition-colors duration-200"
+            className="bg-fill/5 hover:bg-fill/10 group border-fill-tertiary rounded-lg border px-3.5 py-3 transition-colors duration-200"
           >
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
@@ -221,7 +225,7 @@ const ActivityList = ({ items }: { items: DashboardRecentActivityItem[] }) => {
   )
 }
 
-export const DashboardOverview = () => {
+export function DashboardOverview() {
   const { data, isLoading, isError } = useDashboardOverviewQuery()
 
   const stats = data?.stats ?? EMPTY_STATS
@@ -317,7 +321,7 @@ export const DashboardOverview = () => {
                 ))}
               </div>
             ) : isError ? (
-              <div className="text-red-400 mt-5 text-sm">无法获取活动数据，请稍后再试。</div>
+              <div className="mt-5 text-sm text-red-400">无法获取活动数据，请稍后再试。</div>
             ) : (
               <ActivityList items={data?.recentActivity ?? []} />
             )}
@@ -357,7 +361,7 @@ export const DashboardOverview = () => {
               })}
             </div>
 
-            <div className="text-text-secondary mt-5 rounded-lg border border-fill-tertiary bg-fill/5 px-3.5 py-2.5 text-xs leading-relaxed">
+            <div className="text-text-secondary border-fill-tertiary bg-fill/5 mt-5 rounded-lg border px-3.5 py-2.5 text-xs leading-relaxed">
               {statusTotal === 0
                 ? '暂无同步任务，添加照片后即可查看同步健康度。'
                 : syncCompletion !== null && syncCompletion >= 0.85

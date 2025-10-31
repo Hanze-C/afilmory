@@ -25,7 +25,7 @@ export const [routeAtom, , , , getReadonlyRoute, setRoute] = createAtomHooks(
   }),
 )
 
-export const useReadonlyRouteSelector = <T>(selector: (route: RouteAtom) => T): T => {
+export function useReadonlyRouteSelector<T>(selector: (route: RouteAtom) => T): T {
   const memoizedAtom = useMemo(() => selectAtom(routeAtom, (route) => selector(route)), [selector])
 
   return useAtomValue(memoizedAtom)

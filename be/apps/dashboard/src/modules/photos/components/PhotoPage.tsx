@@ -40,8 +40,8 @@ const STAGE_ORDER: PhotoSyncProgressStage[] = [
   'status-reconciliation',
 ]
 
-const createInitialStages = (totals: PhotoSyncProgressState['totals']): PhotoSyncProgressState['stages'] =>
-  STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
+function createInitialStages(totals: PhotoSyncProgressState['totals']): PhotoSyncProgressState['stages'] {
+  return STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
     (acc, stage) => {
       const total = totals[stage]
       acc[stage] = {
@@ -53,8 +53,9 @@ const createInitialStages = (totals: PhotoSyncProgressState['totals']): PhotoSyn
     },
     {} as PhotoSyncProgressState['stages'],
   )
+}
 
-export const PhotoPage = () => {
+export function PhotoPage() {
   const [activeTab, setActiveTab] = useState<PhotoPageTab>('sync')
   const [result, setResult] = useState<PhotoSyncResult | null>(null)
   const [lastWasDryRun, setLastWasDryRun] = useState<boolean | null>(null)

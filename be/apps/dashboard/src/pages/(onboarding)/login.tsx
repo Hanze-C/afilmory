@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useLogin } from '~/modules/auth/hooks/useLogin'
 import { LinearBorderContainer } from '~/modules/onboarding/components/LinearBorderContainer'
 
-export const Component = () => {
+export function Component() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const { login, isLoading, error, clearError } = useLogin()
