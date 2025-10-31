@@ -7,7 +7,7 @@ import type {
   StorageConfig,
   StorageObject,
 } from '@afilmory/builder'
-import { AfilmoryBuilder, processPhotoWithPipeline } from '@afilmory/builder'
+import { AfilmoryBuilder, processPhotoWithPipeline, thumbnailStoragePlugin } from '@afilmory/builder'
 import type { Logger as BuilderLogger } from '@afilmory/builder/logger/index.js'
 import type { PhotoProcessingLoggers } from '@afilmory/builder/photo/index.js'
 import { createPhotoProcessingLoggers, setGlobalLoggers } from '@afilmory/builder/photo/index.js'
@@ -38,7 +38,8 @@ export class PhotoBuilderService {
   private photoLoggers: PhotoProcessingLoggers | null = null
 
   createBuilder(config: BuilderConfig): AfilmoryBuilder {
-    return new AfilmoryBuilder(config)
+    const enhancedConfig = this.ensureThumbnailPlugin(config)
+    return new AfilmoryBuilder(enhancedConfig)
   }
 
   applyStorageConfig(builder: AfilmoryBuilder, config: StorageConfig): void {
@@ -138,5 +139,28 @@ export class PhotoBuilderService {
     }
 
     return result
+  }
+
+  private ensureThumbnailPlugin(config: BuilderConfig): BuilderConfig {
+    const existingPlugins = config.plugins ?? []
+    const hasPlugin = existingPlugins.some((entry) => {
+      if (typeof entry === 'string') {
+        return entry.includes('thumbnail-storage')
+      }
+      if (typeof entry === 'function') {
+        const fnName = entry.name ?? ''
+        return fnName.includes('thumbnailStorage') || entry.toString().includes('thumbnail-storage')
+      }
+      return entry?.name === 'afilmory:thumbnail-storage'
+    })
+
+    if (hasPlugin) {
+      return config
+    }
+
+    return {
+      ...config,
+      plugins: [...existingPlugins, thumbnailStoragePlugin()],
+    }
   }
 }
