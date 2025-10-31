@@ -19,7 +19,7 @@ type SettingsNavigationProps = {
   active: (typeof SETTINGS_TABS)[number]['id']
 }
 
-export const SettingsNavigation = ({ active }: SettingsNavigationProps) => {
+export function SettingsNavigation({ active }: SettingsNavigationProps) {
   return (
     <PageTabs
       activeId={active}

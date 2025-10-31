@@ -16,6 +16,7 @@ import { DynamicIcon } from 'lucide-react/dynamic'
 import type { ReactNode } from 'react'
 import { Fragment, useState } from 'react'
 
+import { LinearBorderPanel } from '../../components/common/GlassPanel'
 import type {
   SchemaFormState,
   SchemaFormValue,
@@ -27,19 +28,7 @@ import type {
   UiSlotComponent,
 } from './types'
 
-export const GlassPanel = ({ className, children }: { className?: string; children: ReactNode }) => (
-  <div className={clsxm('group relative overflow-hidden -mx-6', className)}>
-    {/* Linear gradient borders - sharp edges */}
-    <div className="via-text/20 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-    <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-    <div className="via-text/20 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-
-    <div className="relative">{children}</div>
-  </div>
-)
-
-const FieldDescription = ({ description }: { description?: string | null }) => {
+function FieldDescription({ description }: { description?: string | null }) {
   if (!description) {
     return null
   }
@@ -47,7 +36,7 @@ const FieldDescription = ({ description }: { description?: string | null }) => {
   return <p className="text-text-tertiary mt-1 text-xs">{description}</p>
 }
 
-const SchemaIcon = ({ name, className }: { name?: string | null; className?: string }) => {
+function SchemaIcon({ name, className }: { name?: string | null; className?: string }) {
   if (!name) {
     return null
   }
@@ -55,7 +44,7 @@ const SchemaIcon = ({ name, className }: { name?: string | null; className?: str
   return <DynamicIcon name={name as any} className={clsxm('h-4 w-4', className)} />
 }
 
-const SecretFieldInput = <Key extends string>({
+function SecretFieldInput<Key extends string>({
   component,
   fieldKey,
   value,
@@ -65,7 +54,7 @@ const SecretFieldInput = <Key extends string>({
   fieldKey: Key
   value: string
   onChange: (key: Key, value: SchemaFormValue) => void
-}) => {
+}) {
   const [revealed, setRevealed] = useState(false)
 
   return (
@@ -107,13 +96,7 @@ type FieldRendererProps<Key extends string> = {
   context: SchemaRendererContext<Key>
 }
 
-const FieldRenderer = <Key extends string>({
-  field,
-  value,
-  onChange,
-  renderSlot,
-  context,
-}: FieldRendererProps<Key>) => {
+function FieldRenderer<Key extends string>({ field, value, onChange, renderSlot, context }: FieldRendererProps<Key>) {
   const { component } = field
 
   if (component.type === 'slot') {
@@ -184,14 +167,14 @@ const FieldRenderer = <Key extends string>({
   )
 }
 
-const renderGroup = <Key extends string>(
+function renderGroup<Key extends string>(
   node: UiGroupNode<Key>,
   context: SchemaRendererContext<Key>,
   formState: SchemaFormState<Key>,
   handleChange: (key: Key, value: SchemaFormValue) => void,
   shouldRenderNode?: SchemaFormRendererProps<Key>['shouldRenderNode'],
   renderSlot?: SlotRenderer<Key>,
-) => {
+) {
   const renderedChildren = node.children
     .map((child) => renderNode(child, context, formState, handleChange, shouldRenderNode, renderSlot))
     .filter(Boolean)
@@ -219,13 +202,13 @@ const renderGroup = <Key extends string>(
   )
 }
 
-const renderField = <Key extends string>(
+function renderField<Key extends string>(
   field: UiFieldNode<Key>,
   formState: SchemaFormState<Key>,
   handleChange: (key: Key, value: SchemaFormValue) => void,
   renderSlot: SlotRenderer<Key> | undefined,
   context: SchemaRendererContext<Key>,
-) => {
+) {
   if (field.hidden) {
     return null
   }
@@ -237,7 +220,7 @@ const renderField = <Key extends string>(
     const helper = helperText ? <FormHelperText>{helperText}</FormHelperText> : null
 
     return (
-      <div key={field.id} className="border-fill/30 bg-background/40 rounded-lg border p-4">
+      <div key={field.id} className="border-border bg-background/40 rounded-lg border p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Label className="text-text text-sm font-medium">{field.title}</Label>
@@ -259,7 +242,7 @@ const renderField = <Key extends string>(
   const showSensitiveHint = isSensitive && typeof value === 'string' && value.length === 0
 
   return (
-    <div key={field.id} className="border-fill-tertiary/40 bg-background/30 space-y-2 rounded-lg border p-4">
+    <div key={field.id} className="border-border bg-background/30 space-y-2 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Label className="text-text text-sm font-medium">{field.title}</Label>
@@ -277,14 +260,14 @@ const renderField = <Key extends string>(
   )
 }
 
-const renderNode = <Key extends string>(
+function renderNode<Key extends string>(
   node: UiNode<Key>,
   context: SchemaRendererContext<Key>,
   formState: SchemaFormState<Key>,
   handleChange: (key: Key, value: SchemaFormValue) => void,
   shouldRenderNode?: SchemaFormRendererProps<Key>['shouldRenderNode'],
   renderSlot?: SlotRenderer<Key>,
-): ReactNode => {
+): ReactNode {
   if (shouldRenderNode && !shouldRenderNode(node, context)) {
     return null
   }
@@ -329,13 +312,13 @@ export interface SchemaFormRendererProps<Key extends string> {
   renderSlot?: SlotRenderer<Key>
 }
 
-export const SchemaFormRenderer = <Key extends string>({
+export function SchemaFormRenderer<Key extends string>({
   schema,
   values,
   onChange,
   shouldRenderNode,
   renderSlot,
-}: SchemaFormRendererProps<Key>) => {
+}: SchemaFormRendererProps<Key>) {
   const context: SchemaRendererContext<Key> = { values }
 
   return (
@@ -354,7 +337,7 @@ export const SchemaFormRenderer = <Key extends string>({
         }
 
         return (
-          <GlassPanel key={section.id} className="p-6">
+          <LinearBorderPanel key={section.id} className="p-6">
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -366,7 +349,7 @@ export const SchemaFormRenderer = <Key extends string>({
 
               <div className="space-y-4">{renderedChildren}</div>
             </div>
-          </GlassPanel>
+          </LinearBorderPanel>
         )
       })}
     </>

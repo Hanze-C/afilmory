@@ -20,11 +20,11 @@ export const [contextMenuAtom, useContextMenuState, useContextMenuValue, useSetC
   atom<ContextMenuState>({ open: false }),
 )
 
-const useShowWebContextMenu = () => {
+function useShowWebContextMenu() {
   const setContextMenu = useSetContextMenu()
 
   const showWebContextMenu = useCallback(
-    async (menuItems: Array<FollowMenuItem>, e: MouseEvent | React.MouseEvent) => {
+    async (menuItems: FollowMenuItem[], e: MouseEvent | React.MouseEvent) => {
       const abortController = new AbortController()
       const resolvers = Promise.withResolvers<void>()
       setContextMenu({
@@ -75,11 +75,11 @@ export enum MenuItemType {
   Action,
 }
 
-export const useShowContextMenu = () => {
+export function useShowContextMenu() {
   const showWebContextMenu = useShowWebContextMenu()
 
   const showContextMenu = useCallback(
-    async (inputMenu: Array<MenuItemInput>, e: MouseEvent | React.MouseEvent) => {
+    async (inputMenu: MenuItemInput[], e: MouseEvent | React.MouseEvent) => {
       const menuItems = filterNullableMenuItems(inputMenu)
       e.preventDefault()
       e.stopPropagation()

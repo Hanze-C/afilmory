@@ -23,7 +23,7 @@ type MainPageLayoutContextValue = {
 
 const MainPageLayoutContext = createContext<MainPageLayoutContextValue | null>(null)
 
-export const useMainPageLayout = () => {
+export function useMainPageLayout() {
   const context = use(MainPageLayoutContext)
 
   if (!context) {
@@ -41,7 +41,7 @@ type MainPageLayoutProps = {
   children: ReactNode
 }
 
-const MainPageLayoutBase = ({ title, description, actions, footer, children }: MainPageLayoutProps) => {
+function MainPageLayoutBase({ title, description, actions, footer, children }: MainPageLayoutProps) {
   const [headerActionsContainer, setHeaderActionsContainer] = useState<HTMLDivElement | null>(null)
   const [portalMountCount, setPortalMountCount] = useState(0)
   const [headerActionState, setHeaderActionState] = useState<HeaderActionState>(defaultHeaderActionState)
@@ -109,7 +109,7 @@ type MainPageLayoutActionsProps = {
   children: ReactNode
 }
 
-const MainPageLayoutActions = ({ children }: MainPageLayoutActionsProps) => {
+function MainPageLayoutActions({ children }: MainPageLayoutActionsProps) {
   const { headerActionsContainer, registerPortalPresence } = useMainPageLayout()
 
   useEffect(() => {

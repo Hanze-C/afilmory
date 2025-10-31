@@ -12,7 +12,7 @@ import { createEmptyProvider, reorderProvidersByActive } from '../utils'
 import { ProviderCard } from './ProviderCard'
 import { ProviderEditModal } from './ProviderEditModal'
 
-export const StorageProvidersManager = () => {
+export function StorageProvidersManager() {
   const { data, isLoading, isError, error } = useStorageProvidersQuery()
   const updateMutation = useUpdateStorageProvidersMutation()
   const { setHeaderActionState } = useMainPageLayout()

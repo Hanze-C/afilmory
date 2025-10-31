@@ -163,6 +163,7 @@ class PhotoLoader {
 - **Hot Reloading**: SPA changes reflect immediately, SSR provides SEO preview
 - **Manifest Building**: `pnpm run build:manifest` processes photos and updates data
 - **Type Safety**: Shared types between builder, SPA, and SSR ensure consistency
+- **Page Structure**: Keep files under `pages/` as thin routing shells; move reusable UI/logic into `modules/<domain>/**` (e.g., dashboard overview lives in `modules/dashboard/components`).
 
 ### Code Quality Rules
 

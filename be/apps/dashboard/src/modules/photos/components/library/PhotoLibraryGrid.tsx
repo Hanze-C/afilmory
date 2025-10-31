@@ -15,7 +15,7 @@ type PhotoLibraryGridProps = {
   isDeleting?: boolean
 }
 
-const PhotoGridItem = ({
+function PhotoGridItem({
   asset,
   isSelected,
   onToggleSelect,
@@ -29,7 +29,7 @@ const PhotoGridItem = ({
   onOpenAsset: (asset: PhotoAssetListItem) => void
   onDeleteAsset: (asset: PhotoAssetListItem) => Promise<void> | void
   isDeleting?: boolean
-}) => {
+}) {
   const manifest = asset.manifest?.data
   const previewUrl = manifest?.thumbnailUrl ?? manifest?.originalUrl ?? asset.publicUrl
   const deviceLabel = manifest?.exif?.Model || manifest?.exif?.Make || '未知设备'
@@ -142,7 +142,7 @@ const PhotoGridItem = ({
   )
 }
 
-export const PhotoLibraryGrid = ({
+export function PhotoLibraryGrid({
   assets,
   isLoading,
   selectedIds,
@@ -150,7 +150,7 @@ export const PhotoLibraryGrid = ({
   onOpenAsset,
   onDeleteAsset,
   isDeleting,
-}: PhotoLibraryGridProps) => {
+}: PhotoLibraryGridProps) {
   if (isLoading) {
     const skeletonKeys = [
       'photo-skeleton-1',

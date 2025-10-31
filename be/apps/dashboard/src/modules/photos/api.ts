@@ -19,10 +19,10 @@ type RunPhotoSyncOptions = {
   onEvent?: (event: PhotoSyncProgressEvent) => void
 }
 
-export const runPhotoSync = async (
+export async function runPhotoSync(
   payload: RunPhotoSyncPayload,
   options?: RunPhotoSyncOptions,
-): Promise<PhotoSyncResult> => {
+): Promise<PhotoSyncResult> {
   const response = await fetch(`${coreApiBaseURL}/data-sync/run`, {
     method: 'POST',
     headers: {
@@ -134,15 +134,15 @@ export const runPhotoSync = async (
   return camelCaseKeys<PhotoSyncResult>(finalResult)
 }
 
-export const listPhotoSyncConflicts = async (): Promise<PhotoSyncConflict[]> => {
+export async function listPhotoSyncConflicts(): Promise<PhotoSyncConflict[]> {
   const conflicts = await coreApi<PhotoSyncConflict[]>('/data-sync/conflicts')
   return camelCaseKeys<PhotoSyncConflict[]>(conflicts)
 }
 
-export const resolvePhotoSyncConflict = async (
+export async function resolvePhotoSyncConflict(
   id: string,
   payload: { strategy: PhotoSyncResolution; dryRun?: boolean },
-): Promise<PhotoSyncAction> => {
+): Promise<PhotoSyncAction> {
   const result = await coreApi<PhotoSyncAction>(`/data-sync/conflicts/${id}/resolve`, {
     method: 'POST',
     body: payload,
@@ -151,29 +151,29 @@ export const resolvePhotoSyncConflict = async (
   return camelCaseKeys<PhotoSyncAction>(result)
 }
 
-export const listPhotoAssets = async (): Promise<PhotoAssetListItem[]> => {
+export async function listPhotoAssets(): Promise<PhotoAssetListItem[]> {
   const assets = await coreApi<PhotoAssetListItem[]>('/photos/assets')
 
   return camelCaseKeys<PhotoAssetListItem[]>(assets)
 }
 
-export const getPhotoAssetSummary = async (): Promise<PhotoAssetSummary> => {
+export async function getPhotoAssetSummary(): Promise<PhotoAssetSummary> {
   const summary = await coreApi<PhotoAssetSummary>('/photos/assets/summary')
 
   return camelCaseKeys<PhotoAssetSummary>(summary)
 }
 
-export const deletePhotoAssets = async (ids: string[]): Promise<void> => {
+export async function deletePhotoAssets(ids: string[]): Promise<void> {
   await coreApi('/photos/assets', {
     method: 'DELETE',
     body: { ids },
   })
 }
 
-export const uploadPhotoAssets = async (
+export async function uploadPhotoAssets(
   files: File[],
   options?: { directory?: string },
-): Promise<PhotoAssetListItem[]> => {
+): Promise<PhotoAssetListItem[]> {
   const formData = new FormData()
 
   if (options?.directory) {
@@ -194,7 +194,7 @@ export const uploadPhotoAssets = async (
   return data.assets
 }
 
-export const getPhotoStorageUrl = async (storageKey: string): Promise<string> => {
+export async function getPhotoStorageUrl(storageKey: string): Promise<string> {
   const result = await coreApi<{ url: string }>('/photos/storage-url', {
     method: 'GET',
     query: { key: storageKey },

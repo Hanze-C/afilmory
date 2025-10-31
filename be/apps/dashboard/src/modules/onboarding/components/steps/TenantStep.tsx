@@ -49,7 +49,7 @@ export const TenantStep: FC<TenantStepProps> = ({ tenant, errors, onNameChange, 
         id="tenant-domain"
         value={tenant.domain}
         onInput={(event) => onDomainChange(event.currentTarget.value)}
-        placeholder="gallery.afilmory.app"
+        placeholder="gallery.afilmory.art"
         error={!!errors['tenant.domain']}
         autoComplete="off"
       />

@@ -19,7 +19,7 @@ export const STORAGE_PROVIDER_TYPE_OPTIONS: ReadonlyArray<{
 
 export const STORAGE_PROVIDER_FIELD_DEFINITIONS: Record<
   StorageProviderType,
-  ReadonlyArray<StorageProviderFieldDefinition>
+  readonly StorageProviderFieldDefinition[]
 > = {
   s3: [
     {

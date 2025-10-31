@@ -18,7 +18,7 @@ type PhotoSyncConflictsPanelProps = {
   onRequestStorageUrl?: (storageKey: string) => Promise<string>
 }
 
-const formatDate = (value: string) => {
+function formatDate(value: string) {
   try {
     return new Date(value).toLocaleString()
   } catch {
@@ -26,7 +26,7 @@ const formatDate = (value: string) => {
   }
 }
 
-export const PhotoSyncConflictsPanel = ({
+export function PhotoSyncConflictsPanel({
   conflicts,
   isLoading,
   resolvingId,
@@ -34,7 +34,7 @@ export const PhotoSyncConflictsPanel = ({
   onResolve,
   onResolveBatch,
   onRequestStorageUrl,
-}: PhotoSyncConflictsPanelProps) => {
+}: PhotoSyncConflictsPanelProps) {
   const sortedConflicts = useMemo(() => {
     if (!conflicts) return []
     return conflicts.toSorted((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -453,7 +453,7 @@ export const PhotoSyncConflictsPanel = ({
   )
 }
 
-const ConflictManifestPreview = ({
+function ConflictManifestPreview({
   manifest,
   disabled,
   onOpenOriginal,
@@ -461,7 +461,7 @@ const ConflictManifestPreview = ({
   manifest: PhotoSyncConflict['manifest']['data'] | null | undefined
   disabled?: boolean
   onOpenOriginal?: () => void
-}) => {
+}) {
   if (!manifest) {
     return (
       <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
@@ -511,7 +511,7 @@ const ConflictManifestPreview = ({
   )
 }
 
-const ConflictStoragePreview = ({
+function ConflictStoragePreview({
   storageKey,
   snapshot,
   disabled,
@@ -521,20 +521,22 @@ const ConflictStoragePreview = ({
   snapshot: PhotoSyncSnapshot | null | undefined
   disabled?: boolean
   onOpenStorage?: () => void
-}) => (
-  <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
-    <div className="flex items-center justify-between">
-      <p className="text-text text-sm font-semibold">存储对象</p>
-      {onOpenStorage ? (
-        <Button type="button" variant="ghost" size="xs" disabled={disabled} onClick={onOpenStorage}>
-          打开
-        </Button>
-      ) : null}
+}) {
+  return (
+    <div className="border-border/20 bg-background-secondary/60 text-text-tertiary rounded-md border p-3 text-xs">
+      <div className="flex items-center justify-between">
+        <p className="text-text text-sm font-semibold">存储对象</p>
+        {onOpenStorage ? (
+          <Button type="button" variant="ghost" size="xs" disabled={disabled} onClick={onOpenStorage}>
+            打开
+          </Button>
+        ) : null}
+      </div>
+      <p className="mt-1 break-all">
+        Key：
+        <span className="text-text font-mono text-[11px]">{storageKey}</span>
+      </p>
+      <MetadataSnapshot snapshot={snapshot ?? null} />
     </div>
-    <p className="mt-1 break-all">
-      Key：
-      <span className="text-text font-mono text-[11px]">{storageKey}</span>
-    </p>
-    <MetadataSnapshot snapshot={snapshot ?? null} />
-  </div>
-)
+  )
+}

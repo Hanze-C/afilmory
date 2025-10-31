@@ -1,6 +1,6 @@
 import os from 'node:os'
 
-import { defineBuilderConfig } from '@afilmory/builder'
+import { defineBuilderConfig, thumbnailStoragePlugin } from '@afilmory/builder'
 
 import { env } from './env.js'
 
@@ -52,5 +52,5 @@ export default defineBuilderConfig(() => ({
       workerConcurrency: 2,
     },
   },
-  plugins: [],
+  plugins: [thumbnailStoragePlugin()],
 }))

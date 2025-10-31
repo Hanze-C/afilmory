@@ -18,7 +18,6 @@ import { StorageFactory, StorageManager } from '../storage/index.js'
 import type { BuilderConfig } from '../types/config.js'
 import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
-import { clone } from '../utils/clone.js'
 import { ClusterPool } from '../worker/cluster-pool.js'
 import { WorkerPool } from '../worker/pool.js'
 
@@ -45,8 +44,7 @@ export class AfilmoryBuilder {
   private readonly pluginReferences: BuilderPluginConfigEntry[]
 
   constructor(config: BuilderConfig) {
-    // 创建配置副本，避免外部修改
-    this.config = clone(config)
+    this.config = config
 
     this.pluginReferences = this.resolvePluginReferences()
 
@@ -587,7 +585,7 @@ export class AfilmoryBuilder {
    * 获取当前配置
    */
   getConfig(): BuilderConfig {
-    return clone(this.config)
+    return Object.freeze(this.config)
   }
 
   /**

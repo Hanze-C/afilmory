@@ -1,5 +1,6 @@
 import os from 'node:os'
 
+import thumbnailStoragePlugin from '../plugins/thumbnail-storage/index.js'
 import type { BuilderConfig } from '../types/config.js'
 
 export function createDefaultBuilderConfig(): BuilderConfig {
@@ -51,6 +52,6 @@ export function createDefaultBuilderConfig(): BuilderConfig {
         workerConcurrency: 2,
       },
     },
-    plugins: [],
+    plugins: [thumbnailStoragePlugin()],
   }
 }

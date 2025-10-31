@@ -29,13 +29,13 @@ type ProviderEditModalProps = ModalComponentProps & {
   onSetActive: (id: string) => void
 }
 
-export const ProviderEditModal = ({
+export function ProviderEditModal({
   provider,
 
   onSave,
 
   dismiss,
-}: ProviderEditModalProps) => {
+}: ProviderEditModalProps) {
   const [formData, setFormData] = useState<StorageProvider | null>(provider)
   const [isDirty, setIsDirty] = useState(false)
 

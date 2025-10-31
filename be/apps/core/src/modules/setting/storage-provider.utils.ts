@@ -38,7 +38,7 @@ function normalizeProvider(input: unknown): BuilderStorageProvider | null {
   return {
     id: typeof record.id === 'string' && record.id.trim().length > 0 ? record.id.trim() : randomUUID(),
     name: typeof record.name === 'string' && record.name.trim().length > 0 ? record.name.trim() : '未命名存储',
-    type: typeof record.type === 'string' ? record.type : 'local',
+    type: typeof record.type === 'string' ? record.type : 's3',
     config: normalizeConfig(record.config),
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : now,
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : now,

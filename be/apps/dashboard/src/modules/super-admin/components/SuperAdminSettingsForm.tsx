@@ -3,7 +3,9 @@ import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { GlassPanel, SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
+import { LinearBorderPanel } from '~/components/common/GlassPanel'
+
+import { SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
 import type { SchemaFormValue } from '../../schema-form/types'
 import { useSuperAdminSettingsQuery, useUpdateSuperAdminSettingsMutation } from '../hooks'
 import type {
@@ -17,13 +19,15 @@ type FormState = Record<SuperAdminSettingField, SchemaFormValue>
 
 const BOOLEAN_FIELDS = new Set<SuperAdminSettingField>(['allowRegistration', 'localProviderEnabled'])
 
-const toFormState = (settings: SuperAdminSettings): FormState => ({
-  allowRegistration: settings.allowRegistration,
-  localProviderEnabled: settings.localProviderEnabled,
-  maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
-})
+function toFormState(settings: SuperAdminSettings): FormState {
+  return {
+    allowRegistration: settings.allowRegistration,
+    localProviderEnabled: settings.localProviderEnabled,
+    maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
+  }
+}
 
-const areFormStatesEqual = (left: FormState | null, right: FormState | null): boolean => {
+function areFormStatesEqual(left: FormState | null, right: FormState | null): boolean {
   if (left === right) {
     return true
   }
@@ -39,7 +43,7 @@ const areFormStatesEqual = (left: FormState | null, right: FormState | null): bo
   )
 }
 
-const normalizeMaxUsers = (value: SchemaFormValue): string => {
+function normalizeMaxUsers(value: SchemaFormValue): string {
   if (typeof value === 'string') {
     return value
   }
@@ -59,7 +63,7 @@ type PossiblySnakeCaseSettings = Partial<
   }
 >
 
-const coerceMaxUsers = (value: unknown): number | null => {
+function coerceMaxUsers(value: unknown): number | null {
   if (value === undefined || value === null) {
     return null
   }
@@ -72,7 +76,7 @@ const coerceMaxUsers = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const normalizeServerSettings = (input: PossiblySnakeCaseSettings | null): SuperAdminSettings | null => {
+function normalizeServerSettings(input: PossiblySnakeCaseSettings | null): SuperAdminSettings | null {
   if (!input) {
     return null
   }
@@ -96,7 +100,7 @@ const normalizeServerSettings = (input: PossiblySnakeCaseSettings | null): Super
   return null
 }
 
-const extractServerValues = (payload: SuperAdminSettingsResponse): SuperAdminSettings | null => {
+function extractServerValues(payload: SuperAdminSettingsResponse): SuperAdminSettings | null {
   if ('values' in payload) {
     return normalizeServerSettings(payload.values ?? null)
   }
@@ -108,7 +112,7 @@ const extractServerValues = (payload: SuperAdminSettingsResponse): SuperAdminSet
   return null
 }
 
-export const SuperAdminSettingsForm = () => {
+export function SuperAdminSettingsForm() {
   const { data, isLoading, isError, error } = useSuperAdminSettingsQuery()
   const [formState, setFormState] = useState<FormState | null>(null)
   const [initialState, setInitialState] = useState<FormState | null>(null)
@@ -244,24 +248,24 @@ export const SuperAdminSettingsForm = () => {
 
   if (isError) {
     return (
-      <GlassPanel className="p-6">
+      <LinearBorderPanel className="p-6">
         <div className="text-red text-sm">
           <span>{`无法加载超级管理员设置：${error instanceof Error ? error.message : '未知错误'}`}</span>
         </div>
-      </GlassPanel>
+      </LinearBorderPanel>
     )
   }
 
   if (isLoading || !formState || !data) {
     return (
-      <GlassPanel className="space-y-4 p-6">
+      <LinearBorderPanel className="space-y-4 p-6">
         <div className="bg-fill/40 h-6 w-1/3 animate-pulse rounded-full" />
         <div className="space-y-4">
           {['skeleton-1', 'skeleton-2', 'skeleton-3'].map((key) => (
             <div key={key} className="bg-fill/30 h-20 animate-pulse rounded-xl" />
           ))}
         </div>
-      </GlassPanel>
+      </LinearBorderPanel>
     )
   }
 
@@ -290,18 +294,18 @@ export const SuperAdminSettingsForm = () => {
       <SchemaFormRenderer schema={data.schema} values={formState} onChange={handleChange} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <GlassPanel className="p-6">
+        <LinearBorderPanel className="p-6">
           <div className="space-y-1">
             <p className="text-text-tertiary text-xs tracking-wide uppercase">当前用户总数</p>
             <p className="text-text text-3xl font-semibold">{typeof totalUsers === 'number' ? totalUsers : 0}</p>
           </div>
-        </GlassPanel>
-        <GlassPanel className="p-6">
+        </LinearBorderPanel>
+        <LinearBorderPanel className="p-6">
           <div className="space-y-1">
             <p className="text-text-tertiary text-xs tracking-wide uppercase">剩余可注册名额</p>
             <p className="text-text text-3xl font-semibold">{remainingLabel}</p>
           </div>
-        </GlassPanel>
+        </LinearBorderPanel>
       </div>
 
       <div className="flex items-center justify-end gap-3">

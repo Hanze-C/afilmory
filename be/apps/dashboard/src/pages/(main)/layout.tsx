@@ -13,7 +13,7 @@ const navigationTabs = [
   { label: 'Analytics', path: '/analytics' },
 ] as const
 
-export const Component = () => {
+export function Component() {
   const { logout } = usePageRedirect()
   const user = useAuthUserValue()
   const [isLoggingOut, setIsLoggingOut] = useState(false)

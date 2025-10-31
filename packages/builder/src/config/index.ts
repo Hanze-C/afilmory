@@ -12,10 +12,6 @@ export interface LoadBuilderConfigOptions {
   defaults?: BuilderConfig
 }
 
-export function defineBuilderConfig(config: BuilderConfigInput | (() => BuilderConfigInput)): BuilderConfigInput {
-  return typeof config === 'function' ? config() : config
-}
-
 function normalizeBuilderConfig(defaults: BuilderConfig, input: BuilderConfigInput): BuilderConfig {
   const base = clone(defaults)
   const merged = merge(base, input as Record<string, unknown>) as BuilderConfig

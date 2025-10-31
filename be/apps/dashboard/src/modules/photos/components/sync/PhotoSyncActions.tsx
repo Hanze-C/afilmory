@@ -14,7 +14,7 @@ type PhotoSyncActionsProps = {
   onError?: (error: Error) => void
 }
 
-export const PhotoSyncActions = ({ onCompleted, onProgress, onError }: PhotoSyncActionsProps) => {
+export function PhotoSyncActions({ onCompleted, onProgress, onError }: PhotoSyncActionsProps) {
   const { setHeaderActionState } = useMainPageLayout()
   const [pendingMode, setPendingMode] = useState<'dry-run' | 'apply' | null>(null)
   const abortRef = useRef<AbortController | null>(null)

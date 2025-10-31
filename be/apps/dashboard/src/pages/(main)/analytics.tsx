@@ -1,6 +1,6 @@
 import { MainPageLayout } from '~/components/layouts/MainPageLayout'
 
-export const Component = () => {
+export function Component() {
   return (
     <MainPageLayout title="Analytics" description="Track your photo collection statistics and trends">
       <div className="grid gap-4 md:grid-cols-2">

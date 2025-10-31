@@ -1,6 +1,10 @@
 import path from 'node:path'
 
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageObject } from '@afilmory/builder'
+import {
+  DEFAULT_CONTENT_TYPE,
+  DEFAULT_DIRECTORY as DEFAULT_THUMBNAIL_DIRECTORY,
+} from '@afilmory/builder/plugins/thumbnail-storage/shared.js'
 import { StorageManager } from '@afilmory/builder/storage/index.js'
 import type { PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
@@ -15,6 +19,9 @@ import { PhotoStorageService } from './photo-storage.service'
 
 type PhotoAssetRecord = typeof photoAssets.$inferSelect
 
+const DEFAULT_THUMBNAIL_EXTENSION = {
+  'image/jpeg': '.jpg',
+}[DEFAULT_CONTENT_TYPE]
 export interface PhotoAssetListItem {
   id: string
   photoId: string
@@ -40,8 +47,8 @@ export interface UploadAssetInput {
   filename: string
   buffer: Buffer
   contentType?: string
-  directory?: string | null
 }
+
 
 @injectable()
 export class PhotoAssetService {
@@ -140,6 +147,8 @@ export class PhotoAssetService {
 
     const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
     const storageManager = this.createStorageManager(builderConfig, storageConfig)
+    const thumbnailRemotePrefix = this.resolveThumbnailRemotePrefix(storageConfig)
+    const deletedThumbnailKeys = new Set<string>()
 
     for (const record of records) {
       if (record.storageProvider !== DATABASE_ONLY_PROVIDER) {
@@ -149,6 +158,18 @@ export class PhotoAssetService {
           throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
             message: `无法删除存储中的文件 ${record.storageKey}: ${String(error)}`,
           })
+        }
+
+        const thumbnailKey = this.resolveThumbnailStorageKey(record, thumbnailRemotePrefix)
+        if (thumbnailKey && !deletedThumbnailKeys.has(thumbnailKey)) {
+          try {
+            await storageManager.deleteFile(thumbnailKey)
+            deletedThumbnailKeys.add(thumbnailKey)
+          } catch (error) {
+            throw new BizException(ErrorCode.IMAGE_PROCESSING_FAILED, {
+              message: `无法删除缩略图文件 ${thumbnailKey}: ${String(error)}`,
+            })
+          }
         }
       }
     }
@@ -173,7 +194,7 @@ export class PhotoAssetService {
     const results: PhotoAssetListItem[] = []
 
     for (const input of inputs) {
-      const key = this.createStorageKey(input)
+      const key = this.createStorageKey(input, storageConfig)
       const storageObject = await storageManager.uploadFile(key, input.buffer, {
         contentType: input.contentType,
       })
@@ -197,7 +218,7 @@ export class PhotoAssetService {
 
       const manifest = this.createManifestPayload(item)
       const snapshot = this.createStorageSnapshot(storageObject)
-      const now = this.nowIso()
+      const now = new Date().toISOString()
 
       const insertPayload: typeof photoAssets.$inferInsert = {
         tenantId: tenant.tenant.id,
@@ -316,19 +337,126 @@ export class PhotoAssetService {
     }
   }
 
-  private nowIso(): string {
-    return new Date().toISOString()
+  private createStorageKey(input: UploadAssetInput, storageConfig: StorageConfig): string {
+    const ext = path.extname(input.filename)
+    const base = path.basename(input.filename, ext).trim()
+
+    const timestamp = Date.now().toString()
+    const directory = this.resolveStorageDirectory(storageConfig)
+    const keySegment = base || timestamp
+    const normalized = directory ? `${directory}/${keySegment}${ext}` : `${keySegment}${ext}`
+    return this.normalizeKeyPath(normalized)
   }
 
-  private createStorageKey(input: UploadAssetInput): string {
-    const ext = path.extname(input.filename)
-    const base = path.basename(input.filename, ext)
-    const slug = base
-      .toLowerCase()
-      .replaceAll(/[^a-z0-9]+/g, '-')
-      .replaceAll(/^-+|-+$/g, '')
-    const timestamp = Date.now()
-    const dir = input.directory?.trim() ? input.directory.trim().replaceAll(/\\+/g, '/') : 'uploads'
-    return `${dir}/${timestamp}-${slug || 'photo'}${ext}`.replaceAll(/\\+/g, '/')
+  private resolveStorageDirectory(storageConfig: StorageConfig): string | null {
+    switch (storageConfig.provider) {
+      case 's3': {
+        return this.normalizeDirectory(storageConfig.prefix)
+      }
+      case 'github': {
+        return this.normalizeDirectory(storageConfig.path)
+      }
+      default: {
+        return null
+      }
+    }
+  }
+
+  private normalizeDirectory(value?: string | null): string | null {
+    if (!value) {
+      return null
+    }
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      return null
+    }
+    const normalized = this.normalizeKeyPath(trimmed)
+    return normalized.length > 0 ? normalized : null
+  }
+
+  private normalizeKeyPath(raw: string): string {
+    if (!raw) {
+      return ''
+    }
+
+    const segments = raw.split(/[\\/]+/)
+    const safeSegments: string[] = []
+
+    for (const segment of segments) {
+      const trimmed = segment.trim()
+      if (!trimmed || trimmed === '.' || trimmed === '..') {
+        continue
+      }
+      safeSegments.push(trimmed)
+    }
+
+    return safeSegments.join('/')
+  }
+
+  private resolveThumbnailStorageKey(record: PhotoAssetRecord, remotePrefix: string | null): string | null {
+    const thumbnailUrl = record.manifest?.data?.thumbnailUrl
+    if (!thumbnailUrl) {
+      return null
+    }
+
+    const photoId = record.photoId ?? record.manifest?.data?.id
+    if (!photoId) {
+      return null
+    }
+
+    const fileName = `${photoId}${DEFAULT_THUMBNAIL_EXTENSION}`
+    if (!remotePrefix) {
+      return fileName
+    }
+
+    return this.joinStorageSegments(remotePrefix, fileName)
+  }
+
+  private resolveThumbnailRemotePrefix(storageConfig: StorageConfig): string | null {
+    const directory = this.normalizeStorageSegment(DEFAULT_THUMBNAIL_DIRECTORY)
+    if (!directory) {
+      return null
+    }
+
+    if (storageConfig.provider === 's3') {
+      const base = this.normalizeStorageSegment(storageConfig.prefix)
+      return this.joinStorageSegments(base, directory)
+    }
+
+    if (storageConfig.provider === 'github') {
+      return directory
+    }
+
+    return directory
+  }
+
+  private normalizeStorageSegment(value?: string | null): string | null {
+    if (typeof value !== 'string') {
+      return null
+    }
+
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return null
+    }
+
+    const normalized = trimmed.replaceAll('\\', '/').replaceAll(/^\/+|\/+$/, '')
+    return normalized.length > 0 ? normalized : null
+  }
+
+  private joinStorageSegments(...segments: Array<string | null | undefined>): string {
+    const filtered: string[] = []
+    for (const segment of segments) {
+      if (!segment) {
+        continue
+      }
+      filtered.push(segment.replaceAll(/^\/+|\/+$/, ''))
+    }
+
+    if (filtered.length === 0) {
+      return ''
+    }
+
+    return filtered.join('/')
   }
 }

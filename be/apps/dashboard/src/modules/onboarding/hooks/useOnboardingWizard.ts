@@ -12,7 +12,7 @@ import { createInitialSettingsState, getFieldByKey, isLikelyEmail, maskSecret, s
 
 const INITIAL_STEP_INDEX = 0
 
-export const useOnboardingWizard = () => {
+export function useOnboardingWizard() {
   const [currentStepIndex, setCurrentStepIndex] = useState(INITIAL_STEP_INDEX)
   const [tenant, setTenant] = useState<TenantFormState>({
     name: '',

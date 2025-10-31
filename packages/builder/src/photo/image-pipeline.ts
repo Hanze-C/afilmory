@@ -13,6 +13,7 @@ import {
   preprocessImageBuffer,
 } from '../image/processor.js'
 import type { PluginRunState } from '../plugins/manager.js'
+import { THUMBNAIL_PLUGIN_DATA_KEY } from '../plugins/thumbnail-storage/shared.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { shouldProcessPhoto } from './cache-manager.js'
 import { processExifData, processThumbnailAndBlurhash, processToneAnalysis } from './data-processors.js'
@@ -161,6 +162,13 @@ export async function executePhotoProcessingPipeline(
 
     // 3. 处理缩略图和 blurhash
     const thumbnailResult = await processThumbnailAndBlurhash(imageBuffer, photoId, existingItem, options)
+
+    context.pluginData[THUMBNAIL_PLUGIN_DATA_KEY] = {
+      photoId,
+      fileName: `${photoId}.jpg`,
+      buffer: thumbnailResult.thumbnailBuffer,
+      localUrl: thumbnailResult.thumbnailUrl,
+    }
 
     // 4. 处理 EXIF 数据
     const exifData = await processExifData(imageBuffer, imageData.rawBuffer, photoKey, existingItem, options)

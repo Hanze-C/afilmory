@@ -41,7 +41,7 @@
     "@afilmory/builder": "workspace:*",
     "@clack/prompts": "^0.11.0",
     "@innei/prettier": "1.0.0",
-    "@types/node": "24.9.1",
+    "@types/node": "24.9.2",
     "ast-kit": "2.1.3",
     "consola": "3.4.2",
     "dotenv-expand": "catalog:",
