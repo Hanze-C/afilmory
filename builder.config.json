@@ -1,0 +1,7 @@
+{
+  "storage": {
+    "provider": "local",
+    "basePath": "./apps/web/public/photos",
+    "baseUrl": "/photos"
+  }
+}

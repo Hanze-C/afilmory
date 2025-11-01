@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 
 import { StaticWebService } from './static-web.service'
 
-@Controller('static/web')
+@Controller({ bypassGlobalPrefix: true })
 export class StaticWebController {
   constructor(private readonly staticWebService: StaticWebService) {}
 
