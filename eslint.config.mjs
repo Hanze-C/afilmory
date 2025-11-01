@@ -22,11 +22,7 @@ export default defineConfig(
       },
     },
 
-    settings: {
-      tailwindcss: {
-        whitelist: ['center'],
-      },
-    },
+    settings: {},
     rules: {
       '@typescript-eslint/triple-slash-reference': 0,
       'unicorn/prefer-math-trunc': 'off',
@@ -55,6 +51,8 @@ export default defineConfig(
       'react-hooks/unsupported-syntax': 'off',
       'react-hooks/config': 'off',
       'react-hooks/gating': 'off',
+
+      'unicorn/no-array-callback-reference': 'off',
 
       'no-restricted-globals': [
         'error',
@@ -87,5 +85,6 @@ export default defineConfig(
       '@stylistic/jsx-self-closing-comp': 'error',
     },
   },
+
   globalIgnores(['apps/ssr/src/index.html.ts']),
 )

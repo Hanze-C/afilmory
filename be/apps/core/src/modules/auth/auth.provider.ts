@@ -3,11 +3,14 @@ import type { OnModuleInit } from '@afilmory/framework'
 import { createLogger, HttpContext } from '@afilmory/framework'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { APIError, createAuthMiddleware } from 'better-auth/api'
 import { admin } from 'better-auth/plugins'
+import { BizException } from 'core/errors'
 import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
 import { DrizzleProvider } from '../../database/database.provider'
+import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
 import { AuthConfig } from './auth.config'
 
 export type BetterAuthInstance = ReturnType<typeof betterAuth>
@@ -21,6 +24,7 @@ export class AuthProvider implements OnModuleInit {
   constructor(
     private readonly config: AuthConfig,
     private readonly drizzleProvider: DrizzleProvider,
+    private readonly superAdminSettings: SuperAdminSettingService,
   ) {}
 
   onModuleInit(): void {
@@ -76,6 +80,25 @@ export class AuthProvider implements OnModuleInit {
           defaultBanReason: 'Spamming',
         }),
       ],
+      hooks: {
+        before: createAuthMiddleware(async (ctx) => {
+          if (ctx.path !== '/sign-up/email') {
+            return
+          }
+
+          try {
+            await this.superAdminSettings.ensureRegistrationAllowed()
+          } catch (error) {
+            if (error instanceof BizException) {
+              throw new APIError('FORBIDDEN', {
+                message: error.message,
+              })
+            }
+
+            throw error
+          }
+        }),
+      },
     })
   }
   getAuth() {

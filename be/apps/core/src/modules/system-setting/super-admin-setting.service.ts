@@ -125,6 +125,27 @@ export class SuperAdminSettingService {
     return current
   }
 
+  async ensureRegistrationAllowed(): Promise<void> {
+    const settings = await this.getSettings()
+
+    if (!settings.allowRegistration) {
+      throw new BizException(ErrorCode.AUTH_FORBIDDEN, {
+        message: '当前已关闭用户注册，请联系管理员获取访问权限。',
+      })
+    }
+
+    if (settings.maxRegistrableUsers === null) {
+      return
+    }
+
+    const totalUsers = await this.getTotalUserCount()
+    if (totalUsers >= settings.maxRegistrableUsers) {
+      throw new BizException(ErrorCode.AUTH_FORBIDDEN, {
+        message: '用户注册数量已达到上限，请联系管理员。',
+      })
+    }
+  }
+
   private parseSetting<T>(raw: unknown, schema: ZodType<T>, defaultValue: T): T {
     if (raw === null || raw === undefined) {
       return defaultValue

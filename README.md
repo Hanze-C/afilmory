@@ -164,7 +164,7 @@ pnpm build
 ### Notes
 
 - Ensure your S3 bucket already contains photo files
-- If using remote repository, configure `builder.config.json` first
+- If using remote repository, configure `builder.config.ts` first
 
 ## 🔧 Advanced Usage
 

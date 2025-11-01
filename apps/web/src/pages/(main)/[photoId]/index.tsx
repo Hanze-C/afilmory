@@ -75,11 +75,7 @@ export const Component = () => {
             } as React.CSSProperties
           }
           ref={setRef}
-          className={clsx(
-            photoViewer.isOpen
-              ? 'fixed inset-0 z-9999'
-              : 'pointer-events-none fixed inset-0 z-40',
-          )}
+          className={clsx(photoViewer.isOpen ? 'fixed inset-0 z-9999' : 'pointer-events-none fixed inset-0 z-40')}
         >
           <PhotoViewer
             photos={photos}

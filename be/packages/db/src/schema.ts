@@ -1,5 +1,5 @@
 import type { PhotoManifestItem } from '@afilmory/builder'
-import { bigint, boolean, jsonb, pgEnum, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core'
+import { bigint, boolean, index, jsonb, pgEnum, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core'
 
 import { generateId } from './snowflake'
 
@@ -18,7 +18,11 @@ export const tenantStatusEnum = pgEnum('tenant_status', ['active', 'inactive', '
 export const photoSyncStatusEnum = pgEnum('photo_sync_status', ['pending', 'synced', 'conflict'])
 export const CURRENT_PHOTO_MANIFEST_VERSION = 'v7' as const
 
-export type PhotoAssetConflictType = 'missing-in-storage' | 'metadata-mismatch'
+export type PhotoAssetConflictType = 'missing-in-storage' | 'metadata-mismatch' | 'photo-id-conflict'
+/**
+ * For conflict resolution, we use this provider to mark the record as database-only. Mark it as orphan item.
+ */
+export const DATABASE_ONLY_PROVIDER = 'database-only'
 
 export interface PhotoAssetConflictSnapshot {
   size: number | null
@@ -31,6 +35,7 @@ export interface PhotoAssetConflictPayload {
   type: PhotoAssetConflictType
   storageSnapshot?: PhotoAssetConflictSnapshot | null
   recordSnapshot?: PhotoAssetConflictSnapshot | null
+  incomingStorageKey?: string | null
 }
 
 export interface PhotoAssetManifest {
@@ -153,6 +158,23 @@ export const systemSettings = pgTable(
   (t) => [unique('uq_system_setting_key').on(t.key)],
 )
 
+export const reactions = pgTable(
+  'reactions',
+  {
+    id: snowflakeId,
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+    refKey: text('ref_key').notNull(),
+    reaction: text('reaction').notNull(),
+  },
+  (t) => [
+    index('idx_reactions_tenant_ref_key').on(t.tenantId, t.refKey),
+    unique('uq_reactions_tenant_ref_key').on(t.tenantId, t.refKey),
+  ],
+)
+
 export const photoAssets = pgTable(
   'photo_asset',
   {
@@ -190,6 +212,7 @@ export const dbSchema = {
   authAccounts,
   settings,
   systemSettings,
+  reactions,
   photoAssets,
 }
 

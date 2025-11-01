@@ -1,21 +1,15 @@
-import cluster from 'node:cluster'
-import { existsSync, readFileSync } from 'node:fs'
 import os from 'node:os'
-import { inspect } from 'node:util'
 
-import type { BuilderConfig } from '@afilmory/builder'
-import consola from 'consola'
-import { merge } from 'es-toolkit'
+import { defineBuilderConfig, thumbnailStoragePlugin } from '@afilmory/builder'
 
 import { env } from './env.js'
 
-export const defaultBuilderConfig: BuilderConfig = {
+export default defineBuilderConfig(() => ({
   repo: {
     enable: false,
-    url: '',
+    url: process.env.BUILDER_REPO_URL ?? '',
     token: env.GIT_TOKEN,
   },
-
   storage: {
     provider: 's3',
     bucket: env.S3_BUCKET_NAME,
@@ -27,7 +21,6 @@ export const defaultBuilderConfig: BuilderConfig = {
     customDomain: env.S3_CUSTOM_DOMAIN,
     excludeRegex: env.S3_EXCLUDE_REGEX,
     maxFileLimit: 1000,
-    // Network tuning defaults
     keepAlive: true,
     maxSockets: 64,
     connectionTimeoutMs: 5_000,
@@ -39,7 +32,6 @@ export const defaultBuilderConfig: BuilderConfig = {
     maxAttempts: 3,
     downloadConcurrency: 16,
   },
-
   options: {
     defaultConcurrency: 10,
     enableLivePhotoDetection: true,
@@ -47,42 +39,18 @@ export const defaultBuilderConfig: BuilderConfig = {
     showDetailedStats: true,
     digestSuffixLength: 0,
   },
-
   logging: {
     verbose: false,
     level: 'info',
     outputToFile: false,
   },
-
   performance: {
     worker: {
       workerCount: os.cpus().length * 2,
-      timeout: 30000, // 30 seconds
+      timeout: 30_000,
       useClusterMode: true,
       workerConcurrency: 2,
     },
   },
-}
-
-const readUserConfig = () => {
-  const isUserConfigExist = existsSync(
-    new URL('builder.config.json', import.meta.url),
-  )
-  if (!isUserConfigExist) {
-    return defaultBuilderConfig
-  }
-
-  const userConfig = JSON.parse(
-    readFileSync(new URL('builder.config.json', import.meta.url), 'utf-8'),
-  ) as BuilderConfig
-
-  return merge(defaultBuilderConfig, userConfig)
-}
-
-export const builderConfig: BuilderConfig = readUserConfig()
-
-if (cluster.isPrimary && process.env.DEBUG === '1') {
-  const logger = consola.withTag('CONFIG')
-  logger.info('Your builder config:')
-  logger.info(inspect(builderConfig, { depth: null, colors: true }))
-}
+  plugins: [thumbnailStoragePlugin()],
+}))

@@ -4,6 +4,7 @@ import {
   FormHelperText,
   Input,
   Label,
+  LinearDivider,
   ScrollArea,
   Select,
   SelectContent,
@@ -15,12 +16,10 @@ import {
 import { clsxm, Spring } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import { m } from 'motion/react'
+import { nanoid } from 'nanoid'
 import { useEffect, useMemo, useState } from 'react'
 
-import {
-  STORAGE_PROVIDER_FIELD_DEFINITIONS,
-  STORAGE_PROVIDER_TYPE_OPTIONS,
-} from '../constants'
+import { STORAGE_PROVIDER_FIELD_DEFINITIONS, STORAGE_PROVIDER_TYPE_OPTIONS } from '../constants'
 import type { StorageProvider, StorageProviderType } from '../types'
 
 type ProviderEditModalProps = ModalComponentProps & {
@@ -28,17 +27,15 @@ type ProviderEditModalProps = ModalComponentProps & {
   activeProviderId: string | null
   onSave: (provider: StorageProvider) => void
   onSetActive: (id: string) => void
-  onDelete: (id: string) => void
 }
 
-export const ProviderEditModal = ({
+export function ProviderEditModal({
   provider,
-  activeProviderId,
+
   onSave,
-  onSetActive,
-  onDelete,
+
   dismiss,
-}: ProviderEditModalProps) => {
+}: ProviderEditModalProps) {
   const [formData, setFormData] = useState<StorageProvider | null>(provider)
   const [isDirty, setIsDirty] = useState(false)
 
@@ -50,7 +47,6 @@ export const ProviderEditModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerKey])
 
-  const isActive = provider?.id === activeProviderId
   const isNewProvider = !provider?.id
 
   const selectedFields = useMemo(() => {
@@ -88,21 +84,9 @@ export const ProviderEditModal = ({
 
   const handleSave = () => {
     if (!formData) return
+    formData.id = formData.id ?? nanoid()
     onSave(formData)
     dismiss()
-  }
-
-  const handleDelete = () => {
-    if (!formData?.id) return
-    if (window.confirm('确定要删除这个存储提供商吗？此操作无法撤销。')) {
-      onDelete(formData.id)
-      dismiss()
-    }
-  }
-
-  const handleSetActive = () => {
-    if (!formData?.id) return
-    onSetActive(formData.id)
   }
 
   if (!formData) return null
@@ -110,7 +94,7 @@ export const ProviderEditModal = ({
   return (
     <div className="flex h-full max-h-[85vh] flex-col">
       {/* Header */}
-      <div className="shrink-0 space-y-3 px-6 pt-6">
+      <div className="relative shrink-0 space-y-3 px-6 pt-6">
         <div className="flex items-start gap-3">
           <div
             className={clsxm(
@@ -118,10 +102,7 @@ export const ProviderEditModal = ({
               isNewProvider ? 'bg-accent/10 text-accent' : 'bg-fill text-text',
             )}
           >
-            <DynamicIcon
-              name={isNewProvider ? 'plus-circle' : 'edit'}
-              className="size-5"
-            />
+            <DynamicIcon name={isNewProvider ? 'plus-circle' : 'edit'} className="size-5" />
           </div>
           <div className="flex-1 space-y-1">
             <h2 className="text-text text-xl font-semibold">
@@ -134,9 +115,7 @@ export const ProviderEditModal = ({
             </p>
           </div>
         </div>
-
-        {/* Horizontal divider */}
-        <div className="via-text/20 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+        <LinearDivider className="absolute right-0 bottom-0 left-0" />
       </div>
 
       {/* Scrollable Content */}
@@ -150,9 +129,7 @@ export const ProviderEditModal = ({
           >
             {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="text-text text-sm font-semibold">
-                Basic Information
-              </h3>
+              <h3 className="text-text text-sm font-semibold">Basic Information</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="provider-name">Display Name</Label>
@@ -169,9 +146,7 @@ export const ProviderEditModal = ({
                   <Label htmlFor="provider-type">Provider Type</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value) =>
-                      handleTypeChange(value as StorageProviderType)
-                    }
+                    onValueChange={(value) => handleTypeChange(value as StorageProviderType)}
                   >
                     <SelectTrigger id="provider-type">
                       <SelectValue placeholder="Select provider type" />
@@ -191,9 +166,7 @@ export const ProviderEditModal = ({
             {/* Configuration Fields */}
             {selectedFields.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-text text-sm font-semibold">
-                  Connection Configuration
-                </h3>
+                <h3 className="text-text text-sm font-semibold">Connection Configuration</h3>
                 <div className="space-y-4">
                   {selectedFields.map((field) => {
                     const value = formData.config[field.key] || ''
@@ -203,29 +176,17 @@ export const ProviderEditModal = ({
                         className="border-fill-tertiary/40 bg-background/30 space-y-2 rounded border p-4"
                       >
                         <div className="space-y-1">
-                          <Label
-                            htmlFor={`field-${field.key}`}
-                            className="font-semibold"
-                          >
+                          <Label htmlFor={`field-${field.key}`} className="font-semibold">
                             {field.label}
                           </Label>
-                          {field.description && (
-                            <p className="text-text-tertiary text-xs">
-                              {field.description}
-                            </p>
-                          )}
+                          {field.description && <p className="text-text-tertiary text-xs">{field.description}</p>}
                         </div>
 
                         {field.multiline ? (
                           <Textarea
                             id={`field-${field.key}`}
                             value={value}
-                            onInput={(e) =>
-                              handleConfigChange(
-                                field.key,
-                                e.currentTarget.value,
-                              )
-                            }
+                            onInput={(e) => handleConfigChange(field.key, e.currentTarget.value)}
                             placeholder={field.placeholder}
                             rows={3}
                             className="bg-background/60"
@@ -235,21 +196,14 @@ export const ProviderEditModal = ({
                             id={`field-${field.key}`}
                             type={field.sensitive ? 'password' : 'text'}
                             value={value}
-                            onInput={(e) =>
-                              handleConfigChange(
-                                field.key,
-                                e.currentTarget.value,
-                              )
-                            }
+                            onInput={(e) => handleConfigChange(field.key, e.currentTarget.value)}
                             placeholder={field.placeholder}
                             className="bg-background/60"
                             autoComplete="off"
                           />
                         )}
 
-                        {field.helper && (
-                          <FormHelperText>{field.helper}</FormHelperText>
-                        )}
+                        {field.helper && <FormHelperText>{field.helper}</FormHelperText>}
                       </div>
                     )
                   })}
@@ -261,10 +215,8 @@ export const ProviderEditModal = ({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-6 pt-4 pb-6">
-        {/* Horizontal divider */}
-        <div className="via-text/20 mb-4 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-
+      <div className="relative shrink-0 px-6 pt-4 pb-6">
+        <LinearDivider className="absolute top-0 right-0 left-0" />
         {isNewProvider ? (
           // Add mode: Simple cancel + create actions
           <div className="flex items-center justify-end gap-2">
@@ -277,70 +229,18 @@ export const ProviderEditModal = ({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleSave}
-              variant="primary"
-              size="sm"
-            >
-              <DynamicIcon name="plus" className="h-3.5 w-3.5" />
+            <Button type="button" onClick={handleSave} variant="primary" size="sm">
+              <DynamicIcon name="plus" className="mr-2 h-3.5 w-3.5" />
               <span>Create Provider</span>
             </Button>
           </div>
         ) : (
           // Edit mode: Delete + cancel + set active + save
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              type="button"
-              onClick={handleDelete}
-              variant="ghost"
-              size="sm"
-              className="text-red hover:bg-red/10"
-            >
-              <DynamicIcon name="trash-2" className="h-3.5 w-3.5" />
-              <span>Delete</span>
+          <div className="flex items-center justify-end gap-3">
+            <Button type="button" onClick={handleSave} disabled={!isDirty} variant="primary" size="sm">
+              <DynamicIcon name="save" className="mr-2 h-3.5 w-3.5" />
+              <span>Save Changes</span>
             </Button>
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={dismiss}
-                variant="ghost"
-                size="sm"
-                className="text-text-secondary hover:text-text"
-              >
-                Cancel
-              </Button>
-
-              {isActive ? (
-                <span className="bg-accent inline-flex items-center gap-1.5 rounded px-4 py-2 text-xs font-semibold text-white uppercase">
-                  <DynamicIcon name="check-circle" className="h-3.5 w-3.5" />
-                  Active
-                </span>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={handleSetActive}
-                  variant="ghost"
-                  size="sm"
-                  className="border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 border"
-                >
-                  <DynamicIcon name="check" className="h-3.5 w-3.5" />
-                  <span>Set Active</span>
-                </Button>
-              )}
-
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={!isDirty}
-                variant="primary"
-                size="sm"
-              >
-                <DynamicIcon name="save" className="h-3.5 w-3.5" />
-                <span>Save Changes</span>
-              </Button>
-            </div>
           </div>
         )}
       </div>

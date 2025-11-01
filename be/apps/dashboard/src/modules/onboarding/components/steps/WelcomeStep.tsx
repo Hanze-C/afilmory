@@ -8,8 +8,8 @@ export const WelcomeStep: FC = () => (
         What happens next
       </h3>
       <p className="text-text-secondary text-sm leading-relaxed">
-        We will create your first tenant, provision an administrator, and
-        bootstrap super administrator access for emergency management.
+        We will create your first tenant, provision an administrator, and bootstrap super administrator access for
+        emergency management.
       </p>
     </div>
 
@@ -23,24 +23,17 @@ export const WelcomeStep: FC = () => (
       <ul className="text-text-secondary space-y-2 text-sm">
         <li className="flex items-start gap-2">
           <i className="i-mingcute-check-line text-accent mt-0.5 shrink-0" />
-          <span>
-            Ensure the core service can access email providers or authentication
-            callbacks if configured.
-          </span>
+          <span>Ensure the core service can access email providers or authentication callbacks if configured.</span>
         </li>
         <li className="flex items-start gap-2">
           <i className="i-mingcute-check-line text-accent mt-0.5 shrink-0" />
           <span>
-            Keep the terminal open to capture the super administrator
-            credentials printed after initialization.
+            Keep the terminal open to capture the super administrator credentials printed after initialization.
           </span>
         </li>
         <li className="flex items-start gap-2">
           <i className="i-mingcute-check-line text-accent mt-0.5 shrink-0" />
-          <span>
-            Prepare OAuth credentials or continue without them; you can
-            configure integrations later.
-          </span>
+          <span>Prepare OAuth credentials or continue without them; you can configure integrations later.</span>
         </li>
       </ul>
     </div>
@@ -48,9 +41,7 @@ export const WelcomeStep: FC = () => (
     <div className="via-text/20 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
 
     <div>
-      <h3 className="text-text mb-4 text-sm font-semibold">
-        What we will collect
-      </h3>
+      <h3 className="text-text mb-4 text-sm font-semibold">What we will collect</h3>
       <div className="grid gap-6 sm:grid-cols-3">
         <div>
           <p className="text-text text-sm font-semibold">Tenant profile</p>

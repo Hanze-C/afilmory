@@ -97,15 +97,8 @@ This is a pnpm workspace with multiple applications and packages:
 
 **Two-Layer Configuration System**:
 
-1. **Builder Config** (`builder.config.json`) - **Infrastructure/Processing Layer**:
+1. **Builder Config** (`builder.config.ts`) - **Infrastructure/Processing Layer**:
 
-   ```json
-   {
-     "storage": { "provider": "s3", "bucket": "...", "region": "..." },
-     "performance": { "worker": { "workerCount": 8, "useClusterMode": true } },
-     "repo": { "enable": true, "url": "...", "token": "..." }
-   }
-   ```
    - Controls photo processing, storage connections, and build performance
    - Handles remote git repository sync for manifest/thumbnails
    - Configures multi-process/cluster processing for large photo sets
@@ -170,6 +163,7 @@ class PhotoLoader {
 - **Hot Reloading**: SPA changes reflect immediately, SSR provides SEO preview
 - **Manifest Building**: `pnpm run build:manifest` processes photos and updates data
 - **Type Safety**: Shared types between builder, SPA, and SSR ensure consistency
+- **Page Structure**: Keep files under `pages/` as thin routing shells; move reusable UI/logic into `modules/<domain>/**` (e.g., dashboard overview lives in `modules/dashboard/components`).
 
 ### Code Quality Rules
 

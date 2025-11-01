@@ -19,8 +19,7 @@ export const OnboardingFooter: FC<OnboardingFooterProps> = ({
   <footer className="flex flex-col gap-3 p-8 pt-6 sm:flex-row sm:items-center sm:justify-between">
     {!disableBack ? (
       <div className="text-text-tertiary text-xs">
-        Need to revisit an earlier step? Use the sidebar or go back to adjust
-        your inputs.
+        Need to revisit an earlier step? Use the sidebar or go back to adjust your inputs.
       </div>
     ) : (
       <div />

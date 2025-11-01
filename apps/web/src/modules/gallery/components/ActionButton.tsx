@@ -1,9 +1,4 @@
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@afilmory/ui'
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
@@ -37,9 +32,7 @@ export const ActionButton = ({
       ref={ref}
       {...props}
     >
-      <i
-        className={clsxm(icon, 'text-base text-gray-600 dark:text-gray-300')}
-      />
+      <i className={clsxm(icon, 'text-base text-gray-600 dark:text-gray-300')} />
       {badge && (
         <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-white shadow-sm">
           {badge}
@@ -65,10 +58,7 @@ export const DesktopActionButton = ({
   children: React.ReactNode
   contentClassName?: string
   open?: boolean
-  onOpenChange?: (
-    open: boolean,
-    setGallerySetting: (setting: any) => void,
-  ) => void
+  onOpenChange?: (open: boolean, setGallerySetting: (setting: any) => void) => void
 }) => {
   const setGallerySetting = useSetAtom(gallerySettingAtom)
   return (
@@ -79,12 +69,7 @@ export const DesktopActionButton = ({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <ActionButton
-          icon={icon}
-          title={title}
-          badge={badge}
-          onClick={() => {}}
-        />
+        <ActionButton icon={icon} title={title} badge={badge} onClick={() => {}} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className={contentClassName}>
         {children}
@@ -111,12 +96,7 @@ export const MobileActionButton = ({
 }) => {
   return (
     <>
-      <ActionButton
-        icon={icon}
-        title={title}
-        badge={badge}
-        onClick={() => onOpenChange(!open)}
-      />
+      <ActionButton icon={icon} title={title} badge={badge} onClick={() => onOpenChange(!open)} />
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" />
@@ -146,23 +126,14 @@ export const ResponsiveActionButton = ({
   children: React.ReactNode
   contentClassName?: string
   globalOpen?: boolean
-  onGlobalOpenChange?: (
-    open: boolean,
-    setGallerySetting: (setting: any) => void,
-  ) => void
+  onGlobalOpenChange?: (open: boolean, setGallerySetting: (setting: any) => void) => void
 }) => {
   const isMobile = useMobile()
   const [open, setOpen] = useState(false)
 
   if (isMobile) {
     return (
-      <MobileActionButton
-        icon={icon}
-        title={title}
-        badge={badge}
-        open={open}
-        onOpenChange={setOpen}
-      >
+      <MobileActionButton icon={icon} title={title} badge={badge} open={open} onOpenChange={setOpen}>
         {children}
       </MobileActionButton>
     )

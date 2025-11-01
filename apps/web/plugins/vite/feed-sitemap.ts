@@ -12,14 +12,11 @@ export function createFeedSitemapPlugin(siteConfig: SiteConfig): Plugin {
     apply: 'build',
     generateBundle() {
       try {
-        const photosData: PhotoManifestItem[] = JSON.parse(
-          readFileSync(MANIFEST_PATH, 'utf-8'),
-        ).data
+        const photosData: PhotoManifestItem[] = JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8')).data
 
         // Sort photos by date taken (newest first)
         const sortedPhotos = photosData.sort(
-          (a, b) =>
-            new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
+          (a, b) => new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
         )
 
         // Generate RSS feed
@@ -51,15 +48,10 @@ export function createFeedSitemapPlugin(siteConfig: SiteConfig): Plugin {
   }
 }
 
-function generateRSSFeed(
-  photos: PhotoManifestItem[],
-  config: SiteConfig,
-): string {
+function generateRSSFeed(photos: PhotoManifestItem[], config: SiteConfig): string {
   const now = new Date().toUTCString()
   const latestPhoto = photos[0]
-  const lastBuildDate = latestPhoto
-    ? new Date(latestPhoto.dateTaken).toUTCString()
-    : now
+  const lastBuildDate = latestPhoto ? new Date(latestPhoto.dateTaken).toUTCString() : now
 
   const rssItems = photos
     .map((photo) => {
@@ -127,19 +119,14 @@ ${rssItems}
 </rss>`
 }
 
-function generateExifTags(
-  exif: PickedExif | null | undefined,
-  photo: PhotoManifestItem,
-): string {
+function generateExifTags(exif: PickedExif | null | undefined, photo: PhotoManifestItem): string {
   if (!exif) {
     return ''
   }
 
   const tags: string[] = []
 
-  const aperture = isFiniteNumber(exif.FNumber)
-    ? `f/${formatDecimal(exif.FNumber)}`
-    : null
+  const aperture = isFiniteNumber(exif.FNumber) ? `f/${formatDecimal(exif.FNumber)}` : null
   if (aperture) {
     tags.push(`      <exif:aperture>${aperture}</exif:aperture>`)
   }
@@ -156,9 +143,7 @@ function generateExifTags(
 
   const exposureCompensation = getExposureCompensation(exif)
   if (exposureCompensation) {
-    tags.push(
-      `      <exif:exposureCompensation>${exposureCompensation}</exif:exposureCompensation>`,
-    )
+    tags.push(`      <exif:exposureCompensation>${exposureCompensation}</exif:exposureCompensation>`)
   }
 
   tags.push(
@@ -172,9 +157,7 @@ function generateExifTags(
   }
 
   if (exif.Make && exif.Model) {
-    tags.push(
-      `      <exif:camera><![CDATA[${exif.Make} ${exif.Model}]]></exif:camera>`,
-    )
+    tags.push(`      <exif:camera><![CDATA[${exif.Make} ${exif.Model}]]></exif:camera>`)
   }
 
   if (exif.Orientation !== undefined && exif.Orientation !== null) {
@@ -192,16 +175,12 @@ function generateExifTags(
 
   const focalLength35mm = formatFocalLength(exif.FocalLengthIn35mmFormat)
   if (focalLength35mm) {
-    tags.push(
-      `      <exif:focalLength35mm>${focalLength35mm}</exif:focalLength35mm>`,
-    )
+    tags.push(`      <exif:focalLength35mm>${focalLength35mm}</exif:focalLength35mm>`)
   }
 
   if (isFiniteNumber(exif.MaxApertureValue)) {
     const maxAperture = Math.pow(2, exif.MaxApertureValue / 2)
-    tags.push(
-      `      <exif:maxAperture>f/${formatDecimal(maxAperture)}</exif:maxAperture>`,
-    )
+    tags.push(`      <exif:maxAperture>f/${formatDecimal(maxAperture)}</exif:maxAperture>`)
   }
 
   const latitude = normalizeCoordinate(exif.GPSLatitude, exif.GPSLatitudeRef)
@@ -218,9 +197,7 @@ function generateExifTags(
       exif.GPSAltitudeRef && isBelowSeaLevel(exif.GPSAltitudeRef)
         ? -Math.abs(exif.GPSAltitude)
         : Math.abs(exif.GPSAltitude)
-    tags.push(
-      `      <exif:altitude>${formatDecimal(altitude, 2)}m</exif:altitude>`,
-    )
+    tags.push(`      <exif:altitude>${formatDecimal(altitude, 2)}m</exif:altitude>`)
   }
 
   const whiteBalance = normalizeStringValue(exif.WhiteBalance)
@@ -245,9 +222,7 @@ function generateExifTags(
 
   const exposureProgram = normalizeStringValue(exif.ExposureProgram)
   if (exposureProgram) {
-    tags.push(
-      `      <exif:exposureProgram>${exposureProgram}</exif:exposureProgram>`,
-    )
+    tags.push(`      <exif:exposureProgram>${exposureProgram}</exif:exposureProgram>`)
   }
 
   const sceneMode = normalizeStringValue(exif.SceneCaptureType)
@@ -257,25 +232,18 @@ function generateExifTags(
 
   const brightness = toNumber(exif.BrightnessValue)
   if (brightness !== null) {
-    tags.push(
-      `      <exif:brightness>${formatDecimal(brightness, 2)} EV</exif:brightness>`,
-    )
+    tags.push(`      <exif:brightness>${formatDecimal(brightness, 2)} EV</exif:brightness>`)
   }
 
   const lightValue = toNumber(exif.LightValue)
   if (lightValue !== null) {
-    tags.push(
-      `      <exif:lightValue>${formatDecimal(lightValue, 2)}</exif:lightValue>`,
-    )
+    tags.push(`      <exif:lightValue>${formatDecimal(lightValue, 2)}</exif:lightValue>`)
   }
 
   return tags.join('\n')
 }
 
-function formatDateTaken(
-  exif: PickedExif,
-  photo: PhotoManifestItem,
-): string | null {
+function formatDateTaken(exif: PickedExif, photo: PhotoManifestItem): string | null {
   const rawDate = exif.DateTimeOriginal
   if (rawDate) {
     try {
@@ -297,9 +265,7 @@ function formatShutterSpeed(exif: PickedExif): string | null {
     if (!Number.isFinite(raw)) {
       return null
     }
-    return raw >= 1
-      ? `${stripTrailingZeros(raw)}s`
-      : `1/${Math.round(1 / raw)}s`
+    return raw >= 1 ? `${stripTrailingZeros(raw)}s` : `1/${Math.round(1 / raw)}s`
   }
 
   const value = raw.toString().trim()
@@ -319,17 +285,13 @@ function getISOValue(exif: PickedExif): number | null {
     return Math.round(exif.ISO)
   }
 
-  const isoFromExif = (exif as unknown as Record<string, unknown>)
-    .ISOSpeedRatings
+  const isoFromExif = (exif as unknown as Record<string, unknown>).ISOSpeedRatings
   const iso = toNumber(isoFromExif)
   return iso !== null ? Math.round(iso) : null
 }
 
 function getExposureCompensation(exif: PickedExif): string | null {
-  const value = toNumber(
-    exif.ExposureCompensation ??
-      (exif as unknown as Record<string, unknown>).ExposureBiasValue,
-  )
+  const value = toNumber(exif.ExposureCompensation ?? (exif as unknown as Record<string, unknown>).ExposureBiasValue)
   if (value === null) {
     return null
   }
@@ -411,18 +373,13 @@ function convertDMSToDD(
   return applyGPSRef(value, ref)
 }
 
-function applyGPSRef(
-  value: number,
-  ref: PickedExif['GPSLatitudeRef'] | PickedExif['GPSLongitudeRef'],
-): number {
+function applyGPSRef(value: number, ref: PickedExif['GPSLatitudeRef'] | PickedExif['GPSLongitudeRef']): number {
   if (!ref) {
     return roundCoordinate(value)
   }
 
   const negativeTokens = ['S', 'W', 'South', 'West']
-  const shouldNegate = negativeTokens.some((token) =>
-    ref.toString().toLowerCase().includes(token.toLowerCase()),
-  )
+  const shouldNegate = negativeTokens.some((token) => ref.toString().toLowerCase().includes(token.toLowerCase()))
 
   const signed = shouldNegate ? -Math.abs(value) : Math.abs(value)
   return roundCoordinate(signed)
@@ -514,10 +471,7 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-function generateSitemap(
-  photos: PhotoManifestItem[],
-  config: SiteConfig,
-): string {
+function generateSitemap(photos: PhotoManifestItem[], config: SiteConfig): string {
   const now = new Date().toISOString()
 
   // Main page
@@ -531,9 +485,7 @@ function generateSitemap(
   // Photo pages
   const photoUrls = photos
     .map((photo) => {
-      const lastmod = new Date(
-        photo.lastModified || photo.dateTaken,
-      ).toISOString()
+      const lastmod = new Date(photo.lastModified || photo.dateTaken).toISOString()
       return `  <url>
     <loc>${config.url}/${photo.id}</loc>
     <lastmod>${lastmod}</lastmod>

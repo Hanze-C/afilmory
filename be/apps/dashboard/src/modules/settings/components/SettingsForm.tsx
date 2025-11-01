@@ -1,33 +1,17 @@
 import { Button } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-} from 'react'
+import { startTransition, useCallback, useEffect, useId, useMemo, useState } from 'react'
 
-import {
-  MainPageLayout,
-  useMainPageLayout,
-} from '~/components/layouts/MainPageLayout'
+import { LinearBorderPanel } from '~/components/common/GlassPanel'
+import { MainPageLayout, useMainPageLayout } from '~/components/layouts/MainPageLayout'
 
 import type { SchemaFormRendererProps } from '../../schema-form/SchemaFormRenderer'
-import {
-  GlassPanel,
-  SchemaFormRenderer,
-} from '../../schema-form/SchemaFormRenderer'
+import { SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
 import type { SchemaFormValue } from '../../schema-form/types'
 import { collectFieldNodes } from '../../schema-form/utils'
 import { useSettingUiSchemaQuery, useUpdateSettingsMutation } from '../hooks'
-import type {
-  SettingEntryInput,
-  SettingUiSchemaResponse,
-  SettingValueState,
-} from '../types'
+import type { SettingEntryInput, SettingUiSchemaResponse, SettingValueState } from '../types'
 
 const providerGroupVisibility: Record<string, string> = {
   'builder-storage-s3': 's3',
@@ -36,10 +20,10 @@ const providerGroupVisibility: Record<string, string> = {
   'builder-storage-eagle': 'eagle',
 }
 
-const buildInitialState = (
+function buildInitialState(
   schema: SettingUiSchemaResponse['schema'],
   values: SettingUiSchemaResponse['values'],
-): SettingValueState<string> => {
+): SettingValueState<string> {
   const state: SettingValueState<string> = {} as SettingValueState<string>
   const fields = collectFieldNodes(schema.sections)
 
@@ -51,16 +35,13 @@ const buildInitialState = (
   return state
 }
 
-export const SettingsForm = () => {
+export function SettingsForm() {
   const { data, isLoading, isError, error } = useSettingUiSchemaQuery()
   const updateSettingsMutation = useUpdateSettingsMutation()
   const { setHeaderActionState } = useMainPageLayout()
   const formId = useId()
-  const [formState, setFormState] = useState<SettingValueState<string>>(
-    {} as SettingValueState<string>,
-  )
-  const [initialState, setInitialState] =
-    useState<SettingValueState<string> | null>(null)
+  const [formState, setFormState] = useState<SettingValueState<string>>({} as SettingValueState<string>)
+  const [initialState, setInitialState] = useState<SettingValueState<string> | null>(null)
 
   useEffect(() => {
     if (!data) {
@@ -76,9 +57,7 @@ export const SettingsForm = () => {
 
   const providerValue = formState['builder.storage.provider'] ?? ''
 
-  const shouldRenderNode = useCallback<
-    NonNullable<SchemaFormRendererProps<string>['shouldRenderNode']>
-  >(
+  const shouldRenderNode = useCallback<NonNullable<SchemaFormRendererProps<string>['shouldRenderNode']>>(
     (node) => {
       if (node.type !== 'group') {
         return true
@@ -113,8 +92,7 @@ export const SettingsForm = () => {
   const handleChange = useCallback((key: string, value: SchemaFormValue) => {
     setFormState((prev) => ({
       ...prev,
-      [key]:
-        typeof value === 'string' ? value : value == null ? '' : String(value),
+      [key]: typeof value === 'string' ? value : value == null ? '' : String(value),
     }))
   }, [])
 
@@ -140,22 +118,13 @@ export const SettingsForm = () => {
         disabled: isLoading || isError || changedEntries.length === 0,
         loading: updateSettingsMutation.isPending,
       }
-      return prev.disabled === nextState.disabled &&
-        prev.loading === nextState.loading
-        ? prev
-        : nextState
+      return prev.disabled === nextState.disabled && prev.loading === nextState.loading ? prev : nextState
     })
 
     return () => {
       setHeaderActionState({ disabled: false, loading: false })
     }
-  }, [
-    isLoading,
-    isError,
-    changedEntries.length,
-    setHeaderActionState,
-    updateSettingsMutation.isPending,
-  ])
+  }, [isLoading, isError, changedEntries.length, setHeaderActionState, updateSettingsMutation.isPending])
 
   const headerActionPortal = (
     <MainPageLayout.Actions>
@@ -177,21 +146,16 @@ export const SettingsForm = () => {
     return (
       <>
         {headerActionPortal}
-        <GlassPanel className="p-6">
+        <LinearBorderPanel className="p-6">
           <div className="space-y-4">
             <div className="bg-fill/40 h-5 w-1/2 animate-pulse rounded-lg" />
             <div className="space-y-3">
-              {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4'].map(
-                (key) => (
-                  <div
-                    key={key}
-                    className="bg-fill/30 h-20 animate-pulse rounded-lg"
-                  />
-                ),
-              )}
+              {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4'].map((key) => (
+                <div key={key} className="bg-fill/30 h-20 animate-pulse rounded-lg" />
+              ))}
             </div>
           </div>
-        </GlassPanel>
+        </LinearBorderPanel>
       </>
     )
   }
@@ -200,14 +164,12 @@ export const SettingsForm = () => {
     return (
       <>
         {headerActionPortal}
-        <GlassPanel className="p-6">
+        <LinearBorderPanel className="p-6">
           <div className="text-red flex items-center gap-3 text-sm">
             <i className="i-mingcute-close-circle-fill text-lg" />
-            <span>
-              {`无法加载设置：${error instanceof Error ? error.message : '未知错误'}`}
-            </span>
+            <span>{`无法加载设置：${error instanceof Error ? error.message : '未知错误'}`}</span>
           </div>
-        </GlassPanel>
+        </LinearBorderPanel>
       </>
     )
   }

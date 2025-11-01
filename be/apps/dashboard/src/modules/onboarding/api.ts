@@ -30,13 +30,15 @@ export type OnboardingInitResponse = {
   superAdminUserId: string
 }
 
-export const getOnboardingStatus = async () =>
-  await coreApi<OnboardingStatusResponse>('/onboarding/status', {
+export async function getOnboardingStatus() {
+  return await coreApi<OnboardingStatusResponse>('/onboarding/status', {
     method: 'GET',
   })
+}
 
-export const postOnboardingInit = async (payload: OnboardingInitPayload) =>
-  await coreApi<OnboardingInitResponse>('/onboarding/init', {
+export async function postOnboardingInit(payload: OnboardingInitPayload) {
+  return await coreApi<OnboardingInitResponse>('/onboarding/init', {
     method: 'POST',
     body: payload,
   })
+}

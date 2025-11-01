@@ -10,28 +10,18 @@ type OnboardingSidebarProps = {
   onStepSelect: (index: number) => void
 }
 
-export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({
-  currentStepIndex,
-  canNavigateTo,
-  onStepSelect,
-}) => (
+export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({ currentStepIndex, canNavigateTo, onStepSelect }) => (
   <aside className="hidden min-h-full flex-col gap-6 p-6 lg:flex">
     <div>
       <p className="text-accent text-xs font-medium">Setup Journey</p>
-      <h2 className="text-text mt-2 text-base font-semibold">
-        Launch your photo platform
-      </h2>
+      <h2 className="text-text mt-2 text-base font-semibold">Launch your photo platform</h2>
     </div>
 
     {/* Timeline container */}
     <div className="relative flex-1">
       {ONBOARDING_STEPS.map((step, index) => {
         const status: 'done' | 'current' | 'pending' =
-          index < currentStepIndex
-            ? 'done'
-            : index === currentStepIndex
-              ? 'current'
-              : 'pending'
+          index < currentStepIndex ? 'done' : index === currentStepIndex ? 'current' : 'pending'
 
         const isLast = index === ONBOARDING_STEPS.length - 1
         const isClickable = canNavigateTo(index)
@@ -42,9 +32,7 @@ export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({
             {!isLast && (
               <div className="absolute top-7 bottom-0 left-[13px] w-[1.5px]">
                 {/* Completed segment */}
-                {status === 'done' && (
-                  <div className="bg-accent h-full w-full" />
-                )}
+                {status === 'done' && <div className="bg-accent h-full w-full" />}
                 {/* Current segment - gradient transition */}
                 {status === 'current' && (
                   <div
@@ -56,9 +44,7 @@ export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({
                   />
                 )}
                 {/* Pending segment */}
-                {status === 'pending' && (
-                  <div className="bg-text/15 h-full w-full" />
-                )}
+                {status === 'pending' && <div className="bg-text/15 h-full w-full" />}
               </div>
             )}
 
@@ -83,21 +69,14 @@ export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({
                   className={cx(
                     'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all duration-200',
                     // Done state
-                    status === 'done' &&
-                      'bg-accent text-white ring-4 ring-accent/10',
+                    status === 'done' && 'bg-accent text-white ring-4 ring-accent/10',
                     // Current state with subtle glow
-                    status === 'current' &&
-                      'bg-accent text-white ring-4 ring-accent/25',
+                    status === 'current' && 'bg-accent text-white ring-4 ring-accent/25',
                     // Pending state
-                    status === 'pending' &&
-                      'border-[1.5px] border-text/20 bg-background text-text-tertiary',
+                    status === 'pending' && 'border-[1.5px] border-text/20 bg-background text-text-tertiary',
                   )}
                 >
-                  {status === 'done' ? (
-                    <i className="i-mingcute-check-fill text-sm" />
-                  ) : (
-                    <span>{index + 1}</span>
-                  )}
+                  {status === 'done' ? <i className="i-mingcute-check-fill text-sm" /> : <span>{index + 1}</span>}
                 </div>
               </div>
 
@@ -109,9 +88,7 @@ export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({
                     status === 'done' && 'text-text',
                     status === 'current' && 'text-accent',
                     status === 'pending' && 'text-text-tertiary',
-                    isClickable &&
-                      status !== 'current' &&
-                      'group-hover:text-text',
+                    isClickable && status !== 'current' && 'group-hover:text-text',
                   )}
                 >
                   {step.title}
@@ -140,9 +117,7 @@ export const OnboardingSidebar: FC<OnboardingSidebarProps> = ({
 
       <div className="text-text-tertiary mb-2 flex items-center justify-between text-xs">
         <span>Overall Progress</span>
-        <span className="text-accent font-medium">
-          {stepProgress(currentStepIndex)}%
-        </span>
+        <span className="text-accent font-medium">{stepProgress(currentStepIndex)}%</span>
       </div>
       <div className="bg-fill-tertiary relative h-1.5 overflow-hidden rounded-full">
         <div

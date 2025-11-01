@@ -40,7 +40,7 @@ export class AuthGuard implements CanActivate {
 
     let tenantContext = getTenantContext()
     if (!tenantContext) {
-      tenantContext = await this.tenantService.resolve({ fallbackToDefault: true })
+      tenantContext = await this.tenantService.resolve({ fallbackToPrimary: true })
       HttpContext.assign({ tenant: tenantContext })
     }
 

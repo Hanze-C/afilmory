@@ -21,7 +21,7 @@ export interface TenantResolutionInput {
   tenantId?: string | null
   slug?: string | null
   domain?: string | null
-  fallbackToDefault?: boolean
+  fallbackToPrimary?: boolean
 }
 
 export interface TenantCacheEntry {

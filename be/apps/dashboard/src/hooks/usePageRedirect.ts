@@ -5,10 +5,7 @@ import { useLocation, useNavigate } from 'react-router'
 
 import { useSetAuthUser } from '~/atoms/auth'
 import type { SessionResponse } from '~/modules/auth/api/session'
-import {
-  AUTH_SESSION_QUERY_KEY,
-  fetchSession,
-} from '~/modules/auth/api/session'
+import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
 import { signOut } from '~/modules/auth/auth-client'
 import { getOnboardingStatus } from '~/modules/onboarding/api'
 
@@ -24,7 +21,7 @@ const AUTH_FAILURE_STATUSES = new Set([401, 403, 419])
 
 const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH])
 
-export const usePageRedirect = () => {
+export function usePageRedirect() {
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()

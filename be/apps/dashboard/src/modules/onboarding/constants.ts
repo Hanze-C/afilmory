@@ -42,8 +42,7 @@ export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
       {
         key: 'auth.google.clientSecret',
         label: 'Google Client Secret',
-        description:
-          'Keep this secret safe. Required together with the client ID to enable Google sign-in.',
+        description: 'Keep this secret safe. Required together with the client ID to enable Google sign-in.',
         placeholder: 'GOCSPX-xxxxxxxxxxxxxxxxxx',
         sensitive: true,
       },
@@ -71,23 +70,20 @@ export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
       {
         key: 'ai.openai.apiKey',
         label: 'OpenAI API Key',
-        description:
-          'Used for generating captions, titles, and AI assistance across the platform.',
+        description: 'Used for generating captions, titles, and AI assistance across the platform.',
         placeholder: 'sk-proj-xxxxxxxxxxxxxxxx',
         sensitive: true,
       },
       {
         key: 'ai.openai.baseUrl',
         label: 'OpenAI Base URL',
-        description:
-          'Override the default api.openai.com endpoint if you proxy requests.',
+        description: 'Override the default api.openai.com endpoint if you proxy requests.',
         placeholder: 'https://api.openai.com/v1',
       },
       {
         key: 'ai.embedding.model',
         label: 'Embedding Model',
-        description:
-          'Model identifier to compute embeddings for search and semantic features.',
+        description: 'Model identifier to compute embeddings for search and semantic features.',
         placeholder: 'text-embedding-3-large',
       },
     ],
@@ -95,8 +91,7 @@ export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
   {
     id: 'map',
     title: 'Map Services',
-    description:
-      'Connect Gaode (Amap) maps to unlock geolocation previews for your photos.',
+    description: 'Connect Gaode (Amap) maps to unlock geolocation previews for your photos.',
     fields: [
       {
         key: 'services.amap.apiKey',
@@ -115,8 +110,7 @@ export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
       {
         key: 'http.cors.allowedOrigins',
         label: 'Allowed Origins',
-        description:
-          'Comma separated list of origins. Example: https://dashboard.afilmory.com, https://afilmory.app',
+        description: 'Comma separated list of origins. Example: https://dashboard.afilmory.com, https://afilmory.app',
         placeholder: 'https://dashboard.afilmory.com, https://afilmory.app',
         helper: 'Leave empty to keep the default wildcard policy during setup.',
         multiline: true,
@@ -126,13 +120,7 @@ export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
 ]
 
 export const ONBOARDING_TOTAL_STEPS = 5 as const
-export const ONBOARDING_STEP_ORDER = [
-  'welcome',
-  'tenant',
-  'admin',
-  'settings',
-  'review',
-] as const
+export const ONBOARDING_STEP_ORDER = ['welcome', 'tenant', 'admin', 'settings', 'review'] as const
 
 export type OnboardingStepId = (typeof ONBOARDING_STEP_ORDER)[number]
 

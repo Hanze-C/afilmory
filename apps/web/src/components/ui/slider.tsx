@@ -101,10 +101,7 @@ export const Slider = ({
       {/* 滑块轨道 */}
       <div
         ref={sliderRef}
-        className={clsxm(
-          'relative h-6 cursor-pointer',
-          disabled && 'cursor-not-allowed opacity-50',
-        )}
+        className={clsxm('relative h-6 cursor-pointer', disabled && 'cursor-not-allowed opacity-50')}
         onPointerDown={handlePointerDown}
       >
         {/* 背景轨道 */}
@@ -144,38 +141,23 @@ export const Slider = ({
         {/* 数值刻度 */}
         <div className="text-text-secondary absolute top-full mt-1 flex w-full text-xs">
           <div className="w-[15%] text-left">
-            <span
-              className={clsxm(
-                'transition-colors',
-                value === 'auto' && 'font-medium text-green-500',
-              )}
-            >
+            <span className={clsxm('transition-colors', value === 'auto' && 'font-medium text-green-500')}>
               {finalAutoLabel}
             </span>
           </div>
           <div className="flex w-[85%] justify-between">
-            {Array.from({ length: max - min + 1 }, (_, i) => min + i).map(
-              (num) => (
-                <span
-                  key={num}
-                  className={clsxm(
-                    'transition-colors',
-                    value === num && 'font-medium text-accent',
-                  )}
-                >
-                  {num}
-                </span>
-              ),
-            )}
+            {Array.from({ length: max - min + 1 }, (_, i) => min + i).map((num) => (
+              <span key={num} className={clsxm('transition-colors', value === num && 'font-medium text-accent')}>
+                {num}
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
       {/* 当前值显示 */}
       <div className="mt-8 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-        {value === 'auto'
-          ? finalAutoLabel
-          : t('slider.columns', { count: value } as any)}
+        {value === 'auto' ? finalAutoLabel : t('slider.columns', { count: value } as any)}
       </div>
     </div>
   )

@@ -49,18 +49,9 @@ export const LazyImage = ({
   const shouldLoadImage = inView && !hasError
 
   return (
-    <div
-      ref={ref}
-      className={clsxm('relative overflow-hidden', className)}
-      style={style}
-    >
+    <div ref={ref} className={clsxm('relative overflow-hidden', className)} style={style}>
       {/* Thumbhash placeholder */}
-      {thumbHash && !isLoaded && (
-        <Thumbhash
-          thumbHash={thumbHash}
-          className="absolute inset-0 scale-110 blur-sm"
-        />
-      )}
+      {thumbHash && !isLoaded && <Thumbhash thumbHash={thumbHash} className="absolute inset-0 scale-110 blur-sm" />}
 
       {/* Actual image */}
       {shouldLoadImage && (
@@ -80,9 +71,7 @@ export const LazyImage = ({
       {/* Error state */}
       {hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-800">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Failed to load image
-          </span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Failed to load image</span>
         </div>
       )}
     </div>

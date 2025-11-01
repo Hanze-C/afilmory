@@ -12,6 +12,13 @@ import { TenantService } from '../tenant/tenant.service'
 import { AES_ALGORITHM, AUTH_TAG_LENGTH, DEFAULT_SETTING_METADATA, IV_LENGTH } from './setting.constant'
 import type { SettingKeyType, SettingRecord, SettingUiSchemaResponse, SettingValueMap } from './setting.type'
 import { SETTING_UI_SCHEMA, SETTING_UI_SCHEMA_KEYS } from './setting.ui-schema'
+import { STORAGE_PROVIDERS_SETTING_KEY } from './storage-provider.constants'
+import type { BuilderStorageProvider } from './storage-provider.utils'
+import {
+  parseStorageProviders,
+  prepareStorageProvidersForPersist,
+  sanitizeStorageProviders,
+} from './storage-provider.utils'
 
 export type SettingOption = {
   tenantId?: string
@@ -55,8 +62,13 @@ export class SettingService {
     if (!record) {
       return null
     }
-    const value = record.isSensitive ? this.decrypt(record.value) : record.value
-    return value
+    const rawValue = record.isSensitive ? this.decrypt(record.value) : record.value
+
+    if (key === STORAGE_PROVIDERS_SETTING_KEY) {
+      return sanitizeStorageProviders(rawValue)
+    }
+
+    return rawValue
   }
 
   async getMany<K extends readonly SettingKeyType[]>(
@@ -85,9 +97,39 @@ export class SettingService {
         acc[key] = null
         return acc
       }
-      acc[key] = record.isSensitive ? this.decrypt(record.value) : record.value
+      const rawValue = record.isSensitive ? this.decrypt(record.value) : record.value
+
+      if (key === STORAGE_PROVIDERS_SETTING_KEY) {
+        acc[key] = sanitizeStorageProviders(rawValue)
+        return acc
+      }
+
+      acc[key] = rawValue
       return acc
     }, {})
+  }
+
+  async getStorageProvidersRaw(options?: SettingOption): Promise<BuilderStorageProvider[]> {
+    const tenantId = await this.resolveTenantId(options)
+    const record = await this.findSettingRecord(STORAGE_PROVIDERS_SETTING_KEY, tenantId)
+    if (!record) {
+      return []
+    }
+
+    const rawValue = record.isSensitive ? this.decrypt(record.value) : record.value
+    return parseStorageProviders(rawValue)
+  }
+
+  async getActiveStorageProvider(options: SettingOption): Promise<BuilderStorageProvider | null> {
+    const providers = await this.getStorageProvidersRaw(options)
+    const activeIdRaw = await this.get('builder.storage.activeProvider', options)
+    const activeId = typeof activeIdRaw === 'string' && activeIdRaw.trim().length > 0 ? activeIdRaw.trim() : null
+
+    if (!activeId) {
+      return null
+    }
+
+    return providers.find((provider) => provider.id === activeId) ?? null
   }
 
   async set<K extends SettingKeyType>(key: K, value: SettingValueMap[K], options: SetSettingOptions): Promise<void>
@@ -96,8 +138,19 @@ export class SettingService {
     const tenantId = await this.resolveTenantId(options)
     const existing = await this.findSettingRecord(key, tenantId)
     const defaultMetadata = isSettingKey(key) ? DEFAULT_SETTING_METADATA[key] : undefined
-    const isSensitive = options.isSensitive ?? defaultMetadata?.isSensitive ?? existing?.isSensitive ?? false
-    const payload = isSensitive ? this.encrypt(value) : value
+    let isSensitive = options.isSensitive ?? defaultMetadata?.isSensitive ?? existing?.isSensitive ?? false
+    let persistedValue = value
+    let maskedValue = value
+
+    if (key === STORAGE_PROVIDERS_SETTING_KEY) {
+      const existingRaw = existing ? (existing.isSensitive ? this.decrypt(existing.value) : existing.value) : null
+      const result = prepareStorageProvidersForPersist(value, existingRaw)
+      persistedValue = result.stored
+      maskedValue = result.masked
+      isSensitive = true
+    }
+
+    const payload = isSensitive ? this.encrypt(persistedValue) : persistedValue
     const db = this.dbAccessor.get()
 
     const insertPayload: typeof settings.$inferInsert = {
@@ -121,7 +174,7 @@ export class SettingService {
         set: updatePayload,
       })
 
-    await this.eventEmitter.emit('setting.updated', { tenantId, key, value })
+    await this.eventEmitter.emit('setting.updated', { tenantId, key, value: maskedValue })
   }
 
   async setMany(entries: readonly SettingEntryInput[]): Promise<void> {
@@ -196,7 +249,7 @@ export class SettingService {
       return tenant.tenant.id
     }
 
-    const fallback = await this.tenantService.resolve({ fallbackToDefault: true })
+    const fallback = await this.tenantService.resolve({ fallbackToPrimary: true })
     return fallback.tenant.id
   }
 

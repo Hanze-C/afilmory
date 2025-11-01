@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useLogin } from '~/modules/auth/hooks/useLogin'
 import { LinearBorderContainer } from '~/modules/onboarding/components/LinearBorderContainer'
 
-export const Component = () => {
+export function Component() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const { login, isLoading, error, clearError } = useLogin()
@@ -35,10 +35,7 @@ export const Component = () => {
     <div className="relative flex min-h-dvh flex-1 flex-col">
       <div className="bg-background flex flex-1 items-center justify-center">
         <LinearBorderContainer>
-          <form
-            onSubmit={handleSubmit}
-            className="bg-background-tertiary relative w-[600px]"
-          >
+          <form onSubmit={handleSubmit} className="bg-background-tertiary relative w-[600px]">
             <div className="p-12">
               <h1 className="text-text mb-10 text-3xl font-bold">Login</h1>
 

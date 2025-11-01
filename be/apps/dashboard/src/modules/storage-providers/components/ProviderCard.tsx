@@ -1,6 +1,6 @@
-import { clsxm, Spring } from '@afilmory/utils'
+import { Button } from '@afilmory/ui'
+import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
-import { m } from 'motion/react'
 import type { FC } from 'react'
 
 import type { StorageProvider } from '../types'
@@ -41,17 +41,12 @@ const providerTypeConfig = {
 type ProviderCardProps = {
   provider: StorageProvider
   isActive: boolean
-  onClick: () => void
+  onEdit: () => void
+  onToggleActive: () => void
 }
 
-export const ProviderCard: FC<ProviderCardProps> = ({
-  provider,
-  isActive,
-  onClick,
-}) => {
-  const config =
-    providerTypeConfig[provider.type as keyof typeof providerTypeConfig] ||
-    providerTypeConfig.s3
+export const ProviderCard: FC<ProviderCardProps> = ({ provider, isActive, onEdit, onToggleActive }) => {
+  const config = providerTypeConfig[provider.type as keyof typeof providerTypeConfig] || providerTypeConfig.s3
 
   // Extract preview info based on provider type
   const getPreviewInfo = () => {
@@ -66,9 +61,6 @@ export const ProviderCard: FC<ProviderCardProps> = ({
       case 'local': {
         return cfg.path || 'Not configured'
       }
-      case 'minio': {
-        return cfg.endpoint || 'Not configured'
-      }
       case 'eagle': {
         return cfg.libraryPath || 'Not configured'
       }
@@ -79,16 +71,9 @@ export const ProviderCard: FC<ProviderCardProps> = ({
   }
 
   return (
-    <m.button
-      type="button"
-      onClick={onClick}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={Spring.presets.smooth}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+    <div
       className={clsxm(
-        'group relative flex flex-col gap-3 overflow-hidden bg-background-tertiary p-5 text-left transition-all duration-200',
+        'group relative flex size-full flex-col gap-3 overflow-hidden bg-background-tertiary p-5 text-left transition-all duration-200',
         'hover:shadow-lg',
       )}
     >
@@ -110,37 +95,48 @@ export const ProviderCard: FC<ProviderCardProps> = ({
 
       {/* Provider Icon */}
       <div className="relative">
-        <div
-          className={clsxm(
-            'inline-flex h-12 w-12 items-center justify-center rounded-lg',
-            config.bgColor,
-          )}
-        >
-          <DynamicIcon
-            name={config.icon as any}
-            className={clsxm('h-6 w-6', config.color)}
-          />
+        <div className={clsxm('inline-flex h-12 w-12 items-center justify-center rounded-lg', config.bgColor)}>
+          <DynamicIcon name={config.icon as any} className={clsxm('h-6 w-6', config.color)} />
         </div>
       </div>
 
       {/* Provider Info */}
       <div className="relative flex-1 space-y-1">
-        <h3 className="text-text text-sm font-semibold">
-          {provider.name || '未命名存储'}
-        </h3>
+        <h3 className="text-text text-sm font-semibold">{provider.name || '未命名存储'}</h3>
         <p className="text-text-tertiary text-xs font-medium">{config.label}</p>
-        <p className="text-text-tertiary/70 truncate text-xs">
-          {getPreviewInfo()}
-        </p>
+        <p className="text-text-tertiary/70 truncate text-xs">{getPreviewInfo()}</p>
       </div>
 
-      {/* Hover Edit Indicator */}
-      <div className="bg-accent/0 group-hover:bg-accent/5 absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-200 group-hover:opacity-100">
-        <span className="bg-accent flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium text-white shadow-lg">
-          <DynamicIcon name="pencil" className="h-3.5 w-3.5" />
-          Edit
-        </span>
+      {/* Actions - bottom right */}
+      <div className="absolute right-3 bottom-3 flex items-center">
+        {isActive ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-text-secondary hover:text-text"
+            onClick={onToggleActive}
+          >
+            <DynamicIcon name="x-circle" className="mr-1 h-3.5 w-3.5" />
+            <span>Make Inactive</span>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 border"
+            onClick={onToggleActive}
+          >
+            <DynamicIcon name="check" className="h-3.5 w-3.5" />
+            <span>Make Active</span>
+          </Button>
+        )}
+        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+          <DynamicIcon name="pencil" className="mr-1 h-3.5 w-3.5" />
+          <span>Edit</span>
+        </Button>
       </div>
-    </m.button>
+    </div>
   )
 }

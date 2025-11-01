@@ -13,9 +13,7 @@ import { thumbHashToDataURL } from 'thumbhash'
 import { url } from '../../../../../../../config.json'
 
 const decompressUint8Array = (compressed: string) => {
-  return Uint8Array.from(
-    compressed.match(/.{1,2}/g)!.map((byte) => Number.parseInt(byte, 16)),
-  )
+  return Uint8Array.from(compressed.match(/.{1,2}/g)!.map((byte) => Number.parseInt(byte, 16)))
 }
 
 interface PhotoItemProps {
@@ -25,9 +23,7 @@ interface PhotoItemProps {
 
 export function PhotoItem({ photo, className }: PhotoItemProps) {
   // 生成 thumbhash 预览
-  const thumbHashDataURL = photo.thumbHash
-    ? thumbHashToDataURL(decompressUint8Array(photo.thumbHash))
-    : null
+  const thumbHashDataURL = photo.thumbHash ? thumbHashToDataURL(decompressUint8Array(photo.thumbHash)) : null
 
   const ratio = photo.aspectRatio
 
@@ -79,19 +75,12 @@ export function PhotoItem({ photo, className }: PhotoItemProps) {
       onClick={() => {
         window.open(`${url}/${photo.id}`, '_blank')
       }}
-      className={cn(
-        'group relative block w-full cursor-pointer overflow-hidden text-left',
-        className,
-      )}
+      className={cn('group relative block w-full cursor-pointer overflow-hidden text-left', className)}
       style={{
         paddingTop: `${100 / ratio}%`,
       }}
     >
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 z-[1] flex items-start justify-center',
-        )}
-      >
+      <div className={cn('pointer-events-none absolute inset-0 z-[1] flex items-start justify-center')}>
         <div className="bg-material-medium mt-4 flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 opacity-0 backdrop-blur-[70px] transition-opacity duration-300 group-hover:opacity-100">
           <i className="i-mingcute-external-link-line size-4 text-white" />
           <span className="text-sm text-white/80">Open in AFilmory</span>
@@ -99,12 +88,7 @@ export function PhotoItem({ photo, className }: PhotoItemProps) {
       </div>
 
       <div className="absolute inset-0">
-        <img
-          src={thumbHashDataURL}
-          alt={photo.title}
-          className="absolute inset-0 size-full"
-          loading="lazy"
-        />
+        <img src={thumbHashDataURL} alt={photo.title} className="absolute inset-0 size-full" loading="lazy" />
         <img
           src={photo.thumbnailUrl}
           alt={photo.title}
@@ -125,9 +109,7 @@ export function PhotoItem({ photo, className }: PhotoItemProps) {
           <div className="mb-3 [&_*]:duration-300">
             <div className="items-center justify-between @[600px]:flex">
               <div>
-                <h3 className="mb-2 truncate text-sm font-medium opacity-0 group-hover:opacity-100">
-                  {photo.title}
-                </h3>
+                <h3 className="mb-2 truncate text-sm font-medium opacity-0 group-hover:opacity-100">{photo.title}</h3>
                 {photo.description && (
                   <p className="mb-2 line-clamp-2 text-sm text-white/80 opacity-0 group-hover:opacity-100">
                     {photo.description}
@@ -166,9 +148,7 @@ export function PhotoItem({ photo, className }: PhotoItemProps) {
             {exifData.focalLength35mm && (
               <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
                 <StreamlineImageAccessoriesLensesPhotosCameraShutterPicturePhotographyPicturesPhotoLens className="text-white/70" />
-                <span className="text-white/90">
-                  {exifData.focalLength35mm}mm
-                </span>
+                <span className="text-white/90">{exifData.focalLength35mm}mm</span>
               </div>
             )}
 
