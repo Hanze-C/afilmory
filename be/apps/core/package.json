@@ -7,6 +7,7 @@
   "main": "index.ts",
   "scripts": {
     "build": "vite build",
+    "build:web": "AFILMORY_EMBED_MANIFEST=false pnpm --filter @afilmory/web build",
     "db:generate": "pnpm -C ../../packages/db db:generate",
     "db:migrate": "pnpm -C ../../packages/db db:migrate",
     "db:studio": "pnpm -C ../../packages/db db:studio",

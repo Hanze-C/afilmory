@@ -19,7 +19,7 @@ RUN pnpm fetch --filter '@afilmory/web...'
 COPY . .
 
 RUN pnpm install --filter core... --filter '@afilmory/web...' --frozen-lockfile
-RUN pnpm --filter '@afilmory/web' build
+RUN pnpm --filter core build:web
 RUN pnpm --filter core build
 RUN mkdir -p be/apps/core/dist/static/web && cp -r apps/web/dist/. be/apps/core/dist/static/web/
 
