@@ -5,25 +5,42 @@ import { defineConfig } from 'eslint-config-hyoban'
 import checkI18nJson from './plugins/eslint/eslint-check-i18n-json.js'
 import recursiveSort from './plugins/eslint/eslint-recursive-sort.js'
 
-export default defineConfig(
-  {
-    formatting: false,
-    lessOpinionated: true,
-    preferESM: false,
-    react: true,
-    tailwindCSS: true,
-  },
+// In flat config, some large generated folders slipped through. To be extra safe,
+// put ignores in a top-level config object first, then append the rest.
+const rootIgnores = globalIgnores([
+  'apps/ssr/src/index.html.ts',
+  'apps/ssr/public/**',
+  'apps/web/public/**',
+  'packages/docs/public/**',
+])
 
-  {
-    languageOptions: {
-      parserOptions: {
-        emitDecoratorMetadata: true,
-        experimentalDecorators: true,
-      },
+const hyobanConfig = await defineConfig(
+    {
+      formatting: false,
+      lessOpinionated: true,
+      preferESM: false,
+      react: true,
+      tailwindCSS: true,
     },
 
-    settings: {},
-    rules: {
+    {
+      languageOptions: {
+        parserOptions: {
+          emitDecoratorMetadata: true,
+          experimentalDecorators: true,
+        },
+      },
+
+      // TailwindCSS v4 usually has no config file. Silence the plugin's
+      // config resolution warning by explicitly disabling auto-resolution.
+      settings: {
+        tailwindcss: {
+          // ESLint plugin will not attempt to resolve tailwind config
+          // which avoids repeated "Cannot resolve default tailwindcss config path" warnings.
+          config: false,
+        },
+      },
+      rules: {
       '@typescript-eslint/triple-slash-reference': 0,
       'unicorn/prefer-math-trunc': 'off',
       'unicorn/no-static-only-class': 'off',
@@ -63,28 +80,48 @@ export default defineConfig(
             'You can use `useLocaltion` or `getReadonlyRoute` to get the route info.',
         },
       ],
+      },
     },
-  },
 
-  // @ts-expect-error
-  {
-    files: ['locales/**/*.json'],
-    plugins: {
-      'recursive-sort': recursiveSort,
-      'check-i18n-json': checkI18nJson,
+    // @ts-expect-error
+    {
+      files: ['locales/**/*.json'],
+      plugins: {
+        'recursive-sort': recursiveSort,
+        'check-i18n-json': checkI18nJson,
+      },
+      rules: {
+        'recursive-sort/recursive-sort': 'error',
+        'check-i18n-json/valid-i18n-keys': 'error',
+        'check-i18n-json/no-extra-keys': 'error',
+      },
     },
-    rules: {
-      'recursive-sort/recursive-sort': 'error',
-      'check-i18n-json/valid-i18n-keys': 'error',
-      'check-i18n-json/no-extra-keys': 'error',
+    {
+      files: ['**/*.tsx'],
+      rules: {
+        '@stylistic/jsx-self-closing-comp': 'error',
+      },
     },
-  },
-  {
-    files: ['**/*.tsx'],
-    rules: {
-      '@stylistic/jsx-self-closing-comp': 'error',
-    },
-  },
 
-  globalIgnores(['apps/ssr/src/index.html.ts']),
+    // Backend framework isn't React — disable React-specific hooks rule there.
+    {
+      files: ['be/packages/framework/**/*.{ts,tsx}'],
+      rules: {
+        'react-hooks/rules-of-hooks': 'off',
+      },
+    },
+
+    // Redundant but harmless: keep a local ignore in case this block is used standalone somewhere
+    globalIgnores([
+      'apps/ssr/src/index.html.ts',
+      'apps/ssr/public/**',
+      'apps/web/public/**',
+      'packages/docs/public/**',
+    ]),
 )
+
+export default [
+  // Ensure ignores are applied globally before any other configs
+  rootIgnores,
+  ...hyobanConfig,
+]

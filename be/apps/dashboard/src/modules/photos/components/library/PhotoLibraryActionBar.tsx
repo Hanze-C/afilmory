@@ -1,8 +1,10 @@
-import { Button } from '@afilmory/ui'
+import { Button, Modal } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import type { ChangeEventHandler } from 'react'
 import { useRef } from 'react'
+
+import { PhotoUploadConfirmModal } from './PhotoUploadConfirmModal'
 
 type PhotoLibraryActionBarProps = {
   selectionCount: number
@@ -30,7 +32,16 @@ export function PhotoLibraryActionBar({
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     const { files } = event.currentTarget
     if (!files || files.length === 0) return
-    void onUpload(files)
+
+    const selectedFiles = Array.from(files)
+
+    Modal.present(PhotoUploadConfirmModal, {
+      files: selectedFiles,
+      onConfirm: (confirmedFiles) => {
+        void onUpload(confirmedFiles)
+      },
+    })
+
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -38,7 +49,14 @@ export function PhotoLibraryActionBar({
 
   return (
     <div className="flex items-center gap-3">
-      <input ref={fileInputRef} type="file" className="hidden" multiple accept="image/*" onChange={handleFileChange} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept="image/*,.heic,.HEIC,.heif,.HEIF,.hif,.HIF,.mov,.MOV"
+        onChange={handleFileChange}
+      />
       <Button
         type="button"
         variant="primary"
@@ -48,7 +66,7 @@ export function PhotoLibraryActionBar({
         className="flex items-center gap-1"
       >
         <DynamicIcon name="upload" className="h-3.5 w-3.5" />
-        上传图片
+        上传文件
       </Button>
 
       {selectionCount > 0 ? (
