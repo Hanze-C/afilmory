@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 interface SliderProps {
   value: number | 'auto'
   onChange: (value: number | 'auto') => void
+  // Called when user finishes interaction (pointer up). Optional and non-breaking.
+  onPointUp?: (e: PointerEvent) => void
   min: number
   max: number
   step?: number
@@ -16,6 +18,7 @@ interface SliderProps {
 export const Slider = ({
   value,
   onChange,
+  onPointUp,
   min,
   max,
   step = 1,
@@ -76,8 +79,11 @@ export const Slider = ({
         updateValue(e.clientX)
       }
 
-      const handlePointerUp = () => {
+      const handlePointerUp = (e: PointerEvent) => {
         setIsDragging(false)
+        if (onPointUp) {
+          onPointUp(e)
+        }
         document.removeEventListener('pointermove', handlePointerMove)
         document.removeEventListener('pointerup', handlePointerUp)
       }
@@ -85,7 +91,7 @@ export const Slider = ({
       document.addEventListener('pointermove', handlePointerMove)
       document.addEventListener('pointerup', handlePointerUp)
     },
-    [disabled, value, onChange, getValueFromPosition],
+    [disabled, getValueFromPosition, value, onChange, onPointUp],
   )
 
   const position = getPositionFromValue(value)
