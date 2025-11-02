@@ -12,4 +12,9 @@ export class DashboardController {
   async getOverview() {
     return await this.dashboardService.getOverview()
   }
+
+  @Get('analytics')
+  async getAnalytics() {
+    return await this.dashboardService.getAnalytics()
+  }
 }

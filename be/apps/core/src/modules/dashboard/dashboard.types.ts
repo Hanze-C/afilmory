@@ -32,3 +32,39 @@ export interface DashboardOverview {
   stats: DashboardStats
   recentActivity: DashboardRecentActivityItem[]
 }
+
+export interface DashboardUploadTrendPoint {
+  month: string
+  uploads: number
+}
+
+export interface DashboardStorageProviderUsage {
+  provider: string
+  bytes: number
+  photoCount: number
+}
+
+export interface DashboardStorageUsage {
+  totalBytes: number
+  totalPhotos: number
+  currentMonthBytes: number
+  previousMonthBytes: number
+  providers: DashboardStorageProviderUsage[]
+}
+
+export interface DashboardTagStat {
+  tag: string
+  count: number
+}
+
+export interface DashboardDeviceStat {
+  device: string
+  count: number
+}
+
+export interface DashboardAnalytics {
+  uploadTrends: DashboardUploadTrendPoint[]
+  storageUsage: DashboardStorageUsage
+  popularTags: DashboardTagStat[]
+  topDevices: DashboardDeviceStat[]
+}

@@ -97,7 +97,7 @@ export function Component() {
               </Button>
 
               {/* Additional Links */}
-              <div className="mt-6 flex items-center justify-between text-sm">
+              {/* <div className="mt-6 flex items-center justify-between text-sm">
                 <Button
                   type="button"
                   variant="ghost"
@@ -116,7 +116,7 @@ export function Component() {
                 >
                   Create account
                 </Button>
-              </div>
+              </div> */}
             </div>
           </form>
         </LinearBorderContainer>
