@@ -26,8 +26,8 @@ export const ColumnsPanel = () => {
   }
   // 根据设备类型提供不同的列数范围
   const columnRange = isMobile
-    ? { min: 2, max: 4 } // 移动端适合的列数范围
-    : { min: 2, max: 8 } // 桌面端适合的列数范围
+    ? { min: 3, max: 5 } // 移动端适合的列数范围
+    : { min: 3, max: 8 } // 桌面端适合的列数范围
 
   return (
     <div className="w-full lg:w-80">
