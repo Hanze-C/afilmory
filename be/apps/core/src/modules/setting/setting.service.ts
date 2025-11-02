@@ -125,11 +125,22 @@ export class SettingService {
     const activeIdRaw = await this.get('builder.storage.activeProvider', options)
     const activeId = typeof activeIdRaw === 'string' && activeIdRaw.trim().length > 0 ? activeIdRaw.trim() : null
 
-    if (!activeId) {
-      return null
+    // If activeId exists and matches, return it
+    if (activeId) {
+      const found = providers.find((provider) => provider.id === activeId) ?? null
+      if (found) return found
     }
 
-    return providers.find((provider) => provider.id === activeId) ?? null
+    // Fallback: if there is exactly one provider, automatically set it active and persist the setting
+    if (providers.length === 1) {
+      const only = providers[0]
+      // Persist synchronously; ignore schema sensitivity (it's non-sensitive)
+      const setOptions = options ? { ...options, isSensitive: false } : { isSensitive: false }
+      await this.set('builder.storage.activeProvider', only.id, setOptions)
+      return only
+    }
+
+    return null
   }
 
   async set<K extends SettingKeyType>(key: K, value: SettingValueMap[K], options: SetSettingOptions): Promise<void>

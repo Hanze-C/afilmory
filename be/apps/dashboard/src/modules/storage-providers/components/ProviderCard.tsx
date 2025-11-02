@@ -58,12 +58,7 @@ export const ProviderCard: FC<ProviderCardProps> = ({ provider, isActive, onEdit
       case 'github': {
         return cfg.repo || 'Not configured'
       }
-      case 'local': {
-        return cfg.path || 'Not configured'
-      }
-      case 'eagle': {
-        return cfg.libraryPath || 'Not configured'
-      }
+
       default: {
         return 'Storage provider'
       }

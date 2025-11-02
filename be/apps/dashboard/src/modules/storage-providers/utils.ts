@@ -26,7 +26,7 @@ function coerceProvider(input: unknown): StorageProvider | null {
   }
 
   const record = input as Record<string, unknown>
-  const type = isStorageProviderType(record.type) ? record.type : 'local'
+  const type = isStorageProviderType(record.type) ? record.type : 's3'
   const configInput =
     record.config && typeof record.config === 'object' && !Array.isArray(record.config)
       ? (record.config as Record<string, unknown>)

@@ -70,8 +70,8 @@ export function StorageProvidersManager() {
       }
       // New provider
       const result = [...prev, updatedProvider]
-      // Set as active if it's the first provider
-      if (!activeProviderId) {
+      // Set as active ONLY if it's the very first provider
+      if (prev.length === 0) {
         setActiveProviderId(updatedProvider.id)
       }
       return result
