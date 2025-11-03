@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { useSetAuthUser } from '~/atoms/auth'
 import type { SessionResponse } from '~/modules/auth/api/session'
 import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
-import { signOut } from '~/modules/auth/auth-client'
+import { signOutBySource } from '~/modules/auth/auth-client'
 import { getOnboardingStatus } from '~/modules/onboarding/api'
 
 const ONBOARDING_STATUS_QUERY_KEY = ['onboarding', 'status'] as const
@@ -54,7 +54,7 @@ export function usePageRedirect() {
 
   const logout = useCallback(async () => {
     try {
-      await signOut()
+      await signOutBySource(sessionQuery.data?.source)
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
@@ -63,7 +63,7 @@ export function usePageRedirect() {
       setAuthUser(null)
       navigate(DEFAULT_LOGIN_PATH, { replace: true })
     }
-  }, [navigate, queryClient, setAuthUser])
+  }, [navigate, queryClient, sessionQuery.data?.source, setAuthUser])
 
   // Sync auth user to atom
   useEffect(() => {

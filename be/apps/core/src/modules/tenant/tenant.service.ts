@@ -116,6 +116,10 @@ export class TenantService {
     return aggregate
   }
 
+  async deleteTenant(id: string): Promise<void> {
+    await this.repository.deleteById(id)
+  }
+
   private ensureTenantIsActive(tenant: TenantAggregate['tenant']): void {
     if (tenant.status === 'suspended') {
       throw new BizException(ErrorCode.TENANT_SUSPENDED)

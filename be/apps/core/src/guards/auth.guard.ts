@@ -1,4 +1,4 @@
-import { authUsers } from '@afilmory/db'
+import { authUsers, tenantAuthUsers } from '@afilmory/db'
 import type { CanActivate, ExecutionContext } from '@afilmory/framework'
 import { HttpContext } from '@afilmory/framework'
 import type { Session } from 'better-auth'
@@ -11,13 +11,16 @@ import { injectable } from 'tsyringe'
 
 import type { AuthSession } from '../modules/auth/auth.provider'
 import { AuthProvider } from '../modules/auth/auth.provider'
+import type { TenantAuthSession } from '../modules/tenant-auth/tenant-auth.provider'
+import { TenantAuthProvider } from '../modules/tenant-auth/tenant-auth.provider'
 import { getAllowedRoleMask, roleNameToBit } from './roles.decorator'
 
 declare module '@afilmory/framework' {
   interface HttpContextValues {
     auth?: {
-      user?: AuthSession['user']
+      user?: AuthSession['user'] | TenantAuthSession['user']
       session?: Session
+      source?: 'global' | 'tenant'
     }
   }
 }
@@ -26,6 +29,7 @@ declare module '@afilmory/framework' {
 export class AuthGuard implements CanActivate {
   constructor(
     private readonly authProvider: AuthProvider,
+    private readonly tenantAuthProvider: TenantAuthProvider,
     private readonly dbAccessor: DbAccessor,
     private readonly tenantService: TenantService,
   ) {}
@@ -33,10 +37,6 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const store = context.getContext()
     const { hono } = store
-
-    const auth = await this.authProvider.getAuth()
-
-    const session = await auth.api.getSession({ headers: hono.req.raw.headers })
 
     let tenantContext = getTenantContext()
     if (!tenantContext) {
@@ -48,28 +48,54 @@ export class AuthGuard implements CanActivate {
       throw new BizException(ErrorCode.TENANT_NOT_FOUND)
     }
 
-    if (session) {
+    const { headers } = hono.req.raw
+
+    const globalAuth = this.authProvider.getAuth()
+    let sessionSource: 'global' | 'tenant' | null = null
+    let authSession: AuthSession | TenantAuthSession | null = await globalAuth.api.getSession({ headers })
+
+    if (authSession) {
+      sessionSource = 'global'
+    } else {
+      const tenantAuth = await this.tenantAuthProvider.getAuth(tenantContext.tenant.id)
+      authSession = await tenantAuth.api.getSession({ headers })
+      if (authSession) {
+        sessionSource = 'tenant'
+      }
+    }
+
+    if (authSession) {
       HttpContext.assign({
         auth: {
-          user: session.user,
-          session: session.session,
+          user: authSession.user,
+          session: authSession.session,
+          source: sessionSource ?? undefined,
         },
       })
-
-      const roleName = session.user.role as 'user' | 'admin' | 'superadmin' | undefined
-      const isSuperAdmin = roleName === 'superadmin'
-      let sessionTenantId = session.user?.tenantId
+      const userRoleValue = (authSession.user as { role?: string }).role
+      const roleName = userRoleValue as 'user' | 'admin' | 'superadmin' | 'guest' | undefined
+      const isGlobalSession = sessionSource === 'global'
+      const isSuperAdmin = isGlobalSession && roleName === 'superadmin'
+      let sessionTenantId = (authSession.user as { tenantId?: string | null }).tenantId ?? null
 
       if (!isSuperAdmin) {
         if (!sessionTenantId) {
           const db = this.dbAccessor.get()
-          const [record] = await db
-            .select({ tenantId: authUsers.tenantId })
-            .from(authUsers)
-            .where(eq(authUsers.id, session.user.id))
-            .limit(1)
-
-          sessionTenantId = record?.tenantId ?? ''
+          if (sessionSource === 'tenant') {
+            const [record] = await db
+              .select({ tenantId: tenantAuthUsers.tenantId })
+              .from(tenantAuthUsers)
+              .where(eq(tenantAuthUsers.id, authSession.user.id))
+              .limit(1)
+            sessionTenantId = record?.tenantId ?? ''
+          } else {
+            const [record] = await db
+              .select({ tenantId: authUsers.tenantId })
+              .from(authUsers)
+              .where(eq(authUsers.id, authSession.user.id))
+              .limit(1)
+            sessionTenantId = record?.tenantId ?? ''
+          }
         }
 
         if (!sessionTenantId) {
@@ -94,11 +120,16 @@ export class AuthGuard implements CanActivate {
     const handler = context.getHandler()
     const requiredMask = getAllowedRoleMask(handler)
     if (requiredMask > 0) {
-      if (!session) {
+      if (!authSession) {
         throw new BizException(ErrorCode.AUTH_UNAUTHORIZED)
       }
 
-      const userRoleName = session.user.role as 'user' | 'admin' | 'superadmin' | undefined
+      const userRoleName = (authSession.user as { role?: string }).role as
+        | 'user'
+        | 'admin'
+        | 'superadmin'
+        | 'guest'
+        | undefined
       const userMask = userRoleName ? roleNameToBit(userRoleName) : 0
       const hasRole = (requiredMask & userMask) !== 0
       if (!hasRole) {

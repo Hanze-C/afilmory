@@ -110,4 +110,9 @@ export class TenantRepository {
       return aggregate
     })
   }
+
+  async deleteById(id: string): Promise<void> {
+    const db = this.dbAccessor.get()
+    await db.delete(tenants).where(eq(tenants.id, id))
+  }
 }
