@@ -19,6 +19,7 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
     manifest = JSON.parse(manifestContent) as AfilmoryManifest
   } catch {
     logger.fs.error('🔍 未找到 manifest 文件/解析失败，创建新的 manifest 文件...')
+    await saveManifest([])
     return {
       version: CURRENT_MANIFEST_VERSION,
       data: [],
@@ -87,7 +88,7 @@ export async function handleDeletedPhotos(items: PhotoManifestItem[]): Promise<n
   logger.main.info('🔍 检查已删除的图片...')
   if (items.length === 0) {
     // Clear all thumbnails
-    await fs.rm(path.join(workdir, 'public/thumbnails'), { recursive: true })
+    await fs.rm(path.join(workdir, 'public/thumbnails'), { recursive: true, force: true })
     logger.main.info('🔍 没有图片，清空缩略图...')
     return 0
   }
