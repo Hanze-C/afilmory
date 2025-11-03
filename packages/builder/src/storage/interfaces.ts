@@ -164,6 +164,16 @@ export type EagleConfig = {
   baseUrl?: string
   include?: EagleRule[]
   exclude?: EagleRule[]
+  /**
+   * When enabled, also add Eagle folder names as tags for each image.
+   * Defaults to false.
+   */
+  folderAsTag?: boolean
+  /**
+   * Omit these tag names only from the manifest display (metadata) output.
+   * Exact match, case-sensitive. Does not affect which images are included/excluded.
+   */
+  omitTagNamesInMetadata?: string[]
 }
 
 export type StorageConfig = S3Config | GitHubConfig | EagleConfig | LocalConfig
