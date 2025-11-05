@@ -48,12 +48,11 @@ const ReactCompilerConfig = {
   /* ... */
 }
 
+const BUILD_FOR_SERVER_SERVE = process.env.BUILD_FOR_SERVER_SERVE === '1'
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => {
-  const isBuild = command === 'build'
-
+export default defineConfig(() => {
   return {
-    base: isBuild ? '/static/web/' : '/',
+    base: BUILD_FOR_SERVER_SERVE ? '/static/web/' : '/',
     plugins: [
       codeInspectorPlugin({
         bundler: 'vite',
