@@ -13,13 +13,14 @@ const ONBOARDING_STATUS_QUERY_KEY = ['onboarding', 'status'] as const
 
 const DEFAULT_LOGIN_PATH = '/login'
 const DEFAULT_ONBOARDING_PATH = '/onboarding'
+const DEFAULT_REGISTER_PATH = '/register'
 const DEFAULT_AUTHENTICATED_PATH = '/'
 const SUPERADMIN_ROOT_PATH = '/superadmin'
 const SUPERADMIN_DEFAULT_PATH = '/superadmin/settings'
 
 const AUTH_FAILURE_STATUSES = new Set([401, 403, 419])
 
-const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH])
+const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH, DEFAULT_REGISTER_PATH])
 
 export function usePageRedirect() {
   const location = useLocation()
