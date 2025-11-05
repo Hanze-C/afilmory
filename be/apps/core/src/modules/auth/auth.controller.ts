@@ -19,7 +19,6 @@ type TenantSignUpRequest = {
   tenant?: {
     name?: string
     slug?: string | null
-    domain?: string | null
   }
 }
 
@@ -104,7 +103,6 @@ export class AuthController {
         tenant: {
           name: body.tenant.name ?? '',
           slug: body.tenant.slug ?? null,
-          domain: body.tenant.domain ?? null,
         },
       },
       headers,

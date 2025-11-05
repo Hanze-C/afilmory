@@ -43,10 +43,19 @@ export class SuperAdminSettingService {
       SUPER_ADMIN_SETTING_DEFINITIONS.localProviderEnabled.defaultValue,
     )
 
+    const baseDomainRaw = this.parseSetting(
+      rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.key],
+      SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.schema,
+      SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.defaultValue,
+    )
+
+    const baseDomain = baseDomainRaw.trim().toLowerCase()
+
     return {
       allowRegistration,
       maxRegistrableUsers,
       localProviderEnabled,
+      baseDomain,
     }
   }
 
@@ -108,6 +117,23 @@ export class SuperAdminSettingService {
           value: normalized,
         })
         current.maxRegistrableUsers = normalized
+      }
+    }
+
+    if (patch.baseDomain !== undefined) {
+      const sanitized = patch.baseDomain === null ? null : String(patch.baseDomain).trim().toLowerCase()
+      if (!sanitized) {
+        updates.push({
+          key: SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.key,
+          value: SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.defaultValue,
+        })
+        current.baseDomain = SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.defaultValue
+      } else if (sanitized !== current.baseDomain) {
+        updates.push({
+          key: SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.key,
+          value: sanitized,
+        })
+        current.baseDomain = sanitized
       }
     }
 

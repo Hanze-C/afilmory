@@ -1,3 +1,4 @@
+import { DEFAULT_BASE_DOMAIN } from '@afilmory/utils'
 import { z } from 'zod'
 
 export const SUPER_ADMIN_SETTING_DEFINITIONS = {
@@ -15,6 +16,17 @@ export const SUPER_ADMIN_SETTING_DEFINITIONS = {
     key: 'system.auth.localProvider.enabled',
     schema: z.boolean(),
     defaultValue: true,
+  },
+  baseDomain: {
+    key: 'system.domain.base',
+    schema: z
+      .string()
+      .trim()
+      .min(1)
+      .regex(/^[a-z0-9.-]+$/i, {
+        message: '域名只能包含字母、数字、连字符和点',
+      }),
+    defaultValue: DEFAULT_BASE_DOMAIN,
   },
 } as const
 

@@ -21,7 +21,6 @@ type RegisterTenantInput = {
   tenant: {
     name: string
     slug?: string | null
-    domain?: string | null
   }
 }
 
@@ -86,8 +85,6 @@ export class AuthRegistrationService {
       const tenantAggregate = await this.tenantService.createTenant({
         name: tenantName,
         slug,
-        domain: input.tenant.domain?.trim() || null,
-        isPrimary: false,
       })
       tenantId = tenantAggregate.tenant.id
 

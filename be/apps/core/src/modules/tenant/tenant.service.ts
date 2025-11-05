@@ -1,33 +1,30 @@
-import { createLogger } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { injectable } from 'tsyringe'
 
 import { TenantRepository } from './tenant.repository'
-import type { TenantAggregate, TenantContext, TenantDomainMatch, TenantResolutionInput } from './tenant.types'
+import type { TenantAggregate, TenantContext, TenantResolutionInput } from './tenant.types'
 
 @injectable()
 export class TenantService {
-  private readonly logger = createLogger('TenantService')
-
   constructor(private readonly repository: TenantRepository) {}
 
-  async createTenant(payload: {
-    name: string
-    slug: string
-    domain?: string | null
-    isPrimary?: boolean
-  }): Promise<TenantAggregate> {
+  async createTenant(payload: { name: string; slug: string }): Promise<TenantAggregate> {
     return await this.repository.createTenant(payload)
   }
   async resolve(input: TenantResolutionInput, noThrow: boolean): Promise<TenantContext | null>
   async resolve(input: TenantResolutionInput): Promise<TenantContext>
   async resolve(input: TenantResolutionInput, noThrow = false): Promise<TenantContext | null> {
-    const fallbackToPrimary = input.fallbackToPrimary ?? true
     const tenantId = this.normalizeString(input.tenantId)
     const slug = this.normalizeSlug(input.slug)
-    const domain = this.normalizeDomain(input.domain)
 
-    let aggregate: TenantAggregate | TenantDomainMatch | null = null
+    let aggregate: TenantAggregate | null = null
+
+    if (!tenantId && !slug) {
+      if (noThrow) {
+        return null
+      }
+      throw new BizException(ErrorCode.TENANT_NOT_FOUND)
+    }
 
     if (tenantId) {
       aggregate = await this.repository.findById(tenantId)
@@ -35,44 +32,6 @@ export class TenantService {
 
     if (!aggregate && slug) {
       aggregate = await this.repository.findBySlug(slug)
-    }
-
-    if (!aggregate && domain) {
-      aggregate = await this.repository.findByDomain(domain)
-    }
-
-    if (!aggregate && fallbackToPrimary) {
-      aggregate = await this.repository.findPrimary()
-
-      if (aggregate) {
-        this.logger.warn('Tenant resolution fallback to primary tenant', {
-          fallback: 'primary',
-          requested: {
-            tenantId: tenantId ?? undefined,
-            slug: slug ?? undefined,
-            domain: domain ?? undefined,
-          },
-          resolvedTenantId: aggregate.tenant.id,
-          resolvedTenantSlug: aggregate.tenant.slug,
-        })
-      }
-    }
-
-    if (!aggregate && fallbackToPrimary) {
-      aggregate = await this.repository.findPrimary()
-
-      if (aggregate) {
-        this.logger.warn('Tenant resolution fallback to default tenant slug', {
-          fallback: 'defaultSlug',
-          requested: {
-            tenantId: tenantId ?? undefined,
-            slug: slug ?? undefined,
-            domain: domain ?? undefined,
-          },
-
-          resolvedTenantId: aggregate.tenant.id,
-        })
-      }
     }
 
     if (!aggregate) {
@@ -84,12 +43,8 @@ export class TenantService {
 
     this.ensureTenantIsActive(aggregate.tenant)
 
-    const matchedDomain = this.extractMatchedDomain(aggregate)
-
     return {
       tenant: aggregate.tenant,
-      domains: aggregate.domains,
-      matchedDomain,
     }
   }
 
@@ -141,23 +96,5 @@ export class TenantService {
   private normalizeSlug(value?: string | null): string | null {
     const normalized = this.normalizeString(value)
     return normalized ? normalized.toLowerCase() : null
-  }
-
-  private normalizeDomain(value?: string | null): string | null {
-    const normalized = this.normalizeString(value)
-    if (!normalized) {
-      return null
-    }
-
-    return normalized.replace(/:\d+$/, '').toLowerCase()
-  }
-
-  private extractMatchedDomain(
-    aggregate: TenantAggregate | TenantDomainMatch,
-  ): TenantDomainMatch['matchedDomain'] | null {
-    if ('matchedDomain' in aggregate && aggregate.matchedDomain) {
-      return aggregate.matchedDomain
-    }
-    return null
   }
 }

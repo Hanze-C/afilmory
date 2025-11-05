@@ -37,6 +37,18 @@ export const SUPER_ADMIN_SETTING_UI_SCHEMA: UiSchema<SuperAdminSettingField> = {
         },
         {
           type: 'field',
+          id: 'platform-base-domain',
+          title: '平台基础域名',
+          description: '用于解析子域名租户，如 example.{{value}}。更新后请确保证书和 DNS 已正确配置。',
+          helperText: '留空使用默认域名 afilmory.art。',
+          key: 'baseDomain',
+          component: {
+            type: 'text',
+            placeholder: 'afilmory.art',
+          },
+        },
+        {
+          type: 'field',
           id: 'registration-max-users',
           title: '全局可注册用户上限',
           description: '达到上限后将阻止新的注册，留空表示不限制用户数量。',

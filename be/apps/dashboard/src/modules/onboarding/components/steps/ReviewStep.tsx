@@ -39,10 +39,6 @@ export const ReviewStep: FC<ReviewStepProps> = ({
           <dt className="text-text font-semibold">Slug</dt>
           <dd className="mt-1">{tenant.slug || '—'}</dd>
         </div>
-        <div>
-          <dt className="text-text font-semibold">Domain</dt>
-          <dd className="mt-1">{tenant.domain || 'Not configured'}</dd>
-        </div>
       </dl>
     </div>
 

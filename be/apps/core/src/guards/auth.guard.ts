@@ -5,7 +5,6 @@ import type { Session } from 'better-auth'
 import { applyTenantIsolationContext, DbAccessor } from 'core/database/database.provider'
 import { BizException, ErrorCode } from 'core/errors'
 import { getTenantContext } from 'core/modules/tenant/tenant.context'
-import { TenantService } from 'core/modules/tenant/tenant.service'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
@@ -31,22 +30,13 @@ export class AuthGuard implements CanActivate {
     private readonly authProvider: AuthProvider,
     private readonly tenantAuthProvider: TenantAuthProvider,
     private readonly dbAccessor: DbAccessor,
-    private readonly tenantService: TenantService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const store = context.getContext()
     const { hono } = store
 
-    let tenantContext = getTenantContext()
-    if (!tenantContext) {
-      tenantContext = await this.tenantService.resolve({ fallbackToPrimary: true })
-      HttpContext.assign({ tenant: tenantContext })
-    }
-
-    if (!tenantContext) {
-      throw new BizException(ErrorCode.TENANT_NOT_FOUND)
-    }
+    const tenantContext = getTenantContext()
 
     const { headers } = hono.req.raw
 
@@ -56,7 +46,7 @@ export class AuthGuard implements CanActivate {
 
     if (authSession) {
       sessionSource = 'global'
-    } else {
+    } else if (tenantContext) {
       const tenantAuth = await this.tenantAuthProvider.getAuth(tenantContext.tenant.id)
       authSession = await tenantAuth.api.getSession({ headers })
       if (authSession) {
@@ -102,15 +92,20 @@ export class AuthGuard implements CanActivate {
           throw new BizException(ErrorCode.AUTH_FORBIDDEN)
         }
 
+        if (!tenantContext) {
+          throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+        }
         if (sessionTenantId !== tenantContext.tenant.id) {
           throw new BizException(ErrorCode.AUTH_FORBIDDEN)
         }
       }
 
-      await applyTenantIsolationContext({
-        tenantId: tenantContext.tenant.id,
-        isSuperAdmin,
-      })
+      if (tenantContext) {
+        await applyTenantIsolationContext({
+          tenantId: tenantContext.tenant.id,
+          isSuperAdmin,
+        })
+      }
 
       if (isSuperAdmin) {
         return true

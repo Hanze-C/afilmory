@@ -139,7 +139,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 'tenant',
     title: 'Tenant Profile',
-    description: 'Name your workspace and optional domain.',
+    description: 'Name your workspace and choose a slug.',
   },
   {
     id: 'admin',

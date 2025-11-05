@@ -1,5 +1,5 @@
 import { Button } from '@afilmory/ui'
-import { Spring } from '@afilmory/utils'
+import { DEFAULT_BASE_DOMAIN, Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -19,11 +19,24 @@ type FormState = Record<SuperAdminSettingField, SchemaFormValue>
 
 const BOOLEAN_FIELDS = new Set<SuperAdminSettingField>(['allowRegistration', 'localProviderEnabled'])
 
+function asString(value: SchemaFormValue): string {
+  if (value === undefined || value === null) {
+    return ''
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  return String(value)
+}
+
 function toFormState(settings: SuperAdminSettings): FormState {
   return {
     allowRegistration: settings.allowRegistration,
     localProviderEnabled: settings.localProviderEnabled,
     maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
+    baseDomain: (settings.baseDomain ?? DEFAULT_BASE_DOMAIN) || DEFAULT_BASE_DOMAIN,
   }
 }
 
@@ -39,7 +52,8 @@ function areFormStatesEqual(left: FormState | null, right: FormState | null): bo
   return (
     left.allowRegistration === right.allowRegistration &&
     left.localProviderEnabled === right.localProviderEnabled &&
-    left.maxRegistrableUsers === right.maxRegistrableUsers
+    left.maxRegistrableUsers === right.maxRegistrableUsers &&
+    asString(left.baseDomain).trim() === asString(right.baseDomain).trim()
   )
 }
 
@@ -60,6 +74,7 @@ type PossiblySnakeCaseSettings = Partial<
     allow_registration: boolean
     local_provider_enabled: boolean
     max_registrable_users: number | null
+    base_domain: string
   }
 >
 
@@ -86,6 +101,7 @@ function normalizeServerSettings(input: PossiblySnakeCaseSettings | null): Super
       allowRegistration: input.allowRegistration ?? false,
       localProviderEnabled: input.localProviderEnabled ?? false,
       maxRegistrableUsers: coerceMaxUsers(input.maxRegistrableUsers),
+      baseDomain: ((input.baseDomain ?? DEFAULT_BASE_DOMAIN) || DEFAULT_BASE_DOMAIN).toString(),
     }
   }
 
@@ -94,6 +110,7 @@ function normalizeServerSettings(input: PossiblySnakeCaseSettings | null): Super
       allowRegistration: input.allow_registration ?? false,
       localProviderEnabled: input.local_provider_enabled ?? false,
       maxRegistrableUsers: coerceMaxUsers(input.max_registrable_users),
+      baseDomain: ((input.base_domain ?? DEFAULT_BASE_DOMAIN) || DEFAULT_BASE_DOMAIN).toString(),
     }
   }
 
@@ -210,6 +227,11 @@ export function SuperAdminSettingsForm() {
           payload.maxRegistrableUsers = Math.max(0, Math.floor(parsed))
         }
       }
+    }
+
+    if (asString(formState.baseDomain).trim() !== asString(initialState.baseDomain).trim()) {
+      const value = asString(formState.baseDomain).trim()
+      payload.baseDomain = (value.length > 0 ? value : DEFAULT_BASE_DOMAIN).toLowerCase()
     }
 
     return Object.keys(payload).length > 0 ? payload : null

@@ -36,8 +36,6 @@ export const OnboardingWizard: FC = () => {
     errors,
     updateTenantName,
     updateTenantSlug,
-
-    updateTenantDomain,
     updateAdminField,
     toggleSetting,
     updateSettingValue,
@@ -122,13 +120,7 @@ export const OnboardingWizard: FC = () => {
   const stepContent: Record<typeof currentStep.id, ReactNode> = {
     welcome: <WelcomeStep />,
     tenant: (
-      <TenantStep
-        tenant={tenant}
-        errors={errors}
-        onNameChange={updateTenantName}
-        onSlugChange={updateTenantSlug}
-        onDomainChange={updateTenantDomain}
-      />
+      <TenantStep tenant={tenant} errors={errors} onNameChange={updateTenantName} onSlugChange={updateTenantSlug} />
     ),
     admin: <AdminStep admin={admin} errors={errors} onChange={updateAdminField} />,
     settings: (

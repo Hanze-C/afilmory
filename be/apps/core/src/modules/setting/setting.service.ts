@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { settings } from '@afilmory/db'
 import { env } from '@afilmory/env'
 import { EventEmitterService } from '@afilmory/framework'
+import { BizException, ErrorCode } from 'core/errors'
 import { and, eq, inArray } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
@@ -260,8 +261,7 @@ export class SettingService {
       return tenant.tenant.id
     }
 
-    const fallback = await this.tenantService.resolve({ fallbackToPrimary: true })
-    return fallback.tenant.id
+    throw new BizException(ErrorCode.TENANT_NOT_FOUND)
   }
 
   private encrypt(value: string): string {

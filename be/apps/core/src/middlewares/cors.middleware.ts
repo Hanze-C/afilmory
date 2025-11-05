@@ -1,7 +1,7 @@
 import type { HttpMiddleware, OnModuleDestroy, OnModuleInit } from '@afilmory/framework'
 import { EventEmitterService, Middleware } from '@afilmory/framework'
 import { OnboardingService } from 'core/modules/onboarding/onboarding.service'
-import type { Context, Next } from 'hono'
+import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 import { injectable } from 'tsyringe'
 
@@ -47,7 +47,6 @@ function parseAllowedOrigins(raw: string | null): AllowedOrigins {
 @injectable()
 export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDestroy {
   private readonly allowedOrigins = new Map<string, AllowedOrigins>()
-  private defaultTenantId?: string
   private readonly logger = logger.extend('CorsMiddleware')
   constructor(
     private readonly eventEmitter: EventEmitterService,
@@ -76,16 +75,6 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   }
 
   async onModuleInit(): Promise<void> {
-    try {
-      const defaultTenant = await this.tenantService.resolve({ fallbackToPrimary: true }, true)
-      if (!defaultTenant) {
-        return
-      }
-      this.defaultTenantId = defaultTenant.tenant.id
-      await this.reloadAllowedOrigins(defaultTenant.tenant.id)
-    } catch (error) {
-      this.logger.warn('Failed to preload default tenant CORS configuration', error)
-    }
     this.eventEmitter.on('setting.updated', this.handleSettingUpdated)
     this.eventEmitter.on('setting.deleted', this.handleSettingDeleted)
   }
@@ -131,7 +120,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     })
   }
 
-  async use(context: Context, next: Next): Promise<Response | void> {
+  ['use']: HttpMiddleware['use'] = async (context, next) => {
     const initialized = await this.onboardingService.isInitialized()
 
     if (!initialized) {
@@ -144,7 +133,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     }
 
     const tenantContext = getTenantContext()
-    const tenantId = tenantContext?.tenant.id ?? this.defaultTenantId
+    const tenantId = tenantContext?.tenant.id
 
     if (tenantId) {
       await this.ensureTenantOriginsLoaded(tenantId)
@@ -193,7 +182,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     }
 
     const tenantContext = getTenantContext()
-    const tenantId = tenantContext?.tenant.id ?? this.defaultTenantId
+    const tenantId = tenantContext?.tenant.id
 
     if (!tenantId) {
       return null

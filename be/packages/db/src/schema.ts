@@ -50,27 +50,10 @@ export const tenants = pgTable(
     slug: text('slug').notNull(),
     name: text('name').notNull(),
     status: tenantStatusEnum('status').notNull().default('inactive'),
-    primaryDomain: text('primary_domain'),
-    isPrimary: boolean('is_primary').notNull().default(false),
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   },
   (t) => [unique('uq_tenant_slug').on(t.slug)],
-)
-
-export const tenantDomains = pgTable(
-  'tenant_domain',
-  {
-    id: snowflakeId,
-    tenantId: text('tenant_id')
-      .notNull()
-      .references(() => tenants.id, { onDelete: 'cascade' }),
-    domain: text('domain').notNull(),
-    isPrimary: boolean('is_primary').notNull().default(false),
-    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
-  },
-  (t) => [unique('uq_tenant_domain_domain').on(t.domain)],
 )
 
 // Custom users table (Better Auth: user)
@@ -267,7 +250,6 @@ export const photoAssets = pgTable(
 
 export const dbSchema = {
   tenants,
-  tenantDomains,
   authUsers,
   authSessions,
   authAccounts,

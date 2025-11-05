@@ -126,7 +126,7 @@ function UploadTrendsChart({ data }: { data: UploadTrendPoint[] }) {
             >
               <div className="bg-fill/15 relative flex h-40 w-full items-end overflow-hidden rounded-md">
                 <div
-                  className="bg-accent/70 group-hover:bg-accent absolute bottom-0 left-0 right-0 rounded-md transition-colors duration-200"
+                  className="bg-accent/70 group-hover:bg-accent absolute right-0 bottom-0 left-0 rounded-md transition-colors duration-200"
                   style={{ height: `${heightPercent}%` }}
                 />
               </div>
@@ -295,7 +295,7 @@ export function DashboardAnalytics() {
           ) : data?.uploadTrends?.length ? (
             <>
               {uploadTrendStats ? (
-                <div className="border-fill/20 mt-5 grid gap-3 rounded-lg border bg-fill/5 p-4 text-sm">
+                <div className="border-fill/20 bg-fill/5 mt-5 grid gap-3 rounded-lg border p-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-text-secondary">累计上传</span>
                     <span className="text-text font-semibold">
@@ -364,7 +364,7 @@ export function DashboardAnalytics() {
 
               return (
                 <>
-                  <div className="border-fill/20 mt-5 grid gap-3 rounded-lg border bg-fill/5 p-4 text-sm">
+                  <div className="border-fill/20 bg-fill/5 mt-5 grid gap-3 rounded-lg border p-4 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-text-secondary">总占用</span>
                       <span className="text-text font-semibold">{formatBytes(storageUsage.totalBytes)}</span>
