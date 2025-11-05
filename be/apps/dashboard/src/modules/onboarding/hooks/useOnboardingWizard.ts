@@ -17,7 +17,6 @@ export function useOnboardingWizard() {
   const [tenant, setTenant] = useState<TenantFormState>({
     name: '',
     slug: '',
-    domain: '',
   })
   const [slugLocked, setSlugLocked] = useState(false)
   const [admin, setAdmin] = useState<AdminFormState>({
@@ -93,14 +92,6 @@ export function useOnboardingWizard() {
       valid = false
     } else {
       setFieldError('tenant.slug', null)
-    }
-
-    const domain = tenant.domain.trim()
-    if (domain && !/^[a-z0-9.-]+$/.test(domain)) {
-      setFieldError('tenant.domain', 'Use lowercase letters, numbers, dot, or hyphen')
-      valid = false
-    } else {
-      setFieldError('tenant.domain', null)
     }
 
     return valid
@@ -190,12 +181,10 @@ export function useOnboardingWizard() {
   }
 
   const submitInitialization = () => {
-    const trimmedDomain = tenant.domain.trim()
     const payload: OnboardingInitPayload = {
       tenant: {
         name: tenant.name.trim(),
         slug: tenant.slug.trim(),
-        ...(trimmedDomain ? { domain: trimmedDomain } : {}),
       },
       admin: {
         name: admin.name.trim(),
@@ -258,11 +247,6 @@ export function useOnboardingWizard() {
     setFieldError('tenant.slug', null)
   }
 
-  const updateTenantDomain = (value: string) => {
-    setTenant((prev) => ({ ...prev, domain: value }))
-    setFieldError('tenant.domain', null)
-  }
-
   const updateAdminField = (field: keyof AdminFormState, value: string) => {
     setAdmin((prev) => ({ ...prev, [field]: value }))
     setFieldError(`admin.${field}`, null)
@@ -316,8 +300,6 @@ export function useOnboardingWizard() {
     errors,
     updateTenantName,
     updateTenantSlug,
-
-    updateTenantDomain,
     updateAdminField,
     toggleSetting,
     updateSettingValue,

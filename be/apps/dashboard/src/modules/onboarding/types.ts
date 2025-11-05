@@ -3,7 +3,6 @@ import type { OnboardingSettingKey } from './constants'
 export type TenantFormState = {
   name: string
   slug: string
-  domain: string
 }
 
 export type AdminFormState = {

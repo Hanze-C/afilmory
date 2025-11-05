@@ -41,6 +41,7 @@ const hyobanConfig = await defineConfig(
       },
     },
     rules: {
+      'unicorn/no-abusive-eslint-disable': 0,
       '@typescript-eslint/triple-slash-reference': 0,
       'unicorn/prefer-math-trunc': 'off',
       'unicorn/no-static-only-class': 'off',

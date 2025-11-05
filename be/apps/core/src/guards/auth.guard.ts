@@ -1,90 +1,157 @@
-import { authUsers } from '@afilmory/db'
+import { authUsers, tenantAuthUsers } from '@afilmory/db'
 import type { CanActivate, ExecutionContext } from '@afilmory/framework'
 import { HttpContext } from '@afilmory/framework'
 import type { Session } from 'better-auth'
 import { applyTenantIsolationContext, DbAccessor } from 'core/database/database.provider'
 import { BizException, ErrorCode } from 'core/errors'
 import { getTenantContext } from 'core/modules/tenant/tenant.context'
-import { TenantService } from 'core/modules/tenant/tenant.service'
+import { TenantContextResolver } from 'core/modules/tenant/tenant-context-resolver.service'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
+import { logger } from '../helpers/logger.helper'
 import type { AuthSession } from '../modules/auth/auth.provider'
 import { AuthProvider } from '../modules/auth/auth.provider'
+import type { TenantAuthSession } from '../modules/tenant-auth/tenant-auth.provider'
+import { TenantAuthProvider } from '../modules/tenant-auth/tenant-auth.provider'
 import { getAllowedRoleMask, roleNameToBit } from './roles.decorator'
 
 declare module '@afilmory/framework' {
   interface HttpContextValues {
     auth?: {
-      user?: AuthSession['user']
+      user?: AuthSession['user'] | TenantAuthSession['user']
       session?: Session
+      source?: 'global' | 'tenant'
     }
   }
 }
 
 @injectable()
 export class AuthGuard implements CanActivate {
+  private readonly log = logger.extend('AuthGuard')
+
   constructor(
     private readonly authProvider: AuthProvider,
+    private readonly tenantAuthProvider: TenantAuthProvider,
     private readonly dbAccessor: DbAccessor,
-    private readonly tenantService: TenantService,
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const store = context.getContext()
     const { hono } = store
+    const { method, path } = hono.req
 
-    const auth = await this.authProvider.getAuth()
+    if (this.isPublicRoute(method, path)) {
+      this.log.verbose(`Bypass guard for public route ${method} ${path}`)
+      return true
+    }
 
-    const session = await auth.api.getSession({ headers: hono.req.raw.headers })
+    this.log.verbose(`Evaluating guard for ${method} ${path}`)
 
     let tenantContext = getTenantContext()
-    if (!tenantContext) {
-      tenantContext = await this.tenantService.resolve({ fallbackToPrimary: true })
-      HttpContext.assign({ tenant: tenantContext })
-    }
 
     if (!tenantContext) {
-      throw new BizException(ErrorCode.TENANT_NOT_FOUND)
+      const resolvedTenant = await this.tenantContextResolver.resolve(hono, {
+        setResponseHeaders: false,
+      })
+      if (resolvedTenant) {
+        HttpContext.setValue('tenant', resolvedTenant)
+        tenantContext = resolvedTenant
+        this.log.verbose(
+          `Resolved tenant context slug=${resolvedTenant.tenant.slug ?? 'n/a'} id=${resolvedTenant.tenant.id} for ${method} ${path}`,
+        )
+      } else {
+        this.log.verbose(`Tenant context not resolved for ${method} ${path}`)
+        tenantContext = undefined
+      }
     }
 
-    if (session) {
+    const { headers } = hono.req.raw
+
+    const globalAuth = this.authProvider.getAuth()
+    let sessionSource: 'global' | 'tenant' | null = null
+    let authSession: AuthSession | TenantAuthSession | null = await globalAuth.api.getSession({ headers })
+
+    if (authSession) {
+      sessionSource = 'global'
+      this.log.verbose(`Global session detected for user ${(authSession.user as { id?: string }).id ?? 'unknown'}`)
+    } else if (tenantContext) {
+      const tenantAuth = await this.tenantAuthProvider.getAuth(tenantContext.tenant.id)
+      authSession = await tenantAuth.api.getSession({ headers })
+      if (authSession) {
+        sessionSource = 'tenant'
+        this.log.verbose(
+          `Tenant session detected for user ${(authSession.user as { id?: string }).id ?? 'unknown'} on tenant ${tenantContext.tenant.id}`,
+        )
+      } else {
+        this.log.verbose(`No tenant session present for tenant ${tenantContext.tenant.id}`)
+      }
+    } else {
+      this.log.verbose('No session context available (no tenant resolved and no global session)')
+    }
+
+    if (authSession) {
       HttpContext.assign({
         auth: {
-          user: session.user,
-          session: session.session,
+          user: authSession.user,
+          session: authSession.session,
+          source: sessionSource ?? undefined,
         },
       })
-
-      const roleName = session.user.role as 'user' | 'admin' | 'superadmin' | undefined
-      const isSuperAdmin = roleName === 'superadmin'
-      let sessionTenantId = session.user?.tenantId
+      const userRoleValue = (authSession.user as { role?: string }).role
+      const roleName = userRoleValue as 'user' | 'admin' | 'superadmin' | 'guest' | undefined
+      const isGlobalSession = sessionSource === 'global'
+      const isSuperAdmin = isGlobalSession && roleName === 'superadmin'
+      let sessionTenantId = (authSession.user as { tenantId?: string | null }).tenantId ?? null
 
       if (!isSuperAdmin) {
         if (!sessionTenantId) {
           const db = this.dbAccessor.get()
-          const [record] = await db
-            .select({ tenantId: authUsers.tenantId })
-            .from(authUsers)
-            .where(eq(authUsers.id, session.user.id))
-            .limit(1)
-
-          sessionTenantId = record?.tenantId ?? ''
+          if (sessionSource === 'tenant') {
+            const [record] = await db
+              .select({ tenantId: tenantAuthUsers.tenantId })
+              .from(tenantAuthUsers)
+              .where(eq(tenantAuthUsers.id, authSession.user.id))
+              .limit(1)
+            sessionTenantId = record?.tenantId ?? ''
+          } else {
+            const [record] = await db
+              .select({ tenantId: authUsers.tenantId })
+              .from(authUsers)
+              .where(eq(authUsers.id, authSession.user.id))
+              .limit(1)
+            sessionTenantId = record?.tenantId ?? ''
+          }
         }
 
         if (!sessionTenantId) {
+          this.log.warn(
+            `Denied access: session ${(authSession.user as { id?: string }).id ?? 'unknown'} missing tenant id for ${method} ${path}`,
+          )
           throw new BizException(ErrorCode.AUTH_FORBIDDEN)
         }
 
+        if (!tenantContext) {
+          this.log.warn(
+            `Denied access: tenant context missing while session tenant=${sessionTenantId} accessing ${method} ${path}`,
+          )
+          throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+        }
         if (sessionTenantId !== tenantContext.tenant.id) {
+          this.log.warn(
+            `Denied access: session tenant=${sessionTenantId} does not match context tenant=${tenantContext.tenant.id} for ${method} ${path}`,
+          )
           throw new BizException(ErrorCode.AUTH_FORBIDDEN)
         }
       }
 
-      await applyTenantIsolationContext({
-        tenantId: tenantContext.tenant.id,
-        isSuperAdmin,
-      })
+      if (tenantContext) {
+        await applyTenantIsolationContext({
+          tenantId: tenantContext.tenant.id,
+          isSuperAdmin,
+        })
+      }
 
       if (isSuperAdmin) {
         return true
@@ -94,17 +161,38 @@ export class AuthGuard implements CanActivate {
     const handler = context.getHandler()
     const requiredMask = getAllowedRoleMask(handler)
     if (requiredMask > 0) {
-      if (!session) {
+      if (!authSession) {
+        this.log.warn(`Denied access: missing session for protected resource ${method} ${path}`)
         throw new BizException(ErrorCode.AUTH_UNAUTHORIZED)
       }
 
-      const userRoleName = session.user.role as 'user' | 'admin' | 'superadmin' | undefined
+      const userRoleName = (authSession.user as { role?: string }).role as
+        | 'user'
+        | 'admin'
+        | 'superadmin'
+        | 'guest'
+        | undefined
       const userMask = userRoleName ? roleNameToBit(userRoleName) : 0
       const hasRole = (requiredMask & userMask) !== 0
       if (!hasRole) {
+        this.log.warn(
+          `Denied access: user ${(authSession.user as { id?: string }).id ?? 'unknown'} role=${userRoleName ?? 'n/a'} lacks permission mask=${requiredMask} on ${method} ${path}`,
+        )
         throw new BizException(ErrorCode.AUTH_FORBIDDEN)
       }
     }
     return true
+  }
+
+  private isPublicRoute(method: string, path: string): boolean {
+    if (method !== 'POST') {
+      return false
+    }
+
+    if (path === '/api/auth/tenants/sign-up' || path.startsWith('/api/auth/tenants/sign-up/')) {
+      return true
+    }
+
+    return false
   }
 }

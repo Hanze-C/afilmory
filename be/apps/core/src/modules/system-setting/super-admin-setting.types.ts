@@ -5,6 +5,7 @@ export interface SuperAdminSettings {
   allowRegistration: boolean
   maxRegistrableUsers: number | null
   localProviderEnabled: boolean
+  baseDomain: string
 }
 
 export type SuperAdminSettingValueMap = {

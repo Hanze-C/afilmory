@@ -50,27 +50,10 @@ export const tenants = pgTable(
     slug: text('slug').notNull(),
     name: text('name').notNull(),
     status: tenantStatusEnum('status').notNull().default('inactive'),
-    primaryDomain: text('primary_domain'),
-    isPrimary: boolean('is_primary').notNull().default(false),
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   },
   (t) => [unique('uq_tenant_slug').on(t.slug)],
-)
-
-export const tenantDomains = pgTable(
-  'tenant_domain',
-  {
-    id: snowflakeId,
-    tenantId: text('tenant_id')
-      .notNull()
-      .references(() => tenants.id, { onDelete: 'cascade' }),
-    domain: text('domain').notNull(),
-    isPrimary: boolean('is_primary').notNull().default(false),
-    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
-  },
-  (t) => [unique('uq_tenant_domain_domain').on(t.domain)],
 )
 
 // Custom users table (Better Auth: user)
@@ -115,6 +98,67 @@ export const authAccounts = pgTable('auth_account', {
   userId: text('user_id')
     .notNull()
     .references(() => authUsers.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at', { mode: 'string' }),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { mode: 'string' }),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+})
+
+export const tenantAuthUsers = pgTable(
+  'tenant_auth_user',
+  {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    emailVerified: boolean('email_verified').default(false).notNull(),
+    image: text('image'),
+    role: text('role').default('guest').notNull(),
+    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+    twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
+    username: text('username'),
+    displayUsername: text('display_username'),
+    banned: boolean('banned').default(false).notNull(),
+    banReason: text('ban_reason'),
+    banExpires: timestamp('ban_expires_at', { mode: 'string' }),
+  },
+  (t) => [unique('uq_tenant_auth_user_tenant_email').on(t.tenantId, t.email)],
+)
+
+export const tenantAuthSessions = pgTable('tenant_auth_session', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId: text('user_id')
+    .notNull()
+    .references(() => tenantAuthUsers.id, { onDelete: 'cascade' }),
+})
+
+export const tenantAuthAccounts = pgTable('tenant_auth_account', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id')
+    .notNull()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => tenantAuthUsers.id, { onDelete: 'cascade' }),
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
   idToken: text('id_token'),
@@ -206,10 +250,12 @@ export const photoAssets = pgTable(
 
 export const dbSchema = {
   tenants,
-  tenantDomains,
   authUsers,
   authSessions,
   authAccounts,
+  tenantAuthUsers,
+  tenantAuthSessions,
+  tenantAuthAccounts,
   settings,
   systemSettings,
   reactions,

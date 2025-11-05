@@ -6,20 +6,21 @@ import { useLocation, useNavigate } from 'react-router'
 import { useSetAuthUser } from '~/atoms/auth'
 import type { SessionResponse } from '~/modules/auth/api/session'
 import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
-import { signOut } from '~/modules/auth/auth-client'
+import { signOutBySource } from '~/modules/auth/auth-client'
 import { getOnboardingStatus } from '~/modules/onboarding/api'
 
 const ONBOARDING_STATUS_QUERY_KEY = ['onboarding', 'status'] as const
 
 const DEFAULT_LOGIN_PATH = '/login'
 const DEFAULT_ONBOARDING_PATH = '/onboarding'
+const DEFAULT_REGISTER_PATH = '/register'
 const DEFAULT_AUTHENTICATED_PATH = '/'
 const SUPERADMIN_ROOT_PATH = '/superadmin'
 const SUPERADMIN_DEFAULT_PATH = '/superadmin/settings'
 
 const AUTH_FAILURE_STATUSES = new Set([401, 403, 419])
 
-const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH])
+const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH, DEFAULT_REGISTER_PATH])
 
 export function usePageRedirect() {
   const location = useLocation()
@@ -54,7 +55,7 @@ export function usePageRedirect() {
 
   const logout = useCallback(async () => {
     try {
-      await signOut()
+      await signOutBySource(sessionQuery.data?.source)
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
@@ -63,7 +64,7 @@ export function usePageRedirect() {
       setAuthUser(null)
       navigate(DEFAULT_LOGIN_PATH, { replace: true })
     }
-  }, [navigate, queryClient, setAuthUser])
+  }, [navigate, queryClient, sessionQuery.data?.source, setAuthUser])
 
   // Sync auth user to atom
   useEffect(() => {

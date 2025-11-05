@@ -1,5 +1,5 @@
 import { authUsers } from '@afilmory/db'
-import { Body, ContextParam, Controller, Get, Post, UnauthorizedException } from '@afilmory/framework'
+import { Body, ContextParam, Controller, Get, HttpContext, Post, UnauthorizedException } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
@@ -8,6 +8,19 @@ import { DbAccessor } from '../../database/database.provider'
 import { RoleBit, Roles } from '../../guards/roles.decorator'
 import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
 import { AuthProvider } from './auth.provider'
+import { AuthRegistrationService } from './auth-registration.service'
+
+type TenantSignUpRequest = {
+  account?: {
+    email?: string
+    password?: string
+    name?: string
+  }
+  tenant?: {
+    name?: string
+    slug?: string | null
+  }
+}
 
 @Controller('auth')
 export class AuthController {
@@ -15,23 +28,20 @@ export class AuthController {
     private readonly auth: AuthProvider,
     private readonly dbAccessor: DbAccessor,
     private readonly superAdminSettings: SuperAdminSettingService,
+    private readonly registration: AuthRegistrationService,
   ) {}
 
   @Get('/session')
-  async getSession(@ContextParam() context: Context) {
-    const auth = this.auth.getAuth()
-    // forward tenant headers so Better Auth can persist tenantId via databaseHooks
-    const headers = new Headers(context.req.raw.headers)
-    const tenant = (context as any).var?.tenant
-    if (tenant?.tenant?.id) {
-      headers.set('x-tenant-id', tenant.tenant.id)
-      if (tenant.tenant.slug) headers.set('x-tenant-slug', tenant.tenant.slug)
-    }
-    const session = await auth.api.getSession({ headers })
-    if (!session) {
+  async getSession(@ContextParam() _context: Context) {
+    const authContext = HttpContext.getValue('auth')
+    if (!authContext?.user || !authContext.session) {
       throw new UnauthorizedException()
     }
-    return { user: session.user, session: session.session }
+    return {
+      user: authContext.user,
+      session: authContext.session,
+      source: authContext.source ?? 'global',
+    }
   }
 
   @Post('/sign-in/email')
@@ -73,6 +83,37 @@ export class AuthController {
       headers,
     })
     return response
+  }
+
+  @Post('/tenants/sign-up')
+  async signUpTenant(@ContextParam() context: Context, @Body() body: TenantSignUpRequest) {
+    if (!body?.account || !body?.tenant) {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册信息' })
+    }
+
+    const headers = new Headers(context.req.raw.headers)
+
+    const result = await this.registration.registerTenant(
+      {
+        account: {
+          email: body.account.email ?? '',
+          password: body.account.password ?? '',
+          name: body.account.name ?? '',
+        },
+        tenant: {
+          name: body.tenant.name ?? '',
+          slug: body.tenant.slug ?? null,
+        },
+      },
+      headers,
+    )
+
+    if (result.success && result.tenant) {
+      context.header('x-tenant-id', result.tenant.id)
+      context.header('x-tenant-slug', result.tenant.slug)
+    }
+
+    return result.response
   }
 
   @Get('/admin-only')

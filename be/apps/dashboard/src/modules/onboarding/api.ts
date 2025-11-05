@@ -15,7 +15,6 @@ export type OnboardingInitPayload = {
   tenant: {
     name: string
     slug: string
-    domain?: string
   }
   settings?: Array<{
     key: OnboardingSettingKey

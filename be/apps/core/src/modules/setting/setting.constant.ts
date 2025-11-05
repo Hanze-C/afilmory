@@ -31,6 +31,28 @@ export const DEFAULT_SETTING_DEFINITIONS = {
     isSensitive: true,
     schema: z.string().min(1, 'GitHub Client secret cannot be empty'),
   },
+  'auth.tenant.config': {
+    isSensitive: true,
+    schema: z
+      .string()
+      .transform((value) => value.trim())
+      .transform((value, ctx) => {
+        if (value.length === 0) {
+          return '{}'
+        }
+
+        try {
+          const parsed = JSON.parse(value)
+          return JSON.stringify(parsed)
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Tenant auth configuration must be valid JSON',
+          })
+          return z.NEVER
+        }
+      }),
+  },
   'builder.storage.providers': {
     isSensitive: false,
     schema: z.string().transform((value, ctx) => {

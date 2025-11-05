@@ -43,8 +43,6 @@ export class OnboardingService {
     const tenantAggregate = await this.tenantService.createTenant({
       name: payload.tenant.name,
       slug: payload.tenant.slug,
-      domain: payload.tenant.domain,
-      isPrimary: true,
     })
 
     log.info(`Created tenant ${tenantAggregate.tenant.slug} (${tenantAggregate.tenant.id})`)

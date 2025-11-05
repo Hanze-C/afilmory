@@ -4,7 +4,7 @@ import { clsxm, Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { useMemo } from 'react'
 
-const formatBytes = (bytes: number) => {
+function formatBytes(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '未知大小'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
@@ -29,13 +29,13 @@ const IMAGE_EXTENSIONS = new Set([
   'dng',
 ])
 
-const getFileExtension = (name: string) => {
+function getFileExtension(name: string) {
   const normalized = name.toLowerCase()
   const lastDotIndex = normalized.lastIndexOf('.')
   return lastDotIndex === -1 ? '' : normalized.slice(lastDotIndex + 1)
 }
 
-const getBaseName = (name: string) => {
+function getBaseName(name: string) {
   const normalized = name.toLowerCase()
   const lastDotIndex = normalized.lastIndexOf('.')
   return lastDotIndex === -1 ? normalized : normalized.slice(0, lastDotIndex)
