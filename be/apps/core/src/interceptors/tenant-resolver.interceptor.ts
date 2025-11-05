@@ -1,6 +1,7 @@
 import type { CallHandler, ExecutionContext, FrameworkResponse, Interceptor } from '@afilmory/framework'
 import { injectable } from 'tsyringe'
 
+import { shouldSkipTenant } from '../decorators/skip-tenant.decorator'
 import type { TenantResolutionOptions } from '../modules/tenant/tenant-context-resolver.service'
 import { TenantContextResolver } from '../modules/tenant/tenant-context-resolver.service'
 import { TENANT_RESOLUTION_OPTIONS } from './tenant-resolver.decorator'
@@ -42,6 +43,10 @@ export class TenantResolverInterceptor implements Interceptor {
     const { hono } = context.getContext()
     const handler = context.getHandler()
     const clazz = context.getClass()
+
+    if (shouldSkipTenant(handler) || shouldSkipTenant(clazz)) {
+      return await next.handle()
+    }
 
     const classOptions = getResolutionOptions(clazz)
     const handlerOptions = getResolutionOptions(handler)

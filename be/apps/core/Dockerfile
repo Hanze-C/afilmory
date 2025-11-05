@@ -11,17 +11,21 @@ WORKDIR /workspace
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY be/apps/core/package.json be/apps/core/package.json
+COPY be/apps/dashboard/package.json be/apps/dashboard/package.json
 COPY apps/web/package.json apps/web/package.json
 
 RUN pnpm fetch --filter core...
 RUN pnpm fetch --filter '@afilmory/web...'
+RUN pnpm fetch --filter '@afilmory/dashboard...'
 
 COPY . .
 
-RUN pnpm install --filter core... --filter '@afilmory/web...' --frozen-lockfile
+RUN pnpm install --filter core... --filter '@afilmory/web...' --filter '@afilmory/dashboard...' --frozen-lockfile
 RUN pnpm --filter core build:web
+RUN pnpm --filter @afilmory/dashboard build
 RUN pnpm --filter core build
 RUN mkdir -p be/apps/core/dist/static/web && cp -r apps/web/dist/. be/apps/core/dist/static/web/
+RUN mkdir -p be/apps/core/dist/static/dashboard && cp -r be/apps/dashboard/dist/. be/apps/core/dist/static/dashboard/
 
 FROM node:${NODE_VERSION}-slim AS runner
 ENV NODE_ENV=production

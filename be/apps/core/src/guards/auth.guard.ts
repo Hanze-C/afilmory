@@ -9,6 +9,7 @@ import { TenantContextResolver } from 'core/modules/tenant/tenant-context-resolv
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
+import { shouldSkipTenant } from '../decorators/skip-tenant.decorator'
 import { logger } from '../helpers/logger.helper'
 import type { AuthSession } from '../modules/auth/auth.provider'
 import { AuthProvider } from '../modules/auth/auth.provider'
@@ -41,9 +42,16 @@ export class AuthGuard implements CanActivate {
     const store = context.getContext()
     const { hono } = store
     const { method, path } = hono.req
+    const handler = context.getHandler()
+    const targetClass = context.getClass()
 
     if (this.isPublicRoute(method, path)) {
       this.log.verbose(`Bypass guard for public route ${method} ${path}`)
+      return true
+    }
+
+    if (shouldSkipTenant(handler) || shouldSkipTenant(targetClass)) {
+      this.log.verbose(`Skip guard and tenant resolution for ${method} ${path}`)
       return true
     }
 
@@ -129,14 +137,14 @@ export class AuthGuard implements CanActivate {
           this.log.warn(
             `Denied access: session ${(authSession.user as { id?: string }).id ?? 'unknown'} missing tenant id for ${method} ${path}`,
           )
-          throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+          throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND)
         }
 
         if (!tenantContext) {
           this.log.warn(
             `Denied access: tenant context missing while session tenant=${sessionTenantId} accessing ${method} ${path}`,
           )
-          throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+          throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND)
         }
         if (sessionTenantId !== tenantContext.tenant.id) {
           this.log.warn(
@@ -158,7 +166,6 @@ export class AuthGuard implements CanActivate {
       }
     }
     // Role verification if decorator is present
-    const handler = context.getHandler()
     const requiredMask = getAllowedRoleMask(handler)
     if (requiredMask > 0) {
       if (!authSession) {
