@@ -35,6 +35,8 @@ export async function createConfiguredApp(options: BootstrapOptions = {}): Promi
     globalPrefix: options.globalPrefix ?? '/api',
   })
 
+  const container = app.getContainer()
+
   app.useGlobalFilters(new AllExceptionsFilter())
   app.useGlobalInterceptors(new LoggingInterceptor())
   app.useGlobalInterceptors(new ResponseTransformInterceptor())
@@ -42,7 +44,6 @@ export async function createConfiguredApp(options: BootstrapOptions = {}): Promi
   app.useGlobalPipes(new GlobalValidationPipe())
 
   // Warm up DB connection during bootstrap
-  const container = app.getContainer()
   const poolProvider = container.resolve(PgPoolProvider)
   await poolProvider.warmup()
 

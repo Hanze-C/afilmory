@@ -8,7 +8,7 @@ import { injectable } from 'tsyringe'
 import { logger } from '../helpers/logger.helper'
 import { SettingService } from '../modules/setting/setting.service'
 import { getTenantContext } from '../modules/tenant/tenant.context'
-import { TenantService } from '../modules/tenant/tenant.service'
+import { TenantContextResolver } from '../modules/tenant/tenant-context-resolver.service'
 
 type AllowedOrigins = '*' | string[]
 
@@ -51,7 +51,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   constructor(
     private readonly eventEmitter: EventEmitterService,
     private readonly settingService: SettingService,
-    private readonly tenantService: TenantService,
+    private readonly tenantContextResolver: TenantContextResolver,
     private readonly onboardingService: OnboardingService,
   ) {}
 
@@ -132,7 +132,11 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
       return await next()
     }
 
-    const tenantContext = getTenantContext()
+    const tenantContext = await this.tenantContextResolver.resolve(context, {
+      setResponseHeaders: false,
+      skipInitializationCheck: true,
+    })
+
     const tenantId = tenantContext?.tenant.id
 
     if (tenantId) {

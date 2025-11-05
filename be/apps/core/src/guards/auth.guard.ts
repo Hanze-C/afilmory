@@ -5,6 +5,7 @@ import type { Session } from 'better-auth'
 import { applyTenantIsolationContext, DbAccessor } from 'core/database/database.provider'
 import { BizException, ErrorCode } from 'core/errors'
 import { getTenantContext } from 'core/modules/tenant/tenant.context'
+import { TenantContextResolver } from 'core/modules/tenant/tenant-context-resolver.service'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
@@ -30,13 +31,22 @@ export class AuthGuard implements CanActivate {
     private readonly authProvider: AuthProvider,
     private readonly tenantAuthProvider: TenantAuthProvider,
     private readonly dbAccessor: DbAccessor,
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const store = context.getContext()
     const { hono } = store
 
-    const tenantContext = getTenantContext()
+    let tenantContext = getTenantContext()
+
+    if (!tenantContext) {
+      const resolvedTenant = await this.tenantContextResolver.resolve(hono, {
+        setResponseHeaders: false,
+      })
+      HttpContext.setValue('tenant', tenantContext)
+      tenantContext = resolvedTenant ?? undefined
+    }
 
     const { headers } = hono.req.raw
 

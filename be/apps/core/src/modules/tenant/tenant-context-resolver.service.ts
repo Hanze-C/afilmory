@@ -1,21 +1,26 @@
-import type { HttpMiddleware } from '@afilmory/framework'
-import { HttpContext, Middleware } from '@afilmory/framework'
+import { HttpContext } from '@afilmory/framework'
 import { DEFAULT_BASE_DOMAIN, isTenantSlugReserved } from '@afilmory/utils'
 import { BizException, ErrorCode } from 'core/errors'
-import type { Context, Next } from 'hono'
+import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
-import { logger } from '../helpers/logger.helper'
-import { OnboardingService } from '../modules/onboarding/onboarding.service'
-import { SuperAdminSettingService } from '../modules/system-setting/super-admin-setting.service'
-import { TenantService } from '../modules/tenant/tenant.service'
+import { logger } from '../../helpers/logger.helper'
+import { OnboardingService } from '../onboarding/onboarding.service'
+import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { TenantService } from './tenant.service'
+import type { TenantContext } from './tenant.types'
 
 const HEADER_TENANT_ID = 'x-tenant-id'
 const HEADER_TENANT_SLUG = 'x-tenant-slug'
 
-@Middleware()
+export interface TenantResolutionOptions {
+  throwOnMissing?: boolean
+  setResponseHeaders?: boolean
+  skipInitializationCheck?: boolean
+}
+
 @injectable()
-export class TenantResolverMiddleware implements HttpMiddleware {
+export class TenantContextResolver {
   private readonly log = logger.extend('TenantResolver')
 
   constructor(
@@ -24,34 +29,23 @@ export class TenantResolverMiddleware implements HttpMiddleware {
     private readonly superAdminSettingService: SuperAdminSettingService,
   ) {}
 
-   
-  async use(context: Context, next: Next): Promise<Response | void> {
-    const { path } = context.req
-
-    // During onboarding (before any user/tenant exists), skip tenant resolution entirely
-    const initialized = await this.onboardingService.isInitialized()
-    if (!initialized) {
-      this.log.info(`Application not initialized yet, skip tenant resolution for ${path}`)
-      return await next()
+  async resolve(context: Context, options: TenantResolutionOptions = {}): Promise<TenantContext | null> {
+    const existing = this.getExistingContext()
+    if (existing) {
+      if (options.setResponseHeaders !== false) {
+        this.applyTenantHeaders(context, existing)
+      }
+      return existing
     }
 
-    const tenantContext = await this.resolveTenantContext(context)
-
-    if (tenantContext) {
-      HttpContext.assign({ tenant: tenantContext })
+    if (!options.skipInitializationCheck) {
+      const initialized = await this.onboardingService.isInitialized()
+      if (!initialized) {
+        this.log.info(`Application not initialized yet, skip tenant resolution for ${context.req.path}`)
+        return null
+      }
     }
 
-    const response = await next()
-
-    if (tenantContext) {
-      context.header(HEADER_TENANT_ID, tenantContext.tenant.id)
-      context.header(HEADER_TENANT_SLUG, tenantContext.tenant.slug)
-    }
-
-    return response
-  }
-
-  private async resolveTenantContext(context: Context) {
     const forwardedHost = context.req.header('x-forwarded-host')
     const origin = context.req.header('origin')
     const hostHeader = context.req.header('host')
@@ -86,13 +80,32 @@ export class TenantResolverMiddleware implements HttpMiddleware {
     )
 
     if (!tenantContext) {
-      if (tenantId || derivedSlug || host) {
+      if (options.throwOnMissing && (tenantId || derivedSlug)) {
         throw new BizException(ErrorCode.TENANT_NOT_FOUND)
       }
       return null
     }
 
+    HttpContext.setValue('tenant', tenantContext)
+
+    if (options.setResponseHeaders !== false) {
+      this.applyTenantHeaders(context, tenantContext)
+    }
+
     return tenantContext
+  }
+
+  private getExistingContext(): TenantContext | null {
+    try {
+      return (HttpContext.getValue('tenant') as TenantContext | undefined) ?? null
+    } catch {
+      return null
+    }
+  }
+
+  private applyTenantHeaders(context: Context, tenantContext: TenantContext): void {
+    context.header(HEADER_TENANT_ID, tenantContext.tenant.id)
+    context.header(HEADER_TENANT_SLUG, tenantContext.tenant.slug)
   }
 
   private async getBaseDomain(): Promise<string> {
