@@ -8,16 +8,11 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
+    "jsx": "react",
     "types": ["node"],
     "paths": {
       "core": ["./src"],
-      "core/*": ["./src/*"],
-      "@afilmory/db": ["../../packages/db/src"],
-      "@afilmory/db/*": ["../../packages/db/src/*"],
-      "@afilmory/be-utils": ["../../packages/utils/src"],
-      "@afilmory/be-utils/*": ["../../packages/utils/src/*"],
-      "@afilmory/websocket": ["../../packages/websocket/src"],
-      "@afilmory/websocket/*": ["../../packages/websocket/src/*"]
+      "core/*": ["./src/*"]
     },
     "resolveJsonModule": true,
     "allowJs": true,

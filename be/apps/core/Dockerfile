@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
-ARG NODE_VERSION=22.11.0
+ARG NODE_VERSION=lts
+ARG NODE_VARIANT=alpine
 
-FROM node:${NODE_VERSION}-slim AS builder
+FROM node:${NODE_VERSION}-${NODE_VARIANT} AS builder
 ENV PNPM_HOME=/pnpm
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@10.19.0 --activate
@@ -27,10 +28,11 @@ RUN pnpm --filter core build
 RUN mkdir -p be/apps/core/dist/static/web && cp -r apps/web/dist/. be/apps/core/dist/static/web/
 RUN mkdir -p be/apps/core/dist/static/dashboard && cp -r be/apps/dashboard/dist/. be/apps/core/dist/static/dashboard/
 
-FROM node:${NODE_VERSION}-slim AS runner
+FROM node:${NODE_VERSION}-${NODE_VARIANT} AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
+RUN apk add --no-cache perl
 COPY --from=builder /workspace/be/apps/core/dist ./dist
 COPY --from=builder /workspace/be/apps/core/drizzle ./drizzle
 
