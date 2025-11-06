@@ -15,10 +15,10 @@ import { PhotoModule } from './photo/photo.module'
 import { ReactionModule } from './reaction/reaction.module'
 import { SettingModule } from './setting/setting.module'
 import { StaticWebModule } from './static-web/static-web.module'
+import { StorageSettingModule } from './storage-setting/storage-setting.module'
 import { SuperAdminModule } from './super-admin/super-admin.module'
 import { SystemSettingModule } from './system-setting/system-setting.module'
 import { TenantModule } from './tenant/tenant.module'
-import { TenantAuthModule } from './tenant-auth/tenant-auth.module'
 
 function createEventModuleOptions(redis: RedisAccessor) {
   return {
@@ -32,6 +32,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
     RedisModule,
     AuthModule,
     SettingModule,
+    StorageSettingModule,
     SystemSettingModule,
     SuperAdminModule,
     OnboardingModule,
@@ -39,7 +40,6 @@ function createEventModuleOptions(redis: RedisAccessor) {
     ReactionModule,
     DashboardModule,
     TenantModule,
-    TenantAuthModule,
     DataSyncModule,
     StaticWebModule,
     EventModule.forRootAsync({

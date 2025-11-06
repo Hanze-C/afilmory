@@ -6,6 +6,12 @@ export interface SuperAdminSettings {
   maxRegistrableUsers: number | null
   localProviderEnabled: boolean
   baseDomain: string
+  oauthGoogleClientId: string | null
+  oauthGoogleClientSecret: string | null
+  oauthGoogleRedirectUri: string | null
+  oauthGithubClientId: string | null
+  oauthGithubClientSecret: string | null
+  oauthGithubRedirectUri: string | null
 }
 
 export type SuperAdminSettingValueMap = {
@@ -24,3 +30,5 @@ export interface SuperAdminSettingsOverview {
 }
 
 export type UpdateSuperAdminSettingsInput = Partial<SuperAdminSettings>
+
+export { type SuperAdminSettingField } from './super-admin-setting.constants'

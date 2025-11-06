@@ -7,12 +7,6 @@ const SETTINGS_TABS = [
     path: '/settings',
     end: true,
   },
-  {
-    id: 'storage',
-    label: '素材存储',
-    path: '/settings/storage',
-    end: false,
-  },
 ] as const
 
 type SettingsNavigationProps = {

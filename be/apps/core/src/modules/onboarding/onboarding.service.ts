@@ -58,7 +58,7 @@ export class OnboardingService {
       await this.settings.setMany(entriesWithTenant)
     }
 
-    const auth = this.auth.getAuth()
+    const auth = await this.auth.getAuth()
 
     // Create initial admin for this tenant
     const adminResult = await auth.api.signUpEmail({

@@ -1,21 +1,28 @@
 import { DEFAULT_BASE_DOMAIN } from '@afilmory/utils'
 import { z } from 'zod'
 
+const nonEmptyString = z.string().trim().min(1)
+const nullableNonEmptyString = nonEmptyString.nullable()
+const nullableUrl = z.string().trim().url({ message: '必须是有效的 URL' }).nullable()
+
 export const SUPER_ADMIN_SETTING_DEFINITIONS = {
   allowRegistration: {
     key: 'system.registration.allow',
     schema: z.boolean(),
     defaultValue: true,
+    isSensitive: false,
   },
   maxRegistrableUsers: {
     key: 'system.registration.maxUsers',
     schema: z.number().int().min(0).nullable(),
     defaultValue: null as number | null,
+    isSensitive: false,
   },
   localProviderEnabled: {
     key: 'system.auth.localProvider.enabled',
     schema: z.boolean(),
     defaultValue: true,
+    isSensitive: false,
   },
   baseDomain: {
     key: 'system.domain.base',
@@ -27,6 +34,43 @@ export const SUPER_ADMIN_SETTING_DEFINITIONS = {
         message: '域名只能包含字母、数字、连字符和点',
       }),
     defaultValue: DEFAULT_BASE_DOMAIN,
+    isSensitive: false,
+  },
+  oauthGoogleClientId: {
+    key: 'system.auth.oauth.google.clientId',
+    schema: nullableNonEmptyString,
+    defaultValue: null as string | null,
+    isSensitive: false,
+  },
+  oauthGoogleClientSecret: {
+    key: 'system.auth.oauth.google.clientSecret',
+    schema: nullableNonEmptyString,
+    defaultValue: null as string | null,
+    isSensitive: true,
+  },
+  oauthGoogleRedirectUri: {
+    key: 'system.auth.oauth.google.redirectUri',
+    schema: nullableUrl,
+    defaultValue: null as string | null,
+    isSensitive: false,
+  },
+  oauthGithubClientId: {
+    key: 'system.auth.oauth.github.clientId',
+    schema: nullableNonEmptyString,
+    defaultValue: null as string | null,
+    isSensitive: false,
+  },
+  oauthGithubClientSecret: {
+    key: 'system.auth.oauth.github.clientSecret',
+    schema: nullableNonEmptyString,
+    defaultValue: null as string | null,
+    isSensitive: true,
+  },
+  oauthGithubRedirectUri: {
+    key: 'system.auth.oauth.github.redirectUri',
+    schema: nullableUrl,
+    defaultValue: null as string | null,
+    isSensitive: false,
   },
 } as const
 

@@ -1,8 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { MainPageLayout } from '~/components/layouts/MainPageLayout'
 import { PageTabs } from '~/components/navigation/PageTabs'
+import { StorageProvidersManager } from '~/modules/storage-providers'
 
 import { getPhotoStorageUrl } from '../api'
 import {
@@ -29,7 +31,7 @@ import { PhotoSyncConflictsPanel } from './sync/PhotoSyncConflictsPanel'
 import { PhotoSyncProgressPanel } from './sync/PhotoSyncProgressPanel'
 import { PhotoSyncResultPanel } from './sync/PhotoSyncResultPanel'
 
-type PhotoPageTab = 'sync' | 'library'
+type PhotoPageTab = 'sync' | 'library' | 'storage'
 
 const BATCH_RESOLVING_ID = '__batch__'
 
@@ -56,12 +58,20 @@ function createInitialStages(totals: PhotoSyncProgressState['totals']): PhotoSyn
 }
 
 export function PhotoPage() {
-  const [activeTab, setActiveTab] = useState<PhotoPageTab>('sync')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTabParam = searchParams.get('tab')
+  const normalizedInitialTab: PhotoPageTab =
+    initialTabParam === 'library' || initialTabParam === 'storage' ? (initialTabParam as PhotoPageTab) : 'sync'
+  const [activeTab, setActiveTab] = useState<PhotoPageTab>(normalizedInitialTab)
   const [result, setResult] = useState<PhotoSyncResult | null>(null)
   const [lastWasDryRun, setLastWasDryRun] = useState<boolean | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [resolvingConflictId, setResolvingConflictId] = useState<string | null>(null)
   const [syncProgress, setSyncProgress] = useState<PhotoSyncProgressState | null>(null)
+
+  useEffect(() => {
+    setActiveTab(normalizedInitialTab)
+  }, [normalizedInitialTab])
 
   const summaryQuery = usePhotoAssetSummaryQuery()
   const listQuery = usePhotoAssetListQuery({ enabled: activeTab === 'library' })
@@ -321,7 +331,15 @@ export function PhotoPage() {
 
   const handleTabChange = (tab: PhotoPageTab) => {
     setActiveTab(tab)
+    const next = new URLSearchParams(searchParams.toString())
     if (tab === 'sync') {
+      next.delete('tab')
+    } else {
+      next.set('tab', tab)
+    }
+    setSearchParams(next, { replace: true })
+
+    if (tab !== 'library') {
       setSelectedIds([])
     }
   }
@@ -331,32 +349,34 @@ export function PhotoPage() {
 
   return (
     <MainPageLayout title="照片库" description="在此同步和管理服务器中的照片资产。">
-      <MainPageLayout.Actions>
-        {activeTab === 'sync' ? (
-          <PhotoSyncActions
-            onCompleted={(data, context) => {
-              setResult(data)
-              setLastWasDryRun(context.dryRun)
-              setSyncProgress(null)
-              void summaryQuery.refetch()
-              void listQuery.refetch()
-            }}
-            onProgress={handleProgressEvent}
-            onError={handleSyncError}
-          />
-        ) : (
-          <PhotoLibraryActionBar
-            selectionCount={selectedIds.length}
-            isUploading={uploadMutation.isPending}
-            isDeleting={deleteMutation.isPending}
-            onUpload={handleUploadAssets}
-            onDeleteSelected={() => {
-              void handleDeleteAssets(selectedIds)
-            }}
-            onClearSelection={handleClearSelection}
-          />
-        )}
-      </MainPageLayout.Actions>
+      {activeTab !== 'storage' ? (
+        <MainPageLayout.Actions>
+          {activeTab === 'sync' ? (
+            <PhotoSyncActions
+              onCompleted={(data, context) => {
+                setResult(data)
+                setLastWasDryRun(context.dryRun)
+                setSyncProgress(null)
+                void summaryQuery.refetch()
+                void listQuery.refetch()
+              }}
+              onProgress={handleProgressEvent}
+              onError={handleSyncError}
+            />
+          ) : (
+            <PhotoLibraryActionBar
+              selectionCount={selectedIds.length}
+              isUploading={uploadMutation.isPending}
+              isDeleting={deleteMutation.isPending}
+              onUpload={handleUploadAssets}
+              onDeleteSelected={() => {
+                void handleDeleteAssets(selectedIds)
+              }}
+              onClearSelection={handleClearSelection}
+            />
+          )}
+        </MainPageLayout.Actions>
+      ) : null}
 
       <div className="space-y-6">
         <PageTabs
@@ -365,42 +385,49 @@ export function PhotoPage() {
           items={[
             { id: 'sync', label: '同步结果' },
             { id: 'library', label: '图库管理' },
+            { id: 'storage', label: '素材存储' },
           ]}
         />
 
-        {activeTab === 'sync' && syncProgress ? <PhotoSyncProgressPanel progress={syncProgress} /> : null}
-
-        {activeTab === 'sync' ? (
-          <div className="space-y-6">
-            {showConflictsPanel ? (
-              <PhotoSyncConflictsPanel
-                conflicts={conflictsQuery.data}
-                isLoading={conflictsQuery.isLoading || conflictsQuery.isFetching}
-                resolvingId={resolvingConflictId}
-                isBatchResolving={resolvingConflictId === BATCH_RESOLVING_ID}
-                onResolve={handleResolveConflict}
-                onResolveBatch={handleResolveConflictsBatch}
-                onRequestStorageUrl={getPhotoStorageUrl}
-              />
-            ) : null}
-            <PhotoSyncResultPanel
-              result={result}
-              lastWasDryRun={lastWasDryRun}
-              baselineSummary={summaryQuery.data}
-              isSummaryLoading={summaryQuery.isLoading}
-              onRequestStorageUrl={getPhotoStorageUrl}
-            />
-          </div>
+        {activeTab === 'storage' ? (
+          <StorageProvidersManager />
         ) : (
-          <PhotoLibraryGrid
-            assets={listQuery.data}
-            isLoading={isListLoading}
-            selectedIds={selectedSet}
-            onToggleSelect={handleToggleSelect}
-            onOpenAsset={handleOpenAsset}
-            onDeleteAsset={handleDeleteSingle}
-            isDeleting={deleteMutation.isPending}
-          />
+          <>
+            {activeTab === 'sync' && syncProgress ? <PhotoSyncProgressPanel progress={syncProgress} /> : null}
+
+            {activeTab === 'sync' ? (
+              <div className="space-y-6">
+                {showConflictsPanel ? (
+                  <PhotoSyncConflictsPanel
+                    conflicts={conflictsQuery.data}
+                    isLoading={conflictsQuery.isLoading || conflictsQuery.isFetching}
+                    resolvingId={resolvingConflictId}
+                    isBatchResolving={resolvingConflictId === BATCH_RESOLVING_ID}
+                    onResolve={handleResolveConflict}
+                    onResolveBatch={handleResolveConflictsBatch}
+                    onRequestStorageUrl={getPhotoStorageUrl}
+                  />
+                ) : null}
+                <PhotoSyncResultPanel
+                  result={result}
+                  lastWasDryRun={lastWasDryRun}
+                  baselineSummary={summaryQuery.data}
+                  isSummaryLoading={summaryQuery.isLoading}
+                  onRequestStorageUrl={getPhotoStorageUrl}
+                />
+              </div>
+            ) : (
+              <PhotoLibraryGrid
+                assets={listQuery.data}
+                isLoading={isListLoading}
+                selectedIds={selectedSet}
+                onToggleSelect={handleToggleSelect}
+                onOpenAsset={handleOpenAsset}
+                onDeleteAsset={handleDeleteSingle}
+                isDeleting={deleteMutation.isPending}
+              />
+            )}
+          </>
         )}
       </div>
     </MainPageLayout>

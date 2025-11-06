@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router'
 import { useSetAuthUser } from '~/atoms/auth'
 import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
 
-import { signInGlobal, signInTenant } from '../auth-client'
+import { signInAuth } from '../auth-client'
 
 export interface LoginRequest {
   email: string
@@ -23,36 +23,8 @@ export function useLogin() {
   const loginMutation = useMutation({
     mutationFn: async (data: LoginRequest) => {
       const rememberMe = data.rememberMe ?? true
-      const fallbackStatuses = new Set([400, 401, 403, 404])
 
-      const attemptTenant = async () => {
-        try {
-          await signInTenant.email({
-            email: data.email,
-            password: data.password,
-            rememberMe,
-          })
-          return await queryClient.fetchQuery({
-            queryKey: AUTH_SESSION_QUERY_KEY,
-            queryFn: fetchSession,
-          })
-        } catch (error) {
-          if (error instanceof FetchError) {
-            const status = error.statusCode ?? error.response?.status ?? null
-            if (status && fallbackStatuses.has(status)) {
-              return null
-            }
-          }
-          throw error
-        }
-      }
-
-      const tenantSession = await attemptTenant()
-      if (tenantSession) {
-        return tenantSession
-      }
-
-      await signInGlobal.email({
+      await signInAuth.email({
         email: data.email,
         password: data.password,
         rememberMe,

@@ -15,44 +15,6 @@ export const DEFAULT_SETTING_DEFINITIONS = {
   //   isSensitive: false,
   //   schema: z.string().min(1, 'AI Model name cannot be empty'),
   // },
-  'auth.google.clientId': {
-    isSensitive: false,
-    schema: z.string().min(1, 'Google Client ID cannot be empty'),
-  },
-  'auth.google.clientSecret': {
-    isSensitive: true,
-    schema: z.string().min(1, 'Google Client secret cannot be empty'),
-  },
-  'auth.github.clientId': {
-    isSensitive: false,
-    schema: z.string().min(1, 'GitHub Client ID cannot be empty'),
-  },
-  'auth.github.clientSecret': {
-    isSensitive: true,
-    schema: z.string().min(1, 'GitHub Client secret cannot be empty'),
-  },
-  'auth.tenant.config': {
-    isSensitive: true,
-    schema: z
-      .string()
-      .transform((value) => value.trim())
-      .transform((value, ctx) => {
-        if (value.length === 0) {
-          return '{}'
-        }
-
-        try {
-          const parsed = JSON.parse(value)
-          return JSON.stringify(parsed)
-        } catch {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Tenant auth configuration must be valid JSON',
-          })
-          return z.NEVER
-        }
-      }),
-  },
   'builder.storage.providers': {
     isSensitive: false,
     schema: z.string().transform((value, ctx) => {
@@ -83,13 +45,6 @@ export const DEFAULT_SETTING_DEFINITIONS = {
   'builder.storage.activeProvider': {
     isSensitive: false,
     schema: z.string().transform((value) => value.trim()),
-  },
-  'http.cors.allowedOrigins': {
-    isSensitive: false,
-    schema: z
-      .string()
-      .min(1, 'CORS allowed origins cannot be empty')
-      .transform((value) => value.trim()),
   },
 } as const satisfies Record<string, SettingDefinition>
 

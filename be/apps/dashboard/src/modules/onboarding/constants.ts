@@ -2,10 +2,6 @@ export type OnboardingSettingKey =
   | 'ai.openai.apiKey'
   | 'ai.openai.baseUrl'
   | 'ai.embedding.model'
-  | 'auth.google.clientId'
-  | 'auth.google.clientSecret'
-  | 'auth.github.clientId'
-  | 'auth.github.clientSecret'
   | 'http.cors.allowedOrigins'
   | 'services.amap.apiKey'
 
@@ -27,40 +23,6 @@ export type SettingSectionDefinition = {
 }
 
 export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
-  {
-    id: 'auth',
-    title: 'Authentication Providers',
-    description:
-      'Configure OAuth providers that will be available to your team. You can add them later from the settings panel as well.',
-    fields: [
-      {
-        key: 'auth.google.clientId',
-        label: 'Google Client ID',
-        description: 'Public identifier issued by Google OAuth.',
-        placeholder: '1234567890-abc.apps.googleusercontent.com',
-      },
-      {
-        key: 'auth.google.clientSecret',
-        label: 'Google Client Secret',
-        description: 'Keep this secret safe. Required together with the client ID to enable Google sign-in.',
-        placeholder: 'GOCSPX-xxxxxxxxxxxxxxxxxx',
-        sensitive: true,
-      },
-      {
-        key: 'auth.github.clientId',
-        label: 'GitHub Client ID',
-        description: 'Public identifier for your GitHub OAuth App.',
-        placeholder: 'Iv1.0123456789abcdef',
-      },
-      {
-        key: 'auth.github.clientSecret',
-        label: 'GitHub Client Secret',
-        description: 'Used to authorize GitHub OAuth callbacks.',
-        placeholder: 'e3a2f9c0f2bdc...',
-        sensitive: true,
-      },
-    ],
-  },
   {
     id: 'ai',
     title: 'AI & Embeddings',

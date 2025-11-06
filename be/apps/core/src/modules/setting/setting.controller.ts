@@ -9,7 +9,7 @@ import { DeleteSettingDto, GetSettingDto, SetSettingDto } from './setting.dto'
 import { SettingService } from './setting.service'
 
 @Controller('settings')
-@Roles('admin')
+@Roles('superadmin')
 export class SettingController {
   constructor(private readonly settingService: SettingService) {}
 

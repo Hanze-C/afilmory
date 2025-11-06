@@ -19,7 +19,7 @@ export interface RegisterTenantPayload {
 export type RegisterTenantResult = FetchResponse<unknown>
 
 export async function registerTenant(payload: RegisterTenantPayload): Promise<RegisterTenantResult> {
-  return await coreApi.raw('/auth/tenants/sign-up', {
+  return await coreApi.raw('/auth/sign-up/email', {
     method: 'POST',
     body: payload,
   })

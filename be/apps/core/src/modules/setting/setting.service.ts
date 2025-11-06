@@ -36,7 +36,7 @@ declare module '@afilmory/framework' {
     'setting.deleted': { tenantId: string; key: string }
   }
 }
-type SettingEntryInput = {
+export type SettingEntryInput = {
   [K in SettingKeyType]: { key: K; value: SettingValueMap[K]; options?: SetSettingOptions }
 }[SettingKeyType]
 

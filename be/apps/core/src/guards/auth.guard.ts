@@ -1,4 +1,4 @@
-import { authUsers, tenantAuthUsers } from '@afilmory/db'
+import { authUsers } from '@afilmory/db'
 import type { CanActivate, ExecutionContext } from '@afilmory/framework'
 import { HttpContext } from '@afilmory/framework'
 import type { Session } from 'better-auth'
@@ -13,16 +13,13 @@ import { shouldSkipTenant } from '../decorators/skip-tenant.decorator'
 import { logger } from '../helpers/logger.helper'
 import type { AuthSession } from '../modules/auth/auth.provider'
 import { AuthProvider } from '../modules/auth/auth.provider'
-import type { TenantAuthSession } from '../modules/tenant-auth/tenant-auth.provider'
-import { TenantAuthProvider } from '../modules/tenant-auth/tenant-auth.provider'
 import { getAllowedRoleMask, roleNameToBit } from './roles.decorator'
 
 declare module '@afilmory/framework' {
   interface HttpContextValues {
     auth?: {
-      user?: AuthSession['user'] | TenantAuthSession['user']
+      user?: AuthSession['user']
       session?: Session
-      source?: 'global' | 'tenant'
     }
   }
 }
@@ -33,7 +30,6 @@ export class AuthGuard implements CanActivate {
 
   constructor(
     private readonly authProvider: AuthProvider,
-    private readonly tenantAuthProvider: TenantAuthProvider,
     private readonly dbAccessor: DbAccessor,
     private readonly tenantContextResolver: TenantContextResolver,
   ) {}
@@ -44,11 +40,6 @@ export class AuthGuard implements CanActivate {
     const { method, path } = hono.req
     const handler = context.getHandler()
     const targetClass = context.getClass()
-
-    if (this.isPublicRoute(method, path)) {
-      this.log.verbose(`Bypass guard for public route ${method} ${path}`)
-      return true
-    }
 
     if (shouldSkipTenant(handler) || shouldSkipTenant(targetClass)) {
       this.log.verbose(`Skip guard and tenant resolution for ${method} ${path}`)
@@ -77,26 +68,13 @@ export class AuthGuard implements CanActivate {
 
     const { headers } = hono.req.raw
 
-    const globalAuth = this.authProvider.getAuth()
-    let sessionSource: 'global' | 'tenant' | null = null
-    let authSession: AuthSession | TenantAuthSession | null = await globalAuth.api.getSession({ headers })
+    const globalAuth = await this.authProvider.getAuth()
+    const authSession: AuthSession | null = await globalAuth.api.getSession({ headers })
 
     if (authSession) {
-      sessionSource = 'global'
-      this.log.verbose(`Global session detected for user ${(authSession.user as { id?: string }).id ?? 'unknown'}`)
-    } else if (tenantContext) {
-      const tenantAuth = await this.tenantAuthProvider.getAuth(tenantContext.tenant.id)
-      authSession = await tenantAuth.api.getSession({ headers })
-      if (authSession) {
-        sessionSource = 'tenant'
-        this.log.verbose(
-          `Tenant session detected for user ${(authSession.user as { id?: string }).id ?? 'unknown'} on tenant ${tenantContext.tenant.id}`,
-        )
-      } else {
-        this.log.verbose(`No tenant session present for tenant ${tenantContext.tenant.id}`)
-      }
+      this.log.verbose(`Session detected for user ${(authSession.user as { id?: string }).id ?? 'unknown'}`)
     } else {
-      this.log.verbose('No session context available (no tenant resolved and no global session)')
+      this.log.verbose('No session context available (no tenant resolved and no active session)')
     }
 
     if (authSession) {
@@ -104,33 +82,22 @@ export class AuthGuard implements CanActivate {
         auth: {
           user: authSession.user,
           session: authSession.session,
-          source: sessionSource ?? undefined,
         },
       })
       const userRoleValue = (authSession.user as { role?: string }).role
       const roleName = userRoleValue as 'user' | 'admin' | 'superadmin' | 'guest' | undefined
-      const isGlobalSession = sessionSource === 'global'
-      const isSuperAdmin = isGlobalSession && roleName === 'superadmin'
+      const isSuperAdmin = roleName === 'superadmin'
       let sessionTenantId = (authSession.user as { tenantId?: string | null }).tenantId ?? null
 
       if (!isSuperAdmin) {
         if (!sessionTenantId) {
           const db = this.dbAccessor.get()
-          if (sessionSource === 'tenant') {
-            const [record] = await db
-              .select({ tenantId: tenantAuthUsers.tenantId })
-              .from(tenantAuthUsers)
-              .where(eq(tenantAuthUsers.id, authSession.user.id))
-              .limit(1)
-            sessionTenantId = record?.tenantId ?? ''
-          } else {
-            const [record] = await db
-              .select({ tenantId: authUsers.tenantId })
-              .from(authUsers)
-              .where(eq(authUsers.id, authSession.user.id))
-              .limit(1)
-            sessionTenantId = record?.tenantId ?? ''
-          }
+          const [record] = await db
+            .select({ tenantId: authUsers.tenantId })
+            .from(authUsers)
+            .where(eq(authUsers.id, authSession.user.id))
+            .limit(1)
+          sessionTenantId = record?.tenantId ?? ''
         }
 
         if (!sessionTenantId) {
@@ -189,17 +156,5 @@ export class AuthGuard implements CanActivate {
       }
     }
     return true
-  }
-
-  private isPublicRoute(method: string, path: string): boolean {
-    if (method !== 'POST') {
-      return false
-    }
-
-    if (path === '/api/auth/tenants/sign-up' || path.startsWith('/api/auth/tenants/sign-up/')) {
-      return true
-    }
-
-    return false
   }
 }

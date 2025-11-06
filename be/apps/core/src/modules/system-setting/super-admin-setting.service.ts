@@ -5,8 +5,10 @@ import { injectable } from 'tsyringe'
 import type { ZodType } from 'zod'
 
 import { DbAccessor } from '../../database/database.provider'
+import type { SocialProvidersConfig } from '../auth/auth.config'
 import { SUPER_ADMIN_SETTING_DEFINITIONS, SUPER_ADMIN_SETTING_KEYS } from './super-admin-setting.constants'
 import type {
+  SuperAdminSettingField,
   SuperAdminSettings,
   SuperAdminSettingsOverview,
   SuperAdminSettingsStats,
@@ -51,11 +53,53 @@ export class SuperAdminSettingService {
 
     const baseDomain = baseDomainRaw.trim().toLowerCase()
 
+    const oauthGoogleClientId = this.parseSetting(
+      rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleClientId.key],
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleClientId.schema,
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleClientId.defaultValue,
+    )
+    const oauthGoogleClientSecret = this.parseSetting(
+      rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleClientSecret.key],
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleClientSecret.schema,
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleClientSecret.defaultValue,
+    )
+    const oauthGoogleRedirectUri = this.normalizeRedirectPath(
+      this.parseSetting(
+        rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleRedirectUri.key],
+        SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleRedirectUri.schema,
+        SUPER_ADMIN_SETTING_DEFINITIONS.oauthGoogleRedirectUri.defaultValue,
+      ),
+    )
+
+    const oauthGithubClientId = this.parseSetting(
+      rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubClientId.key],
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubClientId.schema,
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubClientId.defaultValue,
+    )
+    const oauthGithubClientSecret = this.parseSetting(
+      rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubClientSecret.key],
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubClientSecret.schema,
+      SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubClientSecret.defaultValue,
+    )
+    const oauthGithubRedirectUri = this.normalizeRedirectPath(
+      this.parseSetting(
+        rawValues[SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubRedirectUri.key],
+        SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubRedirectUri.schema,
+        SUPER_ADMIN_SETTING_DEFINITIONS.oauthGithubRedirectUri.defaultValue,
+      ),
+    )
+
     return {
       allowRegistration,
       maxRegistrableUsers,
       localProviderEnabled,
       baseDomain,
+      oauthGoogleClientId,
+      oauthGoogleClientSecret,
+      oauthGoogleRedirectUri,
+      oauthGithubClientId,
+      oauthGithubClientSecret,
+      oauthGithubRedirectUri,
     }
   }
 
@@ -82,22 +126,19 @@ export class SuperAdminSettingService {
     }
 
     const current = await this.getSettings()
-    const updates: Array<{ key: string; value: SuperAdminSettings[keyof SuperAdminSettings] | null }> = []
+    const updates: Array<{ field: SuperAdminSettingField; value: SuperAdminSettings[SuperAdminSettingField] }> = []
+
+    const enqueueUpdate = <K extends SuperAdminSettingField>(field: K, value: SuperAdminSettings[K]) => {
+      updates.push({ field, value })
+      current[field] = value
+    }
 
     if (patch.allowRegistration !== undefined && patch.allowRegistration !== current.allowRegistration) {
-      updates.push({
-        key: SUPER_ADMIN_SETTING_DEFINITIONS.allowRegistration.key,
-        value: patch.allowRegistration,
-      })
-      current.allowRegistration = patch.allowRegistration
+      enqueueUpdate('allowRegistration', patch.allowRegistration)
     }
 
     if (patch.localProviderEnabled !== undefined && patch.localProviderEnabled !== current.localProviderEnabled) {
-      updates.push({
-        key: SUPER_ADMIN_SETTING_DEFINITIONS.localProviderEnabled.key,
-        value: patch.localProviderEnabled,
-      })
-      current.localProviderEnabled = patch.localProviderEnabled
+      enqueueUpdate('localProviderEnabled', patch.localProviderEnabled)
     }
 
     if (patch.maxRegistrableUsers !== undefined) {
@@ -112,28 +153,58 @@ export class SuperAdminSettingService {
           }
         }
 
-        updates.push({
-          key: SUPER_ADMIN_SETTING_DEFINITIONS.maxRegistrableUsers.key,
-          value: normalized,
-        })
-        current.maxRegistrableUsers = normalized
+        enqueueUpdate('maxRegistrableUsers', normalized)
       }
     }
 
     if (patch.baseDomain !== undefined) {
       const sanitized = patch.baseDomain === null ? null : String(patch.baseDomain).trim().toLowerCase()
       if (!sanitized) {
-        updates.push({
-          key: SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.key,
-          value: SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.defaultValue,
-        })
-        current.baseDomain = SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.defaultValue
+        enqueueUpdate('baseDomain', SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.defaultValue)
       } else if (sanitized !== current.baseDomain) {
-        updates.push({
-          key: SUPER_ADMIN_SETTING_DEFINITIONS.baseDomain.key,
-          value: sanitized,
-        })
-        current.baseDomain = sanitized
+        enqueueUpdate('baseDomain', sanitized)
+      }
+    }
+
+    if (patch.oauthGoogleClientId !== undefined) {
+      const sanitized = this.normalizeNullableString(patch.oauthGoogleClientId)
+      if (sanitized !== current.oauthGoogleClientId) {
+        enqueueUpdate('oauthGoogleClientId', sanitized)
+      }
+    }
+
+    if (patch.oauthGoogleClientSecret !== undefined) {
+      const sanitized = this.normalizeNullableString(patch.oauthGoogleClientSecret)
+      if (sanitized !== current.oauthGoogleClientSecret) {
+        enqueueUpdate('oauthGoogleClientSecret', sanitized)
+      }
+    }
+
+    if (patch.oauthGoogleRedirectUri !== undefined) {
+      const sanitized = this.normalizeRedirectPath(patch.oauthGoogleRedirectUri)
+      if (sanitized !== current.oauthGoogleRedirectUri) {
+        enqueueUpdate('oauthGoogleRedirectUri', sanitized)
+      }
+    }
+
+    if (patch.oauthGithubClientId !== undefined) {
+      const sanitized = this.normalizeNullableString(patch.oauthGithubClientId)
+      if (sanitized !== current.oauthGithubClientId) {
+        enqueueUpdate('oauthGithubClientId', sanitized)
+      }
+    }
+
+    if (patch.oauthGithubClientSecret !== undefined) {
+      const sanitized = this.normalizeNullableString(patch.oauthGithubClientSecret)
+      if (sanitized !== current.oauthGithubClientSecret) {
+        enqueueUpdate('oauthGithubClientSecret', sanitized)
+      }
+    }
+
+    if (patch.oauthGithubRedirectUri !== undefined) {
+      const sanitized = this.normalizeRedirectPath(patch.oauthGithubRedirectUri)
+      if (sanitized !== current.oauthGithubRedirectUri) {
+        enqueueUpdate('oauthGithubRedirectUri', sanitized)
       }
     }
 
@@ -142,10 +213,14 @@ export class SuperAdminSettingService {
     }
 
     await this.systemSettingService.setMany(
-      updates.map((entry) => ({
-        key: entry.key,
-        value: entry.value,
-      })),
+      updates.map((entry) => {
+        const definition = SUPER_ADMIN_SETTING_DEFINITIONS[entry.field]
+        return {
+          key: definition.key,
+          value: (entry.value ?? null) as SuperAdminSettings[typeof entry.field] | null,
+          options: { isSensitive: definition.isSensitive ?? false },
+        }
+      }),
     )
 
     return current
@@ -172,6 +247,14 @@ export class SuperAdminSettingService {
     }
   }
 
+  async getAuthModuleConfig(): Promise<{ baseDomain: string; socialProviders: SocialProvidersConfig }> {
+    const settings = await this.getSettings()
+    return {
+      baseDomain: settings.baseDomain,
+      socialProviders: this.buildSocialProviders(settings),
+    }
+  }
+
   private parseSetting<T>(raw: unknown, schema: ZodType<T>, defaultValue: T): T {
     if (raw === null || raw === undefined) {
       return defaultValue
@@ -179,6 +262,66 @@ export class SuperAdminSettingService {
 
     const parsed = schema.safeParse(raw)
     return parsed.success ? parsed.data : defaultValue
+  }
+
+  private buildSocialProviders(settings: SuperAdminSettings): SocialProvidersConfig {
+    const providers: SocialProvidersConfig = {}
+
+    if (settings.oauthGoogleClientId && settings.oauthGoogleClientSecret) {
+      providers.google = {
+        clientId: settings.oauthGoogleClientId,
+        clientSecret: settings.oauthGoogleClientSecret,
+        redirectPath: settings.oauthGoogleRedirectUri,
+      }
+    }
+
+    if (settings.oauthGithubClientId && settings.oauthGithubClientSecret) {
+      providers.github = {
+        clientId: settings.oauthGithubClientId,
+        clientSecret: settings.oauthGithubClientSecret,
+        redirectPath: settings.oauthGithubRedirectUri,
+      }
+    }
+
+    return providers
+  }
+
+  private normalizeNullableString(value: string | null | undefined): string | null {
+    if (value === undefined || value === null) {
+      return null
+    }
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  private normalizeRedirectPath(value: string | null | undefined): string | null {
+    if (value === undefined || value === null) {
+      return null
+    }
+
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      return null
+    }
+
+    const ensureLeadingSlash = (input: string): string | null => {
+      if (!input.startsWith('/')) {
+        return null
+      }
+      return input
+    }
+
+    try {
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        const url = new URL(trimmed)
+        const pathWithQuery = `${url.pathname}${url.search ?? ''}`
+        return ensureLeadingSlash(pathWithQuery) ?? null
+      }
+    } catch {
+      // fall through to path handling
+    }
+
+    return ensureLeadingSlash(trimmed)
   }
 
   private buildStats(settings: SuperAdminSettings, totalUsers: number): SuperAdminSettingsStats {

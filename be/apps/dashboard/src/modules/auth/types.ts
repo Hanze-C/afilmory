@@ -22,5 +22,4 @@ export interface BetterAuthSession {
 export interface AuthState {
   user: BetterAuthUser
   session: BetterAuthSession
-  source?: 'global' | 'tenant'
 }

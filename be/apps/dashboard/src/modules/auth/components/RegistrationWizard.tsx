@@ -5,6 +5,7 @@ import type { FC, KeyboardEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
+import { SocialAuthButtons } from '~/modules/auth/components/SocialAuthButtons'
 import { useRegisterTenant } from '~/modules/auth/hooks/useRegisterTenant'
 import type { TenantRegistrationFormState } from '~/modules/auth/hooks/useRegistrationForm'
 import { useRegistrationForm } from '~/modules/auth/hooks/useRegistrationForm'
@@ -322,6 +323,11 @@ const AdminStep: FC<StepCommonProps> = ({ values, errors, onFieldChange, isLoadi
     <p className="text-text-tertiary text-xs">
       We recommend using a secure password manager to store credentials for critical roles like the administrator.
     </p>
+    <SocialAuthButtons
+      className="border border-white/5 bg-fill/40 rounded-2xl p-4"
+      title="Or use single sign-on"
+      requestSignUp
+    />
   </div>
 )
 

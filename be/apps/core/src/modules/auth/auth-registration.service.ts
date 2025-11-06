@@ -5,6 +5,7 @@ import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
 import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { getTenantContext } from '../tenant/tenant.context'
 import { TenantRepository } from '../tenant/tenant.repository'
 import { TenantService } from '../tenant/tenant.service'
 import type { TenantRecord } from '../tenant/tenant.types'
@@ -18,7 +19,7 @@ type RegisterTenantAccountInput = {
 
 type RegisterTenantInput = {
   account: RegisterTenantAccountInput
-  tenant: {
+  tenant?: {
     name: string
     slug?: string | null
   }
@@ -54,26 +55,119 @@ export class AuthRegistrationService {
   async registerTenant(input: RegisterTenantInput, headers: Headers): Promise<RegisterTenantResult> {
     await this.superAdminSettings.ensureRegistrationAllowed()
 
-    const accountEmail = input.account.email.trim().toLowerCase()
-    const accountPassword = input.account.password
-    const accountName = input.account.name.trim() || accountEmail
+    const tenantContext = getTenantContext()
+    const account = this.normalizeAccountInput(input.account)
 
-    if (!accountEmail) {
+    if (tenantContext) {
+      return await this.registerExistingTenantMember(account, headers, tenantContext.tenant)
+    }
+
+    if (!input.tenant) {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '租户信息不能为空' })
+    }
+
+    return await this.registerNewTenant(account, input.tenant, headers)
+  }
+
+  private async generateUniqueSlug(base: string): Promise<string> {
+    const sanitizedBase = base.length > 0 ? base : 'tenant'
+
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const candidate = attempt === 0 ? sanitizedBase : `${sanitizedBase}-${attempt + 1}`
+      const existing = await this.tenantRepository.findBySlug(candidate)
+      if (!existing) {
+        return candidate
+      }
+    }
+
+    throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+      message: '无法生成唯一的租户标识，请尝试使用不同的名称',
+    })
+  }
+
+  private normalizeAccountInput(account: RegisterTenantAccountInput): Required<RegisterTenantAccountInput> {
+    const email = account.email?.trim().toLowerCase() ?? ''
+    if (!email) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '邮箱不能为空' })
     }
 
-    if (accountPassword.trim().length < 8) {
+    const password = account.password?.trim() ?? ''
+    if (password.length < 8) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
         message: '密码长度至少需要 8 个字符',
       })
     }
 
-    const tenantName = input.tenant.name.trim()
+    const name = account.name?.trim() || email
+
+    return {
+      email,
+      password,
+      name,
+    }
+  }
+
+  private async registerExistingTenantMember(
+    account: Required<RegisterTenantAccountInput>,
+    headers: Headers,
+    tenant: TenantRecord,
+  ): Promise<RegisterTenantResult> {
+    headers.set('x-tenant-id', tenant.id)
+    if (tenant.slug) {
+      headers.set('x-tenant-slug', tenant.slug)
+    }
+
+    const auth = await this.authProvider.getAuth()
+    const response = await auth.api.signUpEmail({
+      body: {
+        email: account.email,
+        password: account.password,
+        name: account.name,
+      },
+      headers,
+      asResponse: true,
+    })
+
+    if (!response.ok) {
+      return { response, success: false, tenant }
+    }
+
+    let userId: string | undefined
+    try {
+      const payload = (await response.clone().json()) as { user?: { id?: string } } | null
+      userId = payload?.user?.id
+    } catch {
+      userId = undefined
+    }
+
+    if (!userId) {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+        message: '注册成功但未返回用户信息，请稍后重试。',
+      })
+    }
+
+    const db = this.dbAccessor.get()
+    await db.update(authUsers).set({ tenantId: tenant.id, role: 'user' }).where(eq(authUsers.id, userId))
+
+    return {
+      response,
+      tenant,
+      accountId: userId,
+      success: true,
+    }
+  }
+
+  private async registerNewTenant(
+    account: Required<RegisterTenantAccountInput>,
+    tenantInput: RegisterTenantInput['tenant'],
+    headers: Headers,
+  ): Promise<RegisterTenantResult> {
+    const tenantName = tenantInput?.name?.trim() ?? ''
     if (!tenantName) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '租户名称不能为空' })
     }
 
-    const slugBase = input.tenant.slug?.trim() ? slugify(input.tenant.slug) : slugify(tenantName)
+    const slugBase = tenantInput?.slug?.trim() ? slugify(tenantInput.slug) : slugify(tenantName)
     if (!slugBase) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '租户标识不能为空' })
     }
@@ -88,12 +182,12 @@ export class AuthRegistrationService {
       })
       tenantId = tenantAggregate.tenant.id
 
-      const auth = this.authProvider.getAuth()
+      const auth = await this.authProvider.getAuth()
       const response = await auth.api.signUpEmail({
         body: {
-          email: accountEmail,
-          password: accountPassword,
-          name: accountName,
+          email: account.email,
+          password: account.password,
+          name: account.name,
         },
         headers,
         asResponse: true,
@@ -142,21 +236,5 @@ export class AuthRegistrationService {
       }
       throw error
     }
-  }
-
-  private async generateUniqueSlug(base: string): Promise<string> {
-    const sanitizedBase = base.length > 0 ? base : 'tenant'
-
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      const candidate = attempt === 0 ? sanitizedBase : `${sanitizedBase}-${attempt + 1}`
-      const existing = await this.tenantRepository.findBySlug(candidate)
-      if (!existing) {
-        return candidate
-      }
-    }
-
-    throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-      message: '无法生成唯一的租户标识，请尝试使用不同的名称',
-    })
   }
 }

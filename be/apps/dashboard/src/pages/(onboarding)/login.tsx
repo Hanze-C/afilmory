@@ -3,6 +3,7 @@ import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { useState } from 'react'
 
+import { SocialAuthButtons } from '~/modules/auth/components/SocialAuthButtons'
 import { useLogin } from '~/modules/auth/hooks/useLogin'
 import { LinearBorderContainer } from '~/modules/onboarding/components/LinearBorderContainer'
 
@@ -38,6 +39,8 @@ export function Component() {
           <form onSubmit={handleSubmit} className="bg-background-tertiary relative w-[600px]">
             <div className="p-12">
               <h1 className="text-text mb-10 text-3xl font-bold">Login</h1>
+
+              <SocialAuthButtons className="mb-8" />
 
               {/* Error Message */}
               {error && (

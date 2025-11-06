@@ -87,7 +87,7 @@ export function usePageRedirect() {
 
   const logout = useCallback(async () => {
     try {
-      await signOutBySource(sessionQuery.data?.source)
+      await signOutBySource()
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
@@ -96,7 +96,7 @@ export function usePageRedirect() {
       setAuthUser(null)
       navigate(DEFAULT_LOGIN_PATH, { replace: true })
     }
-  }, [navigate, queryClient, sessionQuery.data?.source, setAuthUser])
+  }, [navigate, queryClient, setAuthUser])
 
   // Sync auth user to atom
   useEffect(() => {
