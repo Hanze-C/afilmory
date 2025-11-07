@@ -299,6 +299,9 @@ importers:
       '@essentials/request-timeout':
         specifier: 1.3.0
         version: 1.3.0
+      '@fn-sphere/filter':
+        specifier: ^1.1.0
+        version: 1.1.0(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.12)
       '@headlessui/react':
         specifier: 2.2.9
         version: 2.2.9(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -2958,6 +2961,22 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@fn-sphere/core@1.1.0':
+    resolution: {integrity: sha512-LUSyJsLRuwt5hW0cHt1BfUee6y2lttm1zK7Jn2g07BV1K1tzW6iNnLLwDFIC6v+Owp+zQdyk1npwAoQZo6ezdA==}
+    peerDependencies:
+      zod: ^4.1.0
+
+  '@fn-sphere/filter@1.1.0':
+    resolution: {integrity: sha512-FXX3GmiYxaaPcFMkMklgqf64A4eF+ooekSNl/y8MznhDAblGyDcRJd90OTAT2Kin29Hb4Rc7FdQ7amr8AHrmyQ==}
+    peerDependencies:
+      '@types/react': ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+      zod: ^4.1.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@giscus/react@3.1.0':
     resolution: {integrity: sha512-0TCO2TvL43+oOdyVVGHDItwxD1UMKP2ZYpT6gXmhFOqfAJtZxTzJ9hkn34iAF/b6YzyJ4Um89QIt9z/ajmAEeg==}
@@ -11504,6 +11523,12 @@ packages:
     resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
     engines: {node: '>=18'}
 
+  zod-compare@2.0.0:
+    resolution: {integrity: sha512-LGqcPk9ZiU4q355YI2LEPoFVD2UJSX5zmW4OfTdO/MBmRCIY68JxAKqyUgeLJ+37gS4jWODqJjoo9UCuWuW1rQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
+
   zod-validation-error@3.5.3:
     resolution: {integrity: sha512-OT5Y8lbUadqVZCsnyFaTQ4/O2mys4tj7PqhdbBCp7McPwvIEKfPtdA6QfPeFQK2/Rz5LgwmAXRJTugBNBi0btw==}
     engines: {node: '>=18.0.0'}
@@ -13662,6 +13687,20 @@ snapshots:
       tabbable: 6.2.0
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@fn-sphere/core@1.1.0(zod@4.1.12)':
+    dependencies:
+      zod: 4.1.12
+      zod-compare: 2.0.0(zod@4.1.12)
+
+  '@fn-sphere/filter@1.1.0(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(zod@4.1.12)':
+    dependencies:
+      '@fn-sphere/core': 1.1.0(zod@4.1.12)
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+      zod: 4.1.12
+    optionalDependencies:
+      '@types/react': 19.2.2
 
   '@giscus/react@3.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
@@ -23891,6 +23930,10 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   yoctocolors@2.1.1: {}
+
+  zod-compare@2.0.0(zod@4.1.12):
+    dependencies:
+      zod: 4.1.12
 
   zod-validation-error@3.5.3(zod@3.25.76):
     dependencies:

@@ -26,6 +26,7 @@
     "@afilmory/utils": "workspace:*",
     "@afilmory/webgl-viewer": "workspace:*",
     "@essentials/request-timeout": "1.3.0",
+    "@fn-sphere/filter": "^1.1.0",
     "@headlessui/react": "2.2.9",
     "@lobehub/fluent-emoji": "2.0.0",
     "@maplibre/maplibre-gl-geocoder": "^1.9.1",
