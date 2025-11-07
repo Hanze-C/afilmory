@@ -59,6 +59,7 @@ type TenantSignUpRequest = {
     name?: string
     slug?: string | null
   }
+  settings?: Array<{ key?: string; value?: unknown }>
 }
 
 type SocialSignInRequest = {
@@ -208,6 +209,7 @@ export class AuthController {
               slug: body.tenant.slug ?? null,
             }
           : undefined,
+        settings: body.settings,
       },
       headers,
     )

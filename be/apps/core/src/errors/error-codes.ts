@@ -10,6 +10,7 @@ export enum ErrorCode {
   AUTH_UNAUTHORIZED = 10,
   AUTH_FORBIDDEN = 11,
   AUTH_TENANT_NOT_FOUND = 12,
+  AUTH_TENANT_NOT_FOUND_GUARD = 13,
 
   // Tenant
   TENANT_NOT_FOUND = 20,
@@ -58,6 +59,10 @@ export const ERROR_CODE_DESCRIPTORS: Record<ErrorCode, ErrorDescriptor> = {
   [ErrorCode.AUTH_TENANT_NOT_FOUND]: {
     httpStatus: 400,
     message: 'Tenant context not found',
+  },
+  [ErrorCode.AUTH_TENANT_NOT_FOUND_GUARD]: {
+    httpStatus: 400,
+    message: 'Tenant context not found (guard)',
   },
   [ErrorCode.TENANT_NOT_FOUND]: {
     httpStatus: 404,

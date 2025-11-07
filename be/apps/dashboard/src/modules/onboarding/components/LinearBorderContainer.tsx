@@ -30,14 +30,14 @@ export const LinearBorderContainer: FC<LinearBorderContainerProps> = ({
   children,
   className,
 
-  tint = 'var(--color-text)',
+  tint = 'var(--color-text-secondary)',
 }) => {
   // Generate inline styles for gradients with dynamic tint color
   const horizontalGradient = {
     background: `linear-gradient(to right, transparent, ${tint}, transparent)`,
   }
   const verticalGradient = {
-    background: `linear-gradient(to bottom, transparent, ${tint}, transparent)`,
+    background: `linear-gradient(to bottom, transparent -15%, ${tint} 50%, transparent 115%)`,
   }
 
   // Advanced mode: uses flex layout for borders that span full dimensions

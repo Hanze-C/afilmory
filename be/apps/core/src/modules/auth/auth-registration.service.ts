@@ -4,6 +4,10 @@ import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
+import { SETTING_SCHEMAS } from '../setting/setting.constant'
+import type { SettingEntryInput } from '../setting/setting.service'
+import { SettingService } from '../setting/setting.service'
+import type { SettingKeyType } from '../setting/setting.type'
 import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
 import { getTenantContext } from '../tenant/tenant.context'
 import { TenantRepository } from '../tenant/tenant.repository'
@@ -23,6 +27,7 @@ type RegisterTenantInput = {
     name: string
     slug?: string | null
   }
+  settings?: Array<{ key: string; value: unknown }>
 }
 
 export interface RegisterTenantResult {
@@ -49,6 +54,7 @@ export class AuthRegistrationService {
     private readonly tenantService: TenantService,
     private readonly tenantRepository: TenantRepository,
     private readonly superAdminSettings: SuperAdminSettingService,
+    private readonly settingService: SettingService,
     private readonly dbAccessor: DbAccessor,
   ) {}
 
@@ -66,7 +72,7 @@ export class AuthRegistrationService {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '租户信息不能为空' })
     }
 
-    return await this.registerNewTenant(account, input.tenant, headers)
+    return await this.registerNewTenant(account, input.tenant, headers, input.settings)
   }
 
   private async generateUniqueSlug(base: string): Promise<string> {
@@ -157,10 +163,44 @@ export class AuthRegistrationService {
     }
   }
 
+  private normalizeSettings(settings?: RegisterTenantInput['settings']): SettingEntryInput[] {
+    if (!settings || settings.length === 0) {
+      return []
+    }
+
+    const normalized: SettingEntryInput[] = []
+
+    for (const entry of settings) {
+      const key = entry.key?.trim() ?? ''
+      if (!key) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+          message: 'Setting key cannot be empty',
+        })
+      }
+
+      if (!(key in SETTING_SCHEMAS)) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+          message: `Unknown setting key: ${key}`,
+        })
+      }
+
+      const schema = SETTING_SCHEMAS[key as SettingKeyType]
+      const value = schema.parse(entry.value)
+
+      normalized.push({
+        key: key as SettingKeyType,
+        value,
+      })
+    }
+
+    return normalized
+  }
+
   private async registerNewTenant(
     account: Required<RegisterTenantAccountInput>,
     tenantInput: RegisterTenantInput['tenant'],
     headers: Headers,
+    settings?: RegisterTenantInput['settings'],
   ): Promise<RegisterTenantResult> {
     const tenantName = tenantInput?.name?.trim() ?? ''
     if (!tenantName) {
@@ -221,6 +261,19 @@ export class AuthRegistrationService {
 
       const db = this.dbAccessor.get()
       await db.update(authUsers).set({ tenantId, role: 'admin' }).where(eq(authUsers.id, userId))
+
+      const initialSettings = this.normalizeSettings(settings)
+      if (initialSettings.length > 0) {
+        await this.settingService.setMany(
+          initialSettings.map((entry) => ({
+            ...entry,
+            options: {
+              tenantId,
+              isSensitive: false,
+            },
+          })),
+        )
+      }
 
       const refreshed = await this.tenantService.getById(tenantId)
 

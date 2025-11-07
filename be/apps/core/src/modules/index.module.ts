@@ -14,6 +14,7 @@ import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
 import { ReactionModule } from './reaction/reaction.module'
 import { SettingModule } from './setting/setting.module'
+import { SiteSettingModule } from './site-setting/site-setting.module'
 import { StaticWebModule } from './static-web/static-web.module'
 import { StorageSettingModule } from './storage-setting/storage-setting.module'
 import { SuperAdminModule } from './super-admin/super-admin.module'
@@ -33,6 +34,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
     AuthModule,
     SettingModule,
     StorageSettingModule,
+    SiteSettingModule,
     SystemSettingModule,
     SuperAdminModule,
     OnboardingModule,

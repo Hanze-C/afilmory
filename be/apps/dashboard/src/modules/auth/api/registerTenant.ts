@@ -14,6 +14,10 @@ export interface RegisterTenantPayload {
     name: string
     slug: string | null
   }
+  settings?: Array<{
+    key: string
+    value: unknown
+  }>
 }
 
 export type RegisterTenantResult = FetchResponse<unknown>

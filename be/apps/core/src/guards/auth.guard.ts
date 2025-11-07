@@ -104,14 +104,14 @@ export class AuthGuard implements CanActivate {
           this.log.warn(
             `Denied access: session ${(authSession.user as { id?: string }).id ?? 'unknown'} missing tenant id for ${method} ${path}`,
           )
-          throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND)
+          throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND_GUARD)
         }
 
         if (!tenantContext) {
           this.log.warn(
             `Denied access: tenant context missing while session tenant=${sessionTenantId} accessing ${method} ${path}`,
           )
-          throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND)
+          throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND_GUARD)
         }
         if (sessionTenantId !== tenantContext.tenant.id) {
           this.log.warn(

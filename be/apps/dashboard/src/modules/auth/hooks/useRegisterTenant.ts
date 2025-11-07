@@ -5,12 +5,15 @@ import { useState } from 'react'
 import type { RegisterTenantPayload } from '~/modules/auth/api/registerTenant'
 import { registerTenant } from '~/modules/auth/api/registerTenant'
 
+import type { TenantSiteFieldKey } from './useRegistrationForm'
+
 interface TenantRegistrationRequest {
   tenantName: string
   tenantSlug: string
   accountName: string
   email: string
   password: string
+  settings: Array<{ key: TenantSiteFieldKey; value: string }>
 }
 
 const SECOND_LEVEL_PUBLIC_SUFFIXES = new Set(['ac', 'co', 'com', 'edu', 'gov', 'net', 'org'])
@@ -82,6 +85,10 @@ export function useRegisterTenant() {
           email: data.email.trim(),
           password: data.password,
         },
+      }
+
+      if (data.settings.length > 0) {
+        payload.settings = data.settings
       }
 
       const response = await registerTenant(payload)

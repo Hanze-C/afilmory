@@ -14,6 +14,7 @@ import { LoadingState } from './states/LoadingState'
 import { AdminStep } from './steps/AdminStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { SettingsStep } from './steps/SettingsStep'
+import { SiteStep } from './steps/SiteStep'
 import { TenantStep } from './steps/TenantStep'
 import { WelcomeStep } from './steps/WelcomeStep'
 
@@ -30,6 +31,7 @@ export const OnboardingWizard: FC = () => {
     canNavigateTo,
     tenant,
     admin,
+    site,
     settingsState,
     acknowledged,
     setAcknowledged,
@@ -39,7 +41,11 @@ export const OnboardingWizard: FC = () => {
     updateAdminField,
     toggleSetting,
     updateSettingValue,
+    updateSiteField,
     reviewSettings,
+    siteSchema,
+    siteSchemaLoading,
+    siteSchemaError,
   } = wizard
 
   // Autofocus management: focus first focusable control when step changes
@@ -117,12 +123,21 @@ export const OnboardingWizard: FC = () => {
     return <InitializedState />
   }
 
+  if (siteSchemaLoading || !siteSchema) {
+    return <LoadingState />
+  }
+
+  if (siteSchemaError) {
+    return <ErrorState />
+  }
+
   const stepContent: Record<typeof currentStep.id, ReactNode> = {
     welcome: <WelcomeStep />,
     tenant: (
       <TenantStep tenant={tenant} errors={errors} onNameChange={updateTenantName} onSlugChange={updateTenantSlug} />
     ),
     admin: <AdminStep admin={admin} errors={errors} onChange={updateAdminField} />,
+    site: <SiteStep schema={siteSchema} values={site} errors={errors} onFieldChange={updateSiteField} />,
     settings: (
       <SettingsStep
         settingsState={settingsState}
@@ -135,6 +150,10 @@ export const OnboardingWizard: FC = () => {
       <ReviewStep
         tenant={tenant}
         admin={admin}
+        site={site}
+        siteSchema={siteSchema}
+        siteSchemaLoading={false}
+        siteSchemaError={null}
         reviewSettings={reviewSettings}
         acknowledged={acknowledged}
         errors={errors}

@@ -2,9 +2,9 @@ import { PageTabs } from '~/components/navigation/PageTabs'
 
 const SETTINGS_TABS = [
   {
-    id: 'general',
-    label: '通用设置',
-    path: '/settings',
+    id: 'site',
+    label: '站点设置',
+    path: '/settings/site',
     end: true,
   },
 ] as const

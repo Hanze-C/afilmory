@@ -14,7 +14,7 @@ import {
 import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 import type { ReactNode } from 'react'
-import { Fragment, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 
 import { LinearBorderPanel } from '../../components/common/GlassPanel'
 import type {
@@ -310,6 +310,27 @@ export interface SchemaFormRendererProps<Key extends string> {
   onChange: (key: Key, value: SchemaFormValue) => void
   shouldRenderNode?: (node: UiNode<Key>, context: SchemaRendererContext<Key>) => boolean
   renderSlot?: SlotRenderer<Key>
+}
+
+export function SchemaFormRendererUncontrolled<Key extends string>({
+  initialValues,
+  onChange,
+  ...rest
+}: Omit<SchemaFormRendererProps<Key>, 'values'> & { initialValues: SchemaFormState<Key> }) {
+  const [values, setValues] = useState(initialValues)
+
+  const handleChange = useMemo(
+    () => (key: Key, value: SchemaFormValue) => {
+      setValues((prev) => {
+        const next = { ...prev, [key]: value }
+        onChange?.(key, value)
+        return next
+      })
+    },
+    [onChange],
+  )
+
+  return <SchemaFormRenderer {...rest} values={values} onChange={handleChange} />
 }
 
 export function SchemaFormRenderer<Key extends string>({

@@ -1,8 +1,14 @@
-import { useState } from 'react'
+import { useForm } from '@tanstack/react-form'
+import { useMemo } from 'react'
+import { z } from 'zod'
 
-import { isLikelyEmail, slugify } from '~/modules/onboarding/utils'
+import { DEFAULT_SITE_SETTINGS_VALUES, SITE_SETTINGS_KEYS, siteSettingsSchema } from '~/modules/onboarding/siteSchema'
+import type { SiteFormState } from '~/modules/onboarding/types'
+import { isLikelyEmail } from '~/modules/onboarding/utils'
 
-export interface TenantRegistrationFormState {
+export type TenantSiteFieldKey = (typeof SITE_SETTINGS_KEYS)[number]
+
+export type TenantRegistrationFormState = SiteFormState & {
   tenantName: string
   tenantSlug: string
   accountName: string
@@ -13,18 +19,59 @@ export interface TenantRegistrationFormState {
 }
 
 const REQUIRED_PASSWORD_LENGTH = 8
-const ALL_FIELDS: Array<keyof TenantRegistrationFormState> = [
-  'tenantName',
-  'tenantSlug',
-  'accountName',
-  'email',
-  'password',
-  'confirmPassword',
-  'termsAccepted',
-]
 
-export function useRegistrationForm(initial?: Partial<TenantRegistrationFormState>) {
-  const [values, setValues] = useState<TenantRegistrationFormState>({
+const baseRegistrationSchema = z.object({
+  tenantName: z.string().min(1, { error: 'Workspace name is required' }),
+  tenantSlug: z
+    .string()
+    .min(1, { error: 'Slug is required' })
+    .regex(/^[a-z0-9-]+$/, { error: 'Use lowercase letters, numbers, and hyphen only' }),
+  accountName: z.string().min(1, { error: 'Administrator name is required' }),
+  email: z
+    .string()
+    .min(1, { error: 'Email is required' })
+    .refine((value) => isLikelyEmail(value), { error: 'Enter a valid email address' }),
+  password: z
+    .string()
+    .min(1, { error: 'Password is required' })
+    .min(REQUIRED_PASSWORD_LENGTH, {
+      error: `Password must be at least ${REQUIRED_PASSWORD_LENGTH} characters`,
+    }),
+  confirmPassword: z.string().min(1, { error: 'Confirm your password' }),
+  termsAccepted: z.boolean({
+    error: 'You must accept the terms to continue',
+  }),
+})
+
+export const tenantRegistrationSchema = siteSettingsSchema.merge(baseRegistrationSchema).superRefine((data, ctx) => {
+  if (data.confirmPassword !== '' && data.password !== data.confirmPassword) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      error: 'Passwords do not match',
+      path: ['confirmPassword'],
+    })
+  }
+})
+
+export function buildRegistrationInitialValues(
+  initial?: Partial<TenantRegistrationFormState>,
+): TenantRegistrationFormState {
+  const siteValues: SiteFormState = { ...DEFAULT_SITE_SETTINGS_VALUES }
+
+  if (initial) {
+    for (const key of SITE_SETTINGS_KEYS) {
+      const value = initial[key]
+      if (value === undefined || value === null) {
+        continue
+      }
+
+      if (typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number') {
+        siteValues[key] = value
+      }
+    }
+  }
+
+  return {
     tenantName: initial?.tenantName ?? '',
     tenantSlug: initial?.tenantSlug ?? '',
     accountName: initial?.accountName ?? '',
@@ -32,125 +79,46 @@ export function useRegistrationForm(initial?: Partial<TenantRegistrationFormStat
     password: initial?.password ?? '',
     confirmPassword: initial?.confirmPassword ?? '',
     termsAccepted: initial?.termsAccepted ?? false,
+    ...siteValues,
+  }
+}
+
+export function validateRegistrationValues(values: TenantRegistrationFormState): Record<string, string> {
+  const result = tenantRegistrationSchema.safeParse(values)
+
+  if (result.success) {
+    return {}
+  }
+
+  const fieldErrors: Record<string, string> = {}
+
+  for (const issue of result.error.issues) {
+    const path = issue.path.join('.')
+
+    if (!path || fieldErrors[path]) {
+      continue
+    }
+
+    fieldErrors[path] = issue.message
+  }
+
+  return fieldErrors
+}
+
+export function useRegistrationForm(initial?: Partial<TenantRegistrationFormState>) {
+  const defaultValues = useMemo(() => buildRegistrationInitialValues(initial), [initial])
+
+  return useForm({
+    defaultValues,
+    validators: {
+      onChange: ({ value }) => {
+        const fieldErrors = validateRegistrationValues(value)
+        return Object.keys(fieldErrors).length > 0 ? { fields: fieldErrors } : undefined
+      },
+      onSubmit: ({ value }) => {
+        const fieldErrors = validateRegistrationValues(value)
+        return Object.keys(fieldErrors).length > 0 ? { fields: fieldErrors } : undefined
+      },
+    },
   })
-  const [errors, setErrors] = useState<Partial<Record<keyof TenantRegistrationFormState, string>>>({})
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
-
-  const updateValue = <K extends keyof TenantRegistrationFormState>(
-    field: K,
-    value: TenantRegistrationFormState[K],
-  ) => {
-    setValues((prev) => {
-      if (field === 'tenantName' && !slugManuallyEdited) {
-        return {
-          ...prev,
-          tenantName: value as string,
-          tenantSlug: slugify(value as string),
-        }
-      }
-
-      if (field === 'tenantSlug') {
-        setSlugManuallyEdited(true)
-      }
-
-      return { ...prev, [field]: value }
-    })
-    setErrors((prev) => {
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
-  }
-
-  const fieldError = (field: keyof TenantRegistrationFormState): string | undefined => {
-    switch (field) {
-      case 'tenantName': {
-        return values.tenantName.trim() ? undefined : 'Workspace name is required'
-      }
-      case 'tenantSlug': {
-        const slug = values.tenantSlug.trim()
-        if (!slug) return 'Slug is required'
-        if (!/^[a-z0-9-]+$/.test(slug)) return 'Use lowercase letters, numbers, and hyphen only'
-        return undefined
-      }
-      case 'email': {
-        const email = values.email.trim()
-        if (!email) return 'Email is required'
-        if (!isLikelyEmail(email)) return 'Enter a valid email address'
-        return undefined
-      }
-      case 'accountName': {
-        return values.accountName.trim() ? undefined : 'Administrator name is required'
-      }
-      case 'password': {
-        if (!values.password) return 'Password is required'
-        if (values.password.length < REQUIRED_PASSWORD_LENGTH) {
-          return `Password must be at least ${REQUIRED_PASSWORD_LENGTH} characters`
-        }
-        return undefined
-      }
-      case 'confirmPassword': {
-        if (!values.confirmPassword) return 'Confirm your password'
-        if (values.confirmPassword !== values.password) return 'Passwords do not match'
-        return undefined
-      }
-      case 'termsAccepted': {
-        return values.termsAccepted ? undefined : 'You must accept the terms to continue'
-      }
-    }
-
-    return undefined
-  }
-
-  const validate = (fields?: Array<keyof TenantRegistrationFormState>) => {
-    const fieldsToValidate = fields ?? ALL_FIELDS
-    const stepErrors: Partial<Record<keyof TenantRegistrationFormState, string>> = {}
-    let hasErrors = false
-
-    for (const field of fieldsToValidate) {
-      const error = fieldError(field)
-      if (error) {
-        stepErrors[field] = error
-        hasErrors = true
-      }
-    }
-
-    setErrors((prev) => {
-      const next = { ...prev }
-      for (const field of fieldsToValidate) {
-        const error = stepErrors[field]
-        if (error) {
-          next[field] = error
-        } else {
-          delete next[field]
-        }
-      }
-      return next
-    })
-
-    return !hasErrors
-  }
-
-  const reset = () => {
-    setValues({
-      tenantName: '',
-      tenantSlug: '',
-      accountName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      termsAccepted: false,
-    })
-    setErrors({})
-    setSlugManuallyEdited(false)
-  }
-
-  return {
-    values,
-    errors,
-    updateValue,
-    validate,
-    getFieldError: fieldError,
-    reset,
-  }
 }

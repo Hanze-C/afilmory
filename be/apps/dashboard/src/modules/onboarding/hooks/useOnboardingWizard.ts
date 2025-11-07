@@ -1,14 +1,27 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { FetchError } from 'ofetch'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+import type { UiFieldNode, UiSchema } from '~/modules/schema-form/types'
+
 import type { OnboardingInitPayload } from '../api'
-import { getOnboardingStatus, postOnboardingInit } from '../api'
-import type { OnboardingSettingKey, OnboardingStepId } from '../constants'
+import { getOnboardingSiteSchema, getOnboardingStatus, postOnboardingInit } from '../api'
+import type { OnboardingSettingKey, OnboardingSiteSettingKey, OnboardingStepId } from '../constants'
 import { ONBOARDING_STEPS } from '../constants'
-import type { AdminFormState, OnboardingErrors, SettingFormState, TenantFormState } from '../types'
-import { createInitialSettingsState, getFieldByKey, isLikelyEmail, maskSecret, slugify } from '../utils'
+import { DEFAULT_SITE_SETTINGS_VALUES, SITE_SETTINGS_KEYS, siteSettingsSchema } from '../siteSchema'
+import type { AdminFormState, OnboardingErrors, SettingFormState, SiteFormState, TenantFormState } from '../types'
+import {
+  coerceSiteFieldValue,
+  collectSchemaFieldMap,
+  createInitialSettingsState,
+  createInitialSiteStateFromFieldMap,
+  getFieldByKey,
+  isLikelyEmail,
+  maskSecret,
+  serializeSiteFieldValue,
+  slugify,
+} from '../utils'
 
 const INITIAL_STEP_INDEX = 0
 
@@ -26,8 +39,10 @@ export function useOnboardingWizard() {
     confirmPassword: '',
   })
   const [settingsState, setSettingsState] = useState<SettingFormState>(createInitialSettingsState)
+  const [site, setSite] = useState<SiteFormState>(() => ({ ...DEFAULT_SITE_SETTINGS_VALUES }))
   const [acknowledged, setAcknowledged] = useState(false)
   const [errors, setErrors] = useState<OnboardingErrors>({})
+  const [siteDefaultsApplied, setSiteDefaultsApplied] = useState(false)
 
   const currentStep = ONBOARDING_STEPS[currentStepIndex] ?? ONBOARDING_STEPS[INITIAL_STEP_INDEX]
 
@@ -36,6 +51,45 @@ export function useOnboardingWizard() {
     queryFn: getOnboardingStatus,
     staleTime: Infinity,
   })
+
+  const siteSchemaQuery = useQuery({
+    queryKey: ['onboarding', 'site-schema'],
+    queryFn: getOnboardingSiteSchema,
+    staleTime: Infinity,
+  })
+
+  const siteSchemaData = siteSchemaQuery.data as
+    | {
+        schema?: UiSchema<OnboardingSiteSettingKey>
+        values?: Partial<Record<OnboardingSiteSettingKey, unknown>>
+      }
+    | undefined
+
+  const siteSchema = siteSchemaData?.schema ?? null
+
+  useEffect(() => {
+    if (!siteSchema || siteDefaultsApplied) {
+      return
+    }
+
+    const fieldMap = collectSchemaFieldMap(siteSchema)
+    const defaults = createInitialSiteStateFromFieldMap(fieldMap)
+    const values = siteSchemaData?.values ?? {}
+    const next: SiteFormState = { ...DEFAULT_SITE_SETTINGS_VALUES, ...defaults }
+
+    for (const [key, field] of fieldMap) {
+      const coerced = coerceSiteFieldValue(field, values[key])
+      if (coerced !== undefined) {
+        next[key] = coerced
+      }
+    }
+
+    setSite(next)
+    setSiteDefaultsApplied(true)
+  }, [siteDefaultsApplied, siteSchema, siteSchemaData?.values])
+
+  const siteSchemaLoading = siteSchemaQuery.isLoading && !siteSchema
+  const siteSchemaError = siteSchemaQuery.isError
 
   const mutation = useMutation({
     mutationFn: (payload: OnboardingInitPayload) => postOnboardingInit(payload),
@@ -144,6 +198,31 @@ export function useOnboardingWizard() {
     return valid
   }
 
+  const validateSite = () => {
+    const candidate: Record<string, unknown> = {}
+    for (const key of SITE_SETTINGS_KEYS) {
+      candidate[key] = site[key] ?? DEFAULT_SITE_SETTINGS_VALUES[key]
+    }
+
+    const result = siteSettingsSchema.safeParse(candidate)
+    const fieldErrors: Record<string, string> = {}
+
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const pathKey = issue.path[0]
+        if (typeof pathKey === 'string' && !(pathKey in fieldErrors)) {
+          fieldErrors[pathKey] = issue.message
+        }
+      }
+    }
+
+    for (const key of SITE_SETTINGS_KEYS) {
+      setFieldError(key, fieldErrors[key] ?? null)
+    }
+
+    return result.success
+  }
+
   const validateSettings = () => {
     let valid = true
     for (const [key, entry] of Object.entries(settingsState) as Array<
@@ -175,6 +254,7 @@ export function useOnboardingWizard() {
   const validators: Partial<Record<OnboardingStepId, () => boolean>> = {
     welcome: () => true,
     tenant: validateTenant,
+    site: validateSite,
     admin: validateAdmin,
     settings: validateSettings,
     review: validateAcknowledgement,
@@ -200,8 +280,18 @@ export function useOnboardingWizard() {
         value: entry.value.trim(),
       }))
 
-    if (settingEntries.length > 0) {
-      payload.settings = settingEntries
+    const fieldMap = siteSchema
+      ? collectSchemaFieldMap(siteSchema)
+      : new Map<OnboardingSiteSettingKey, UiFieldNode<OnboardingSiteSettingKey>>()
+    const siteEntries = Array.from(fieldMap.entries()).map(([key, field]) => ({
+      key,
+      value: serializeSiteFieldValue(field, site[key]),
+    }))
+
+    const combined = [...settingEntries, ...siteEntries]
+
+    if (combined.length > 0) {
+      payload.settings = combined as Array<{ key: OnboardingSettingKey | OnboardingSiteSettingKey; value: string }>
     }
 
     mutation.mutate(payload)
@@ -278,9 +368,21 @@ export function useOnboardingWizard() {
       value: entry.value.trim(),
     }))
 
+  const updateSiteField = (key: OnboardingSiteSettingKey, value: string | boolean) => {
+    setSite((prev) => ({
+      ...prev,
+      [key]:
+        typeof value === 'boolean' ? value : value == null ? '' : typeof value === 'number' ? String(value) : value,
+    }))
+    setFieldError(key, null)
+  }
+
   return {
     query,
     mutation,
+    siteSchema,
+    siteSchemaLoading,
+    siteSchemaError,
     currentStepIndex,
     currentStep,
     goToNext,
@@ -289,6 +391,7 @@ export function useOnboardingWizard() {
     canNavigateTo: (index: number) => index <= currentStepIndex,
     tenant,
     admin,
+    site,
     settingsState,
     acknowledged,
     setAcknowledged: (value: boolean) => {
@@ -303,6 +406,7 @@ export function useOnboardingWizard() {
     updateAdminField,
     toggleSetting,
     updateSettingValue,
+    updateSiteField,
     reviewSettings,
     maskSecret,
   }

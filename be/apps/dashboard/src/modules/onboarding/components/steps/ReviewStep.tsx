@@ -1,8 +1,10 @@
 import { Checkbox } from '@afilmory/ui'
 import type { FC } from 'react'
 
-import type { SettingFieldDefinition } from '../../constants'
-import type { AdminFormState, OnboardingErrors, TenantFormState } from '../../types'
+import type { SchemaFormValue, UiFieldNode, UiNode, UiSchema } from '~/modules/schema-form/types'
+
+import type { OnboardingSiteSettingKey, SettingFieldDefinition } from '../../constants'
+import type { AdminFormState, OnboardingErrors, SiteFormState, TenantFormState } from '../../types'
 import { maskSecret } from '../../utils'
 
 export type ReviewSettingEntry = {
@@ -13,15 +15,63 @@ export type ReviewSettingEntry = {
 type ReviewStepProps = {
   tenant: TenantFormState
   admin: AdminFormState
+  site: SiteFormState
+  siteSchema: UiSchema<OnboardingSiteSettingKey>
+  siteSchemaLoading?: boolean
+  siteSchemaError?: string | null
   reviewSettings: ReviewSettingEntry[]
   acknowledged: boolean
   errors: OnboardingErrors
   onAcknowledgeChange: (checked: boolean) => void
 }
 
+const optionalSiteValue = (value: SchemaFormValue | undefined) => {
+  if (typeof value === 'boolean') {
+    return value ? 'Enabled' : 'Disabled'
+  }
+
+  if (typeof value === 'string') {
+    if (value.length === 0) {
+      return '—'
+    }
+    const lowered = value.toLowerCase()
+    if (lowered === 'true' || lowered === 'false') {
+      return lowered === 'true' ? 'Enabled' : 'Disabled'
+    }
+    return value
+  }
+
+  if (value == null) {
+    return '—'
+  }
+
+  return String(value)
+}
+
+function collectSiteFields(
+  nodes: ReadonlyArray<UiNode<OnboardingSiteSettingKey>>,
+): Array<UiFieldNode<OnboardingSiteSettingKey>> {
+  const fields: Array<UiFieldNode<OnboardingSiteSettingKey>> = []
+
+  for (const node of nodes) {
+    if (node.type === 'field') {
+      fields.push(node)
+      continue
+    }
+
+    fields.push(...collectSiteFields(node.children))
+  }
+
+  return fields
+}
+
 export const ReviewStep: FC<ReviewStepProps> = ({
   tenant,
   admin,
+  site,
+  siteSchema,
+  siteSchemaLoading = false,
+  siteSchemaError = null,
   reviewSettings,
   acknowledged,
   errors,
@@ -58,6 +108,29 @@ export const ReviewStep: FC<ReviewStepProps> = ({
           <dd className="mt-1">{maskSecret(admin.password)}</dd>
         </div>
       </dl>
+    </div>
+
+    <div className="border-fill-tertiary bg-background rounded-lg border p-6">
+      <h3 className="text-text mb-4 text-sm font-semibold">Site information</h3>
+      {siteSchemaLoading && <div className="bg-fill/60 border border-white/5 h-24 animate-pulse rounded-xl" />}
+      {!siteSchemaLoading && siteSchemaError && (
+        <div className="border-red/60 bg-red/10 mt-2 rounded-xl border px-4 py-3 text-sm text-red">
+          {siteSchemaError}
+        </div>
+      )}
+      {!siteSchemaLoading && !siteSchemaError && (
+        <dl className="text-text-secondary grid gap-4 text-sm md:grid-cols-2">
+          {collectSiteFields(siteSchema.sections).map((field) => {
+            const spanClass = field.component?.type === 'textarea' ? 'md:col-span-2' : ''
+            return (
+              <div key={field.id} className={`${spanClass} min-w-0`}>
+                <dt className="text-text font-semibold">{field.title}</dt>
+                <dd className="mt-1 leading-relaxed break-words">{optionalSiteValue(site[field.key])}</dd>
+              </div>
+            )
+          })}
+        </dl>
+      )}
     </div>
 
     <div className="border-fill-tertiary bg-background rounded-lg border p-6">

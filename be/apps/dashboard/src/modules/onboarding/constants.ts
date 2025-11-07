@@ -5,6 +5,8 @@ export type OnboardingSettingKey =
   | 'http.cors.allowedOrigins'
   | 'services.amap.apiKey'
 
+export type OnboardingSiteSettingKey = 'site.name' | 'site.title' | 'site.description'
+
 export type SettingFieldDefinition = {
   key: OnboardingSettingKey
   label: string
@@ -81,8 +83,8 @@ export const ONBOARDING_SETTING_SECTIONS: SettingSectionDefinition[] = [
   },
 ]
 
-export const ONBOARDING_TOTAL_STEPS = 5 as const
-export const ONBOARDING_STEP_ORDER = ['welcome', 'tenant', 'admin', 'settings', 'review'] as const
+export const ONBOARDING_TOTAL_STEPS = 6 as const
+export const ONBOARDING_STEP_ORDER = ['welcome', 'tenant', 'site', 'admin', 'settings', 'review'] as const
 
 export type OnboardingStepId = (typeof ONBOARDING_STEP_ORDER)[number]
 
@@ -102,6 +104,11 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'tenant',
     title: 'Tenant Profile',
     description: 'Name your workspace and choose a slug.',
+  },
+  {
+    id: 'site',
+    title: 'Site Branding',
+    description: 'Set the public gallery information shown to your visitors.',
   },
   {
     id: 'admin',
