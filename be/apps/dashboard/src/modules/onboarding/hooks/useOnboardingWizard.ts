@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { FetchError } from 'ofetch'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { z } from 'zod'
 
 import type { UiFieldNode, UiSchema } from '~/modules/schema-form/types'
 
@@ -24,6 +25,55 @@ import {
 } from '../utils'
 
 const INITIAL_STEP_INDEX = 0
+
+const toStringValue = (value: unknown) => (value == null ? '' : String(value))
+
+const trimmedNonEmpty = (message: string) => z.preprocess(toStringValue, z.string().trim().min(1, { message }))
+
+const slugSchema = z.preprocess(
+  toStringValue,
+  z
+    .string()
+    .trim()
+    .min(1, { message: 'Slug is required' })
+    .regex(/^[a-z0-9-]+$/, { message: 'Only lowercase letters, numbers, and hyphen are allowed' }),
+)
+
+const passwordSchema = z.preprocess(
+  toStringValue,
+  z.string().min(1, { message: 'Password is required' }).min(8, { message: 'Password must be at least 8 characters' }),
+)
+
+const confirmPasswordSchema = z.preprocess(
+  toStringValue,
+  z.string().min(1, { message: 'Confirm the password to continue' }),
+)
+
+const tenantSchema = z.object({
+  name: trimmedNonEmpty('Workspace name is required'),
+  slug: slugSchema,
+})
+
+const adminSchema = z
+  .object({
+    name: trimmedNonEmpty('Administrator name is required').refine((value) => !/^root$/i.test(value), {
+      message: 'The name "root" is reserved',
+    }),
+    email: trimmedNonEmpty('Email is required').refine((value) => isLikelyEmail(value), {
+      message: 'Enter a valid email address',
+    }),
+    password: passwordSchema,
+    confirmPassword: confirmPasswordSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Passwords do not match',
+        path: ['confirmPassword'],
+      })
+    }
+  })
 
 export function useOnboardingWizard() {
   const [currentStepIndex, setCurrentStepIndex] = useState(INITIAL_STEP_INDEX)
@@ -128,74 +178,37 @@ export function useOnboardingWizard() {
   }
 
   const validateTenant = () => {
-    let valid = true
-    const name = tenant.name.trim()
-    if (!name) {
-      setFieldError('tenant.name', 'Workspace name is required')
-      valid = false
-    } else {
+    const result = tenantSchema.safeParse(tenant)
+
+    if (result.success) {
       setFieldError('tenant.name', null)
-    }
-
-    const slug = tenant.slug.trim()
-    if (!slug) {
-      setFieldError('tenant.slug', 'Slug is required')
-      valid = false
-    } else if (!/^[a-z0-9-]+$/.test(slug)) {
-      setFieldError('tenant.slug', 'Only lowercase letters, numbers, and hyphen are allowed')
-      valid = false
-    } else {
       setFieldError('tenant.slug', null)
+      return true
     }
 
-    return valid
+    const { fieldErrors } = result.error.flatten((issue) => issue.message)
+    setFieldError('tenant.name', fieldErrors.name?.[0] ?? null)
+    setFieldError('tenant.slug', fieldErrors.slug?.[0] ?? null)
+    return false
   }
 
   const validateAdmin = () => {
-    let valid = true
-    const name = admin.name.trim()
-    if (!name) {
-      setFieldError('admin.name', 'Administrator name is required')
-      valid = false
-    } else if (/^root$/i.test(name)) {
-      setFieldError('admin.name', 'The name "root" is reserved')
-      valid = false
-    } else {
+    const result = adminSchema.safeParse(admin)
+
+    if (result.success) {
       setFieldError('admin.name', null)
-    }
-
-    const email = admin.email.trim()
-    if (!email) {
-      setFieldError('admin.email', 'Email is required')
-      valid = false
-    } else if (!isLikelyEmail(email)) {
-      setFieldError('admin.email', 'Enter a valid email address')
-      valid = false
-    } else {
       setFieldError('admin.email', null)
-    }
-
-    if (!admin.password) {
-      setFieldError('admin.password', 'Password is required')
-      valid = false
-    } else if (admin.password.length < 8) {
-      setFieldError('admin.password', 'Password must be at least 8 characters')
-      valid = false
-    } else {
       setFieldError('admin.password', null)
-    }
-
-    if (!admin.confirmPassword) {
-      setFieldError('admin.confirmPassword', 'Confirm the password to continue')
-      valid = false
-    } else if (admin.confirmPassword !== admin.password) {
-      setFieldError('admin.confirmPassword', 'Passwords do not match')
-      valid = false
-    } else {
       setFieldError('admin.confirmPassword', null)
+      return true
     }
 
-    return valid
+    const { fieldErrors } = result.error.flatten((issue) => issue.message)
+    setFieldError('admin.name', fieldErrors.name?.[0] ?? null)
+    setFieldError('admin.email', fieldErrors.email?.[0] ?? null)
+    setFieldError('admin.password', fieldErrors.password?.[0] ?? null)
+    setFieldError('admin.confirmPassword', fieldErrors.confirmPassword?.[0] ?? null)
+    return false
   }
 
   const validateSite = () => {
