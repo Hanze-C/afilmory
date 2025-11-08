@@ -10,7 +10,7 @@ import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
 import { DrizzleProvider } from '../../database/database.provider'
-import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { SystemSettingService } from '../system-setting/system-setting.service'
 import type { AuthModuleOptions, SocialProviderOptions, SocialProvidersConfig } from './auth.config'
 import { AuthConfig } from './auth.config'
 
@@ -26,7 +26,7 @@ export class AuthProvider implements OnModuleInit {
   constructor(
     private readonly config: AuthConfig,
     private readonly drizzleProvider: DrizzleProvider,
-    private readonly superAdminSettings: SuperAdminSettingService,
+    private readonly systemSettings: SystemSettingService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -236,7 +236,7 @@ export class AuthProvider implements OnModuleInit {
           }
 
           try {
-            await this.superAdminSettings.ensureRegistrationAllowed()
+            await this.systemSettings.ensureRegistrationAllowed()
           } catch (error) {
             if (error instanceof BizException) {
               throw new APIError('FORBIDDEN', {

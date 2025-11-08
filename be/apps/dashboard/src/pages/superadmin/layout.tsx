@@ -7,7 +7,7 @@ import { Navigate, NavLink, Outlet } from 'react-router'
 import { useAuthUserValue, useIsSuperAdmin } from '~/atoms/auth'
 import { usePageRedirect } from '~/hooks/usePageRedirect'
 
-const navigationTabs = [{ label: '系统设置', path: '/superadmin/settings' }] as const
+const navigationTabs = [{ label: 'System Settings', path: '/superadmin/settings' }] as const
 
 export function Component() {
   const { logout } = usePageRedirect()
@@ -37,7 +37,7 @@ export function Component() {
     <div className="flex h-screen flex-col">
       <nav className="border-border/50 bg-background-tertiary shrink-0 border-b px-6 py-3">
         <div className="flex items-center gap-6">
-          <div className="text-text text-base font-semibold">Afilmory · Superadmin</div>
+          <div className="text-text text-base font-semibold">Afilmory · System Settings</div>
 
           <div className="flex flex-1 items-center gap-1">
             {navigationTabs.map((tab) => (

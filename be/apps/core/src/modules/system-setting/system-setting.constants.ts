@@ -5,7 +5,7 @@ const nonEmptyString = z.string().trim().min(1)
 const nullableNonEmptyString = nonEmptyString.nullable()
 const nullableUrl = z.string().trim().url({ message: '必须是有效的 URL' }).nullable()
 
-export const SUPER_ADMIN_SETTING_DEFINITIONS = {
+export const SYSTEM_SETTING_DEFINITIONS = {
   allowRegistration: {
     key: 'system.registration.allow',
     schema: z.boolean(),
@@ -74,9 +74,7 @@ export const SUPER_ADMIN_SETTING_DEFINITIONS = {
   },
 } as const
 
-export type SuperAdminSettingField = keyof typeof SUPER_ADMIN_SETTING_DEFINITIONS
-export type SuperAdminSettingKey = (typeof SUPER_ADMIN_SETTING_DEFINITIONS)[SuperAdminSettingField]['key']
+export type SystemSettingField = keyof typeof SYSTEM_SETTING_DEFINITIONS
+export type SystemSettingKey = (typeof SYSTEM_SETTING_DEFINITIONS)[SystemSettingField]['key']
 
-export const SUPER_ADMIN_SETTING_KEYS = Object.values(SUPER_ADMIN_SETTING_DEFINITIONS).map(
-  (definition) => definition.key,
-)
+export const SYSTEM_SETTING_KEYS = Object.values(SYSTEM_SETTING_DEFINITIONS).map((definition) => definition.key)

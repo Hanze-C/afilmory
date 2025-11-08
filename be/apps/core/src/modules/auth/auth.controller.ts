@@ -6,7 +6,7 @@ import type { Context } from 'hono'
 
 import { DbAccessor } from '../../database/database.provider'
 import { RoleBit, Roles } from '../../guards/roles.decorator'
-import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { SystemSettingService } from '../system-setting/system-setting.service'
 import { getTenantContext } from '../tenant/tenant.context'
 import type { SocialProvidersConfig } from './auth.config'
 import { AuthProvider } from './auth.provider'
@@ -76,7 +76,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthProvider,
     private readonly dbAccessor: DbAccessor,
-    private readonly superAdminSettings: SuperAdminSettingService,
+    private readonly systemSettings: SystemSettingService,
     private readonly registration: AuthRegistrationService,
   ) {}
 
@@ -94,7 +94,7 @@ export class AuthController {
 
   @Get('/social/providers')
   async getSocialProviders() {
-    const { socialProviders } = await this.superAdminSettings.getAuthModuleConfig()
+    const { socialProviders } = await this.systemSettings.getAuthModuleConfig()
     return { providers: buildProviderResponse(socialProviders) }
   }
 
@@ -104,7 +104,7 @@ export class AuthController {
     if (email.length === 0) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '邮箱不能为空' })
     }
-    const settings = await this.superAdminSettings.getSettings()
+    const settings = await this.systemSettings.getSettings()
     if (!settings.localProviderEnabled) {
       const db = this.dbAccessor.get()
       const [record] = await db

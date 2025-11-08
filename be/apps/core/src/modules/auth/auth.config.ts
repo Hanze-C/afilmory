@@ -1,6 +1,6 @@
 import { injectable } from 'tsyringe'
 
-import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { SystemSettingService } from '../system-setting/system-setting.service'
 
 export interface SocialProviderOptions {
   clientId: string
@@ -22,11 +22,11 @@ export interface AuthModuleOptions {
 
 @injectable()
 export class AuthConfig {
-  constructor(private readonly superAdminSettings: SuperAdminSettingService) {}
+  constructor(private readonly systemSettings: SystemSettingService) {}
 
   async getOptions(): Promise<AuthModuleOptions> {
     const prefix = '/auth'
-    const { socialProviders, baseDomain } = await this.superAdminSettings.getAuthModuleConfig()
+    const { socialProviders, baseDomain } = await this.systemSettings.getAuthModuleConfig()
 
     return {
       prefix,

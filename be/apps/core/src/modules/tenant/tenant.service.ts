@@ -1,3 +1,4 @@
+import { isTenantSlugReserved } from '@afilmory/utils'
 import { BizException, ErrorCode } from 'core/errors'
 import { injectable } from 'tsyringe'
 
@@ -9,7 +10,22 @@ export class TenantService {
   constructor(private readonly repository: TenantRepository) {}
 
   async createTenant(payload: { name: string; slug: string }): Promise<TenantAggregate> {
-    return await this.repository.createTenant(payload)
+    const normalizedSlug = this.normalizeSlug(payload.slug)
+
+    if (!normalizedSlug) {
+      throw new BizException(ErrorCode.COMMON_VALIDATION, {
+        message: 'Tenant slug is required',
+      })
+    }
+
+    if (isTenantSlugReserved(normalizedSlug)) {
+      throw new BizException(ErrorCode.TENANT_SLUG_RESERVED)
+    }
+
+    return await this.repository.createTenant({
+      ...payload,
+      slug: normalizedSlug,
+    })
   }
   async resolve(input: TenantResolutionInput, noThrow: boolean): Promise<TenantContext | null>
   async resolve(input: TenantResolutionInput): Promise<TenantContext>

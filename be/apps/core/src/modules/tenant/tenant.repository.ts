@@ -1,4 +1,5 @@
 import { generateId, tenants } from '@afilmory/db'
+import { BizException, ErrorCode } from 'core/errors'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
@@ -42,7 +43,9 @@ export class TenantRepository {
 
     return await this.findById(tenantId).then((aggregate) => {
       if (!aggregate) {
-        throw new Error('Failed to create tenant')
+        throw new BizException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR, {
+          message: 'Failed to create tenant',
+        })
       }
       return aggregate
     })

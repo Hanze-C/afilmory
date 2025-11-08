@@ -8,7 +8,7 @@ import { SETTING_SCHEMAS } from '../setting/setting.constant'
 import type { SettingEntryInput } from '../setting/setting.service'
 import { SettingService } from '../setting/setting.service'
 import type { SettingKeyType } from '../setting/setting.type'
-import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { SystemSettingService } from '../system-setting/system-setting.service'
 import { getTenantContext } from '../tenant/tenant.context'
 import { TenantRepository } from '../tenant/tenant.repository'
 import { TenantService } from '../tenant/tenant.service'
@@ -53,13 +53,13 @@ export class AuthRegistrationService {
     private readonly authProvider: AuthProvider,
     private readonly tenantService: TenantService,
     private readonly tenantRepository: TenantRepository,
-    private readonly superAdminSettings: SuperAdminSettingService,
+    private readonly systemSettings: SystemSettingService,
     private readonly settingService: SettingService,
     private readonly dbAccessor: DbAccessor,
   ) {}
 
   async registerTenant(input: RegisterTenantInput, headers: Headers): Promise<RegisterTenantResult> {
-    await this.superAdminSettings.ensureRegistrationAllowed()
+    await this.systemSettings.ensureRegistrationAllowed()
 
     const tenantContext = getTenantContext()
     const account = this.normalizeAccountInput(input.account)
@@ -268,7 +268,7 @@ export class AuthRegistrationService {
           initialSettings.map((entry) => ({
             ...entry,
             options: {
-              tenantId,
+              ...(tenantId ? { tenantId } : {}),
               isSensitive: false,
             },
           })),

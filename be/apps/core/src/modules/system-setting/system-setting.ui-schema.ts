@@ -1,11 +1,11 @@
 import type { UiNode, UiSchema } from '../ui-schema/ui-schema.type'
-import type { SuperAdminSettingField } from './super-admin-setting.constants'
+import type { SystemSettingField } from './system-setting.constants'
 
-export const SUPER_ADMIN_SETTING_UI_SCHEMA_VERSION = '1.1.0'
+export const SYSTEM_SETTING_UI_SCHEMA_VERSION = '1.1.0'
 
-export const SUPER_ADMIN_SETTING_UI_SCHEMA: UiSchema<SuperAdminSettingField> = {
-  version: SUPER_ADMIN_SETTING_UI_SCHEMA_VERSION,
-  title: '超级管理员设置',
+export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
+  version: SYSTEM_SETTING_UI_SCHEMA_VERSION,
+  title: '系统设置',
   description: '管理整个平台的注册入口、登录策略与第三方 OAuth 配置。',
   sections: [
     {
@@ -162,8 +162,8 @@ export const SUPER_ADMIN_SETTING_UI_SCHEMA: UiSchema<SuperAdminSettingField> = {
   ],
 }
 
-function collectKeys(nodes: ReadonlyArray<UiNode<SuperAdminSettingField>>): SuperAdminSettingField[] {
-  const keys: SuperAdminSettingField[] = []
+function collectKeys(nodes: ReadonlyArray<UiNode<SystemSettingField>>): SystemSettingField[] {
+  const keys: SystemSettingField[] = []
 
   for (const node of nodes) {
     if (node.type === 'field') {
@@ -177,6 +177,6 @@ function collectKeys(nodes: ReadonlyArray<UiNode<SuperAdminSettingField>>): Supe
   return keys
 }
 
-export const SUPER_ADMIN_SETTING_UI_SCHEMA_KEYS = Array.from(
-  new Set(collectKeys(SUPER_ADMIN_SETTING_UI_SCHEMA.sections)),
-) as SuperAdminSettingField[]
+export const SYSTEM_SETTING_UI_SCHEMA_KEYS = Array.from(
+  new Set(collectKeys(SYSTEM_SETTING_UI_SCHEMA.sections)),
+) as SystemSettingField[]

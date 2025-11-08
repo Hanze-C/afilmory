@@ -5,6 +5,7 @@ export enum ErrorCode {
   COMMON_NOT_FOUND = 3,
   COMMON_CONFLICT = 4,
   COMMON_RATE_LIMITED = 5,
+  COMMON_INTERNAL_SERVER_ERROR = 6,
 
   // Auth
   AUTH_UNAUTHORIZED = 10,
@@ -16,6 +17,7 @@ export enum ErrorCode {
   TENANT_NOT_FOUND = 20,
   TENANT_SUSPENDED = 21,
   TENANT_INACTIVE = 22,
+  TENANT_SLUG_RESERVED = 23,
 
   // Image Processing
   IMAGE_PROCESSING_FAILED = 30,
@@ -48,6 +50,10 @@ export const ERROR_CODE_DESCRIPTORS: Record<ErrorCode, ErrorDescriptor> = {
     httpStatus: 429,
     message: 'Too many requests',
   },
+  [ErrorCode.COMMON_INTERNAL_SERVER_ERROR]: {
+    httpStatus: 500,
+    message: 'Internal server error',
+  },
   [ErrorCode.AUTH_UNAUTHORIZED]: {
     httpStatus: 401,
     message: 'Unauthorized',
@@ -75,6 +81,10 @@ export const ERROR_CODE_DESCRIPTORS: Record<ErrorCode, ErrorDescriptor> = {
   [ErrorCode.TENANT_INACTIVE]: {
     httpStatus: 403,
     message: 'Tenant is not active',
+  },
+  [ErrorCode.TENANT_SLUG_RESERVED]: {
+    httpStatus: 400,
+    message: 'Tenant slug is reserved',
   },
 
   [ErrorCode.IMAGE_PROCESSING_FAILED]: {

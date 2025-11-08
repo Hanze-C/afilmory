@@ -1,12 +1,12 @@
 import { HttpContext } from '@afilmory/framework'
-import { DEFAULT_BASE_DOMAIN, isTenantSlugReserved } from '@afilmory/utils'
+import { DEFAULT_BASE_DOMAIN } from '@afilmory/utils'
 import { BizException, ErrorCode } from 'core/errors'
 import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
 import { logger } from '../../helpers/logger.helper'
 import { OnboardingService } from '../onboarding/onboarding.service'
-import { SuperAdminSettingService } from '../system-setting/super-admin-setting.service'
+import { SystemSettingService } from '../system-setting/system-setting.service'
 import { TenantService } from './tenant.service'
 import type { TenantContext } from './tenant.types'
 
@@ -26,7 +26,7 @@ export class TenantContextResolver {
   constructor(
     private readonly tenantService: TenantService,
     private readonly onboardingService: OnboardingService,
-    private readonly superAdminSettingService: SuperAdminSettingService,
+    private readonly systemSettingService: SystemSettingService,
   ) {}
 
   async resolve(context: Context, options: TenantResolutionOptions = {}): Promise<TenantContext | null> {
@@ -64,11 +64,6 @@ export class TenantContextResolver {
 
     if (!derivedSlug && host) {
       derivedSlug = this.extractSlugFromHost(host, baseDomain)
-    }
-
-    if (derivedSlug && isTenantSlugReserved(derivedSlug)) {
-      this.log.verbose(`Host ${host} matched reserved slug ${derivedSlug}, skipping tenant resolution.`)
-      return null
     }
 
     const tenantContext = await this.tenantService.resolve(
@@ -112,7 +107,7 @@ export class TenantContextResolver {
     if (process.env.NODE_ENV === 'development') {
       return 'localhost'
     }
-    const settings = await this.superAdminSettingService.getSettings()
+    const settings = await this.systemSettingService.getSettings()
     return settings.baseDomain || DEFAULT_BASE_DOMAIN
   }
 
