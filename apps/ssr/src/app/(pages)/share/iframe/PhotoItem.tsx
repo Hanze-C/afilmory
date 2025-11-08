@@ -73,14 +73,14 @@ export function PhotoItem({ photo, className }: PhotoItemProps) {
       type="button"
       role="link"
       onClick={() => {
-        window.open(`${url}/${photo.id}`, '_blank')
+        window.open(`${url}/photos/${photo.id}`, '_blank')
       }}
       className={cn('group relative block w-full cursor-pointer overflow-hidden text-left', className)}
       style={{
         paddingTop: `${100 / ratio}%`,
       }}
     >
-      <div className={cn('pointer-events-none absolute inset-0 z-[1] flex items-start justify-center')}>
+      <div className={cn('pointer-events-none absolute inset-0 z-1 flex items-start justify-center')}>
         <div className="bg-material-medium mt-4 flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 opacity-0 backdrop-blur-[70px] transition-opacity duration-300 group-hover:opacity-100">
           <i className="i-mingcute-external-link-line size-4 text-white" />
           <span className="text-sm text-white/80">Open in AFilmory</span>
@@ -101,12 +101,12 @@ export function PhotoItem({ photo, className }: PhotoItemProps) {
 
       <div className="@container pointer-events-none">
         {/* 渐变背景 - 独立的层 */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
         {/* 内容层 - 独立的层以支持 backdrop-filter */}
         <div className="absolute inset-x-0 bottom-0 p-4 pb-0 text-white">
           {/* 基本信息和标签 section */}
-          <div className="mb-3 [&_*]:duration-300">
+          <div className="mb-3 **:duration-300">
             <div className="items-center justify-between @[600px]:flex">
               <div>
                 <h3 className="mb-2 truncate text-sm font-medium opacity-0 group-hover:opacity-100">{photo.title}</h3>

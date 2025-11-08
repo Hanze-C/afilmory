@@ -274,7 +274,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             const photoIndex = allPhotos.findIndex((p) => p.id === photo.id)
             if (photoIndex !== -1) {
               openViewer(photoIndex)
-              navigate(`/${photo.id}`)
+              navigate(`/photos/${photo.id}`)
               onClose()
             }
           },

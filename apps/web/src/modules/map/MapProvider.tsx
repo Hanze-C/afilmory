@@ -1,6 +1,6 @@
-import { siteConfig } from '@config'
 import { createContext, use, useMemo } from 'react'
 
+import { siteConfig } from '~/config'
 import type { BaseMapProps } from '~/types/map'
 
 import { createMapLibreAdapter } from './MapLibreAdapter'

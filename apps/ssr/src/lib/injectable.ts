@@ -1,3 +1,4 @@
+import siteConfig from '@config'
 import type { DOMParser } from 'linkedom'
 
 import { DbManager } from './db'
@@ -11,7 +12,7 @@ export const injectConfigToDocument = (document: OnlyHTMLDocument) => {
     useNext: true,
   }
   if ($config) {
-    $config.innerHTML = `window.__CONFIG__ = ${JSON.stringify(injectConfigBase)}`
+    $config.innerHTML = `window.__CONFIG__ = ${JSON.stringify(injectConfigBase)};window.__SITE_CONFIG__ = ${JSON.stringify(siteConfig)};`
   }
   return document
 }

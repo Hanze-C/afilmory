@@ -1,9 +1,9 @@
 import { clsxm } from '@afilmory/utils'
-import { siteConfig } from '@config'
 import { repository } from '@pkg'
 import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { useTranslation } from 'react-i18next'
 
+import { siteConfig } from '~/config'
 import { usePhotos } from '~/hooks/usePhotoViewer'
 
 import { ActionGroup } from './ActionGroup'

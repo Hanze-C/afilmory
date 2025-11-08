@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 
 import { injectable } from 'tsyringe'
 
+import { SiteSettingService } from '../site-setting/site-setting.service'
 import type { StaticAssetDocument } from './static-asset.service'
 import { StaticAssetService } from './static-asset.service'
 import { StaticWebManifestService } from './static-web-manifest.service'
@@ -47,7 +48,10 @@ const STATIC_WEB_ASSET_LINK_RELS = [
 
 @injectable()
 export class StaticWebService extends StaticAssetService {
-  constructor(private readonly manifestService: StaticWebManifestService) {
+  constructor(
+    private readonly manifestService: StaticWebManifestService,
+    private readonly siteSettingService: SiteSettingService,
+  ) {
     super({
       routeSegment: STATIC_WEB_ROUTE_SEGMENT,
       rootCandidates: STATIC_WEB_ROOT_CANDIDATES,
@@ -57,11 +61,11 @@ export class StaticWebService extends StaticAssetService {
   }
 
   protected override async decorateDocument(document: StaticAssetDocument): Promise<void> {
-    this.injectConfigScript(document)
+    await this.injectConfigScript(document)
     await this.injectManifestScript(document)
   }
 
-  private injectConfigScript(document: StaticAssetDocument): void {
+  private async injectConfigScript(document: StaticAssetDocument): Promise<void> {
     const configScript = document.head?.querySelector('#config')
     if (!configScript) {
       return
@@ -70,7 +74,9 @@ export class StaticWebService extends StaticAssetService {
     const payload = JSON.stringify({
       useCloud: true,
     })
-    configScript.textContent = `window.__CONFIG__ = ${payload}`
+    const tenantSiteConfig = await this.siteSettingService.getSiteConfig()
+    const siteConfigPayload = JSON.stringify(tenantSiteConfig)
+    configScript.textContent = `window.__CONFIG__ = ${payload};window.__SITE_CONFIG__ = ${siteConfigPayload}`
   }
 
   private async injectManifestScript(document: StaticAssetDocument): Promise<void> {

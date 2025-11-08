@@ -24,6 +24,7 @@ import { localesJsonPlugin } from './plugins/vite/locales-json'
 import { manifestInjectPlugin } from './plugins/vite/manifest-inject'
 import { ogImagePlugin } from './plugins/vite/og-image-plugin'
 import { photosStaticPlugin } from './plugins/vite/photos-static'
+import { siteConfigInjectPlugin } from './plugins/vite/site-config-inject'
 
 const devPrint = (): PluginOption => ({
   name: 'dev-print',
@@ -47,6 +48,116 @@ const DEV_NEXT_JS = process.env.DEV_NEXT_JS === 'true'
 const ReactCompilerConfig = {
   /* ... */
 }
+
+const staticWebBuildPlugins: PluginOption[] = [
+  manifestInjectPlugin(),
+  siteConfigInjectPlugin(),
+  photosStaticPlugin(),
+
+  VitePWA({
+    base: '/',
+    scope: '/',
+    registerType: 'autoUpdate',
+    includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+    manifest: {
+      name: siteConfig.title,
+      short_name: siteConfig.name,
+      description: siteConfig.description,
+      theme_color: '#1c1c1e',
+      background_color: '#1c1c1e',
+      display: 'standalone',
+      scope: '/',
+      start_url: '/',
+      icons: [
+        {
+          src: 'android-chrome-192x192.png',
+          sizes: '192x192',
+          type: 'image/png',
+        },
+        {
+          src: 'android-chrome-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+        },
+        {
+          src: 'apple-touch-icon.png',
+          sizes: '180x180',
+          type: 'image/png',
+        },
+      ],
+    },
+    workbox: {
+      maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
+      globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+      globIgnores: ['**/*.{jpg,jpeg}'], // 忽略大图片文件
+      runtimeCaching: [
+        {
+          urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'google-fonts-cache',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+            },
+          },
+        },
+        {
+          urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'gstatic-fonts-cache',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+            },
+          },
+        },
+        {
+          urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'images-cache',
+            expiration: {
+              maxEntries: 100,
+              maxAgeSeconds: 60 * 60 * 24 * 30, // <== 30 days
+            },
+          },
+        },
+      ],
+    },
+    devOptions: {
+      enabled: false, // 开发环境不启用 PWA
+    },
+  }),
+
+  ogImagePlugin({
+    title: siteConfig.title,
+    description: siteConfig.description,
+    siteName: siteConfig.name,
+    siteUrl: siteConfig.url,
+  }),
+  createFeedSitemapPlugin(siteConfig),
+  createHtmlPlugin({
+    minify: {
+      collapseWhitespace: true,
+      keepClosingSlash: true,
+      removeComments: true,
+      removeRedundantAttributes: true,
+      removeScriptTypeAttributes: true,
+      removeStyleLinkTypeAttributes: true,
+      useShortDoctype: true,
+      minifyCSS: true,
+      minifyJS: true,
+    },
+    inject: {
+      data: {
+        title: siteConfig.title,
+        description: siteConfig.description,
+      },
+    },
+  }),
+]
 
 const BUILD_FOR_SERVER_SERVE = process.env.BUILD_FOR_SERVER_SERVE === '1'
 // https://vitejs.dev/config/
@@ -78,111 +189,8 @@ export default defineConfig(() => {
         ['i18next', 'i18next-browser-languagedetector', 'react-i18next'],
       ]),
       localesJsonPlugin(),
-      manifestInjectPlugin(),
-      photosStaticPlugin(),
       tailwindcss(),
-      VitePWA({
-        base: '/static/web/',
-        scope: '/static/web/',
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-        manifest: {
-          name: siteConfig.title,
-          short_name: siteConfig.name,
-          description: siteConfig.description,
-          theme_color: '#1c1c1e',
-          background_color: '#1c1c1e',
-          display: 'standalone',
-          scope: '/static/web/',
-          start_url: '/static/web/',
-          icons: [
-            {
-              src: 'android-chrome-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-            },
-            {
-              src: 'android-chrome-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-            },
-            {
-              src: 'apple-touch-icon.png',
-              sizes: '180x180',
-              type: 'image/png',
-            },
-          ],
-        },
-        workbox: {
-          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-          globIgnores: ['**/*.{jpg,jpeg}'], // 忽略大图片文件
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
-                },
-              },
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'gstatic-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
-                },
-              },
-            },
-            {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'images-cache',
-                expiration: {
-                  maxEntries: 100,
-                  maxAgeSeconds: 60 * 60 * 24 * 30, // <== 30 days
-                },
-              },
-            },
-          ],
-        },
-        devOptions: {
-          enabled: false, // 开发环境不启用 PWA
-        },
-      }),
-      ogImagePlugin({
-        title: siteConfig.title,
-        description: siteConfig.description,
-        siteName: siteConfig.name,
-        siteUrl: siteConfig.url,
-      }),
-      createFeedSitemapPlugin(siteConfig),
-      createHtmlPlugin({
-        minify: {
-          collapseWhitespace: true,
-          keepClosingSlash: true,
-          removeComments: true,
-          removeRedundantAttributes: true,
-          removeScriptTypeAttributes: true,
-          removeStyleLinkTypeAttributes: true,
-          useShortDoctype: true,
-          minifyCSS: true,
-          minifyJS: true,
-        },
-        inject: {
-          data: {
-            title: siteConfig.title,
-            description: siteConfig.description,
-          },
-        },
-      }),
+      ...(BUILD_FOR_SERVER_SERVE ? [] : staticWebBuildPlugins),
       process.env.analyzer && analyzer(),
 
       devPrint(),

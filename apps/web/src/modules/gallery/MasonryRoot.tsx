@@ -148,7 +148,7 @@ export const MasonryRoot = () => {
         </div>
       )}
 
-      <div className="p-1 lg:px-0 lg:pb-0 [&_*]:!select-none">
+      <div className="p-1 **:select-none! lg:px-0 lg:pb-0">
         {isMobile && <MasonryHeaderMasonryItem className="mb-1" />}
         <Masonry<MasonryItemType>
           ref={masonryRef}

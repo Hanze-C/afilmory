@@ -1,10 +1,10 @@
 // Styles
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-import { siteConfig } from '@config'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Map from 'react-map-gl/maplibre'
 
+import { siteConfig } from '~/config'
 import { getMapStyle } from '~/lib/map/style'
 import { calculateMapBounds } from '~/lib/map-utils'
 import type { PhotoMarker } from '~/types/map'

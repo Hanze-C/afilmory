@@ -1,13 +1,12 @@
 import { RootPortal } from '@afilmory/ui'
 import { clsxm, Spring } from '@afilmory/utils'
-import { siteConfig } from '@config'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { AnimatePresence, m } from 'motion/react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { injectConfig } from '~/config'
+import { injectConfig, siteConfig } from '~/config'
 import type { PhotoManifest } from '~/types/photo'
 
 interface SharePanelProps {

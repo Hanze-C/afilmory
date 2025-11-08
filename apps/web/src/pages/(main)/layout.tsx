@@ -1,11 +1,11 @@
 import { photoLoader } from '@afilmory/data'
 import { ScrollArea, ScrollElementContext } from '@afilmory/ui'
-import siteConfig from '@config'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { gallerySettingAtom } from '~/atoms/app'
+import { siteConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
 import { getFilteredPhotos, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
@@ -121,7 +121,7 @@ const useSyncStateToUrl = () => {
       }
     } else {
       const photos = getFilteredPhotos()
-      const targetPathname = `/${photos[currentIndex].id}`
+      const targetPathname = `/photos/${photos[currentIndex].id}`
       if (location.pathname !== targetPathname) {
         navigate(targetPathname)
       }

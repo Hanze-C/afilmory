@@ -1,3 +1,4 @@
+import type { SiteConfig } from '@config'
 import type { AfilmoryManifest } from '@packages/builder/src/types/manifest'
 import type { FC, PropsWithChildren } from 'react'
 
@@ -21,12 +22,17 @@ declare global {
   const GIT_COMMIT_HASH: string
 
   const __MANIFEST__: AfilmoryManifest
+  const __SITE_CONFIG__: Partial<SiteConfig>
 
   const __CONFIG__: InjectConfig
   /**
    * This function is a macro, will replace in the build stage.
    */
   export function tw(strings: TemplateStringsArray, ...values: any[]): string
+
+  interface Window {
+    __SITE_CONFIG__?: Partial<SiteConfig>
+  }
 }
 
 declare global {
