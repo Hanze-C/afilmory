@@ -249,3 +249,6 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@source inline('i-simple-icons-github');
+@source inline('i-simple-icons-google');

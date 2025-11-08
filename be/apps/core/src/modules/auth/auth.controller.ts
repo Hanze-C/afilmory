@@ -177,7 +177,7 @@ export class AuthController {
     return response
   }
 
-  @Post('/sign-in/email')
+  @Post('/sign-up/email')
   async signUpEmail(@ContextParam() context: Context, @Body() body: TenantSignUpRequest) {
     if (!body?.account) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册账号信息' })

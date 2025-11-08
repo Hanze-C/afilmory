@@ -1,4 +1,3 @@
-import { Button } from '@afilmory/ui'
 import { cx } from '@afilmory/utils'
 import { memo, useCallback, useMemo } from 'react'
 
@@ -66,26 +65,37 @@ export const SocialAuthButtons = memo(function SocialAuthButtons({
     return null
   }
 
-  const containerClass = layout === 'row' ? 'flex flex-wrap gap-2' : 'grid gap-2 sm:grid-cols-2'
+  const containerClass = layout === 'row' ? 'flex flex-wrap justify-center gap-3' : 'grid gap-2 sm:grid-cols-2'
+
+  const providerIconColors: Record<string, string> = {
+    github: 'text-[#181717] dark:text-white',
+    google: 'text-[#4285F4]',
+  }
 
   return (
     <div className={cx('space-y-3', className)}>
       {title ? <p className="text-text-tertiary text-xs uppercase tracking-wide">{title}</p> : null}
       <div className={containerClass}>
         {providers.map((provider) => (
-          <Button
+          <button
             key={provider.id}
             type="button"
-            variant="ghost"
-            size="md"
-            className="justify-start gap-3"
+            className={cx(
+              'inline-flex items-center justify-center',
+              'size-11 rounded-full',
+              'border border-fill-tertiary bg-background',
+              'transition-all duration-200',
+              'hover:border-text/30 hover:bg-fill/50 hover:scale-110',
+              'active:scale-95',
+              'focus:outline-none focus:ring-2 focus:ring-accent/40',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
             onClick={() => handleSocialClick(provider.id)}
+            title={`Continue with ${provider.name}`}
+            aria-label={`Continue with ${provider.name}`}
           >
-            <span className="flex items-center gap-3">
-              <i className={cx('text-lg', provider.icon)} aria-hidden />
-              <span>{provider.name}</span>
-            </span>
-          </Button>
+            <i className={cx('text-xl', provider.icon, providerIconColors[provider.id] || 'text-text')} aria-hidden />
+          </button>
         ))}
       </div>
     </div>
