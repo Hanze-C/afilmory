@@ -8,8 +8,10 @@ import { RedisAccessor } from 'core/redis/redis.provider'
 import { DatabaseModule } from '../database/database.module'
 import { RedisModule } from '../redis/redis.module'
 import { AuthModule } from './auth/auth.module'
+import { CacheModule } from './cache/cache.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { DataSyncModule } from './data-sync/data-sync.module'
+import { FeedModule } from './feed/feed.module'
 import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
 import { ReactionModule } from './reaction/reaction.module'
@@ -30,8 +32,13 @@ function createEventModuleOptions(redis: RedisAccessor) {
 @Module({
   imports: [
     DatabaseModule,
+    EventModule.forRootAsync({
+      useFactory: createEventModuleOptions,
+      inject: [RedisAccessor],
+    }),
     RedisModule,
     AuthModule,
+    CacheModule,
     SettingModule,
     StorageSettingModule,
     SiteSettingModule,
@@ -43,11 +50,10 @@ function createEventModuleOptions(redis: RedisAccessor) {
     DashboardModule,
     TenantModule,
     DataSyncModule,
+    FeedModule,
+
+    // This must be last
     StaticWebModule,
-    EventModule.forRootAsync({
-      useFactory: createEventModuleOptions,
-      inject: [RedisAccessor],
-    }),
   ],
   providers: [
     {

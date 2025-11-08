@@ -7,7 +7,7 @@ import { DbAccessor } from '../../database/database.provider'
 import { requireTenantContext } from '../tenant/tenant.context'
 
 @injectable()
-export class StaticWebManifestService {
+export class ManifestService {
   constructor(private readonly dbAccessor: DbAccessor) {}
 
   async getManifest(): Promise<AfilmoryManifest> {

@@ -1,4 +1,4 @@
-import { ContextParam, Controller, Get, Head } from '@afilmory/framework'
+import { ContextParam, Controller, Get } from '@afilmory/framework'
 import type { Context } from 'hono'
 
 import { SkipTenant } from '../../decorators/skip-tenant.decorator'
@@ -6,7 +6,6 @@ import type { StaticAssetService } from './static-asset.service'
 import { STATIC_DASHBOARD_BASENAME, StaticDashboardService } from './static-dashboard.service'
 import { StaticWebService } from './static-web.service'
 
-@SkipTenant()
 @Controller({ bypassGlobalPrefix: true })
 export class StaticWebController {
   constructor(
@@ -14,22 +13,45 @@ export class StaticWebController {
     private readonly staticDashboardService: StaticDashboardService,
   ) {}
 
-  @Get('/*')
-  async getAsset(@ContextParam() context: Context) {
-    const pathname = context.req.path
-    const service = this.resolveService(pathname)
-    const normalizedPath = this.normalizeRequestPath(pathname, service)
-    const response = await service.handleRequest(normalizedPath, false)
-    return response ?? new Response('Not Found', { status: 404 })
+  @Get('/static/web')
+  @Get('/static/dashboard')
+  async getStaticWebRoot(@ContextParam() context: Context) {
+    return await this.serve(context, this.staticWebService, false)
   }
 
-  @Head('/*')
-  async headAsset(@ContextParam() context: Context) {
+  @Get(`/`)
+  @Get(`/photos/*`)
+  @Get(`/explory`)
+  async getStaticWebIndex(@ContextParam() context: Context) {
+    return await this.serve(context, this.staticWebService, false)
+  }
+
+  @Get(`${STATIC_DASHBOARD_BASENAME}`)
+  @Get(`${STATIC_DASHBOARD_BASENAME}/*`)
+  async getStaticDashboardIndexWithBasename(@ContextParam() context: Context) {
+    return await this.serve(context, this.staticDashboardService, false)
+  }
+
+  @SkipTenant()
+  @Get('/*')
+  async getAsset(@ContextParam() context: Context) {
+    return await this.handleRequest(context, false)
+  }
+
+  private async handleRequest(context: Context, headOnly: boolean): Promise<Response> {
+    const service = this.resolveService(context.req.path)
+    return await this.serve(context, service, headOnly)
+  }
+
+  private async serve(context: Context, service: StaticAssetService, headOnly: boolean): Promise<Response> {
     const pathname = context.req.path
-    const service = this.resolveService(pathname)
     const normalizedPath = this.normalizeRequestPath(pathname, service)
-    const response = await service.handleRequest(normalizedPath, true)
-    return response ?? new Response(null, { status: 404 })
+    const response = await service.handleRequest(normalizedPath, headOnly)
+    if (response) {
+      return response
+    }
+
+    return headOnly ? new Response(null, { status: 404 }) : new Response('Not Found', { status: 404 })
   }
 
   private resolveService(pathname: string): StaticAssetService {

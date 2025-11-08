@@ -1,5 +1,6 @@
 export * from './backoff'
 export * from './cn'
+export * from './rss'
 export * from './semaphore'
 export * from './spring'
 export * from './storage-provider'

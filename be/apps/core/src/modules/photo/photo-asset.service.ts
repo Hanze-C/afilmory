@@ -8,6 +8,7 @@ import {
 import { StorageManager } from '@afilmory/builder/storage/index.js'
 import type { PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
+import { EventEmitterService } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/photo/photo.service'
 import { requireTenantContext } from 'core/modules/tenant/tenant.context'
@@ -59,13 +60,24 @@ type PreparedUploadPlan = {
   isExisting?: boolean
 }
 
+declare module '@afilmory/framework' {
+  interface Events {
+    'photo.manifest.changed': { tenantId: string }
+  }
+}
+
 @injectable()
 export class PhotoAssetService {
   constructor(
+    private readonly eventEmitter: EventEmitterService,
     private readonly dbAccessor: DbAccessor,
     private readonly photoBuilderService: PhotoBuilderService,
     private readonly photoStorageService: PhotoStorageService,
   ) {}
+
+  private async emitManifestChanged(tenantId: string): Promise<void> {
+    await this.eventEmitter.emit('photo.manifest.changed', { tenantId })
+  }
 
   async listAssets(): Promise<PhotoAssetListItem[]> {
     const tenant = requireTenantContext()
@@ -198,6 +210,7 @@ export class PhotoAssetService {
     }
 
     await db.delete(photoAssets).where(and(eq(photoAssets.tenantId, tenant.tenant.id), inArray(photoAssets.id, ids)))
+    await this.emitManifestChanged(tenant.tenant.id)
   }
 
   async uploadAssets(inputs: readonly UploadAssetInput[]): Promise<PhotoAssetListItem[]> {
@@ -265,7 +278,13 @@ export class PhotoAssetService {
       existingStorageMap,
     })
 
-    return [...existingItems, ...processedItems]
+    const result = [...existingItems, ...processedItems]
+
+    if (processedItems.length > 0) {
+      await this.emitManifestChanged(tenant.tenant.id)
+    }
+
+    return result
   }
 
   private prepareUploadPlans(

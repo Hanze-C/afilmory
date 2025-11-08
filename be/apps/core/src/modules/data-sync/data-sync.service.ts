@@ -1,7 +1,7 @@
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject } from '@afilmory/builder'
 import type { PhotoAssetConflictPayload, PhotoAssetConflictSnapshot, PhotoAssetManifest } from '@afilmory/db'
 import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
-import { createLogger } from '@afilmory/framework'
+import { createLogger, EventEmitterService } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/photo/photo.service'
 import { PhotoStorageService } from 'core/modules/photo/photo-storage.service'
@@ -65,10 +65,15 @@ interface SyncPreparation {
 export class DataSyncService {
   private readonly logger = createLogger('DataSyncService')
   constructor(
+    private readonly eventEmitter: EventEmitterService,
     private readonly dbAccessor: DbAccessor,
     private readonly photoBuilderService: PhotoBuilderService,
     private readonly photoStorageService: PhotoStorageService,
   ) {}
+
+  private async emitManifestChanged(tenantId: string): Promise<void> {
+    await this.eventEmitter.emit('photo.manifest.changed', { tenantId })
+  }
 
   async runSync(options: DataSyncOptions, onProgress?: DataSyncProgressEmitter): Promise<DataSyncResult> {
     const tenant = requireTenantContext()
@@ -157,6 +162,13 @@ export class DataSyncService {
 
     await this.emitComplete(onProgress, result)
 
+    if (!options.dryRun) {
+      const mutated = actions.some((action) => action.applied)
+      if (mutated) {
+        await this.emitManifestChanged(tenant.tenant.id)
+      }
+    }
+
     return result
   }
 
@@ -198,10 +210,18 @@ export class DataSyncService {
     const dryRun = options.dryRun ?? false
 
     if (options.strategy === ConflictResolutionStrategy.PREFER_STORAGE) {
-      return await this.resolveByStorage(record, conflictPayload, options, dryRun, tenant.tenant.id, db)
+      const action = await this.resolveByStorage(record, conflictPayload, options, dryRun, tenant.tenant.id, db)
+      if (!dryRun && action.applied) {
+        await this.emitManifestChanged(tenant.tenant.id)
+      }
+      return action
     }
 
-    return await this.resolveByDatabase(record, conflictPayload, dryRun, tenant.tenant.id, db)
+    const action = await this.resolveByDatabase(record, conflictPayload, dryRun, tenant.tenant.id, db)
+    if (!dryRun && action.applied) {
+      await this.emitManifestChanged(tenant.tenant.id)
+    }
+    return action
   }
 
   private async prepareSyncContext(

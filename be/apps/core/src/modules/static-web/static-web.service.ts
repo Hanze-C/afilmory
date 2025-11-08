@@ -3,10 +3,10 @@ import { fileURLToPath } from 'node:url'
 
 import { injectable } from 'tsyringe'
 
+import { ManifestService } from '../manifest/manifest.service'
 import { SiteSettingService } from '../site-setting/site-setting.service'
 import type { StaticAssetDocument } from './static-asset.service'
 import { StaticAssetService } from './static-asset.service'
-import { StaticWebManifestService } from './static-web-manifest.service'
 
 const STATIC_ROOT_ENV = process.env.STATIC_WEB_ROOT?.trim()
 
@@ -46,10 +46,12 @@ const STATIC_WEB_ASSET_LINK_RELS = [
   'manifest',
 ]
 
+type TenantSiteConfig = Awaited<ReturnType<SiteSettingService['getSiteConfig']>>
+
 @injectable()
 export class StaticWebService extends StaticAssetService {
   constructor(
-    private readonly manifestService: StaticWebManifestService,
+    private readonly manifestService: ManifestService,
     private readonly siteSettingService: SiteSettingService,
   ) {
     super({
@@ -61,11 +63,13 @@ export class StaticWebService extends StaticAssetService {
   }
 
   protected override async decorateDocument(document: StaticAssetDocument): Promise<void> {
-    await this.injectConfigScript(document)
+    const siteConfig = await this.siteSettingService.getSiteConfig()
+    this.injectConfigScript(document, siteConfig)
+    this.injectSiteMetadata(document, siteConfig)
     await this.injectManifestScript(document)
   }
 
-  private async injectConfigScript(document: StaticAssetDocument): Promise<void> {
+  private injectConfigScript(document: StaticAssetDocument, siteConfig: TenantSiteConfig): void {
     const configScript = document.head?.querySelector('#config')
     if (!configScript) {
       return
@@ -74,9 +78,44 @@ export class StaticWebService extends StaticAssetService {
     const payload = JSON.stringify({
       useCloud: true,
     })
-    const tenantSiteConfig = await this.siteSettingService.getSiteConfig()
-    const siteConfigPayload = JSON.stringify(tenantSiteConfig)
+    const siteConfigPayload = JSON.stringify(siteConfig)
     configScript.textContent = `window.__CONFIG__ = ${payload};window.__SITE_CONFIG__ = ${siteConfigPayload}`
+  }
+
+  private injectSiteMetadata(document: StaticAssetDocument, siteConfig: TenantSiteConfig): void {
+    const normalize = (value: string | undefined) => value?.trim() ?? ''
+
+    const title = normalize(siteConfig.title)
+    const description = normalize(siteConfig.description)
+
+    if (title) {
+      const titleElement = document.querySelector('title')
+      if (titleElement) {
+        titleElement.textContent = title
+      }
+
+      const appleTitleMeta = document.head?.querySelector('meta[name="apple-mobile-web-app-title"]')
+      if (appleTitleMeta) {
+        appleTitleMeta.setAttribute('content', title)
+      }
+
+      const splashTitle = document.querySelector('#splash-screen h1')
+      if (splashTitle) {
+        splashTitle.textContent = title
+      }
+    }
+
+    if (description) {
+      const descriptionMeta = document.head?.querySelector('meta[name="description"]')
+      if (descriptionMeta) {
+        descriptionMeta.setAttribute('content', description)
+      }
+
+      const splashDescription = document.querySelector('#splash-screen p')
+      if (splashDescription) {
+        splashDescription.textContent = description
+      }
+    }
   }
 
   private async injectManifestScript(document: StaticAssetDocument): Promise<void> {
