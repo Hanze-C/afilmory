@@ -213,10 +213,7 @@ export const reactions = pgTable(
     refKey: text('ref_key').notNull(),
     reaction: text('reaction').notNull(),
   },
-  (t) => [
-    index('idx_reactions_tenant_ref_key').on(t.tenantId, t.refKey),
-    unique('uq_reactions_tenant_ref_key').on(t.tenantId, t.refKey),
-  ],
+  (t) => [index('idx_reactions_tenant_ref_key').on(t.tenantId, t.refKey)],
 )
 
 export const photoAssets = pgTable(

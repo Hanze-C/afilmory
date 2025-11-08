@@ -262,7 +262,7 @@ export const PhotoViewer = ({
                     </div>
                   </m.div>
 
-                  {!isMobile && injectConfig.useApi && (
+                  {!isMobile && (injectConfig.useApi || injectConfig.useCloud) && (
                     <ReactionButton
                       photoId={currentPhoto.id}
                       className="absolute right-4 bottom-4"

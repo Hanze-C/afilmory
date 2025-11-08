@@ -50,6 +50,13 @@
       "when": 1762353600000,
       "tag": "0006_remove_tenant_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1762454400000,
+      "tag": "0007_allow_multiple_reactions",
+      "breakpoints": true
     }
   ]
 }

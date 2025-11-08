@@ -1,7 +1,8 @@
 import { reactions } from '@afilmory/db'
+import type { AnalysisResponse } from '@afilmory/sdk'
 import { BizException, ErrorCode } from 'core/errors'
 import { requireTenantContext } from 'core/modules/tenant/tenant.context'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { DbAccessor } from '../../database/database.provider'
@@ -31,33 +32,8 @@ export class ReactionService {
     }
   }
 
-  async getReactionsByRefKey(refKey: string): Promise<
-    Array<{
-      id: string
-      refKey: string
-      reaction: string
-      createdAt: string
-    }>
-  > {
-    requireTenantContext()
-    const db = this.dbAccessor.get()
-
-    const records = await db
-      .select({
-        id: reactions.id,
-        refKey: reactions.refKey,
-        reaction: reactions.reaction,
-        createdAt: reactions.createdAt,
-      })
-      .from(reactions)
-      .where(eq(reactions.refKey, refKey))
-      .orderBy(reactions.createdAt)
-
-    return records
-  }
-
-  async getReactionStats(refKey: string): Promise<Record<string, number>> {
-    requireTenantContext()
+  async getReactionAnalysis(refKey: string): Promise<AnalysisResponse> {
+    const tenant = requireTenantContext()
     const db = this.dbAccessor.get()
 
     const reactionRecords = await db
@@ -65,14 +41,21 @@ export class ReactionService {
         reaction: reactions.reaction,
       })
       .from(reactions)
-      .where(eq(reactions.refKey, refKey))
+      .where(and(eq(reactions.refKey, refKey), eq(reactions.tenantId, tenant.tenant.id)))
 
-    return reactionRecords.reduce(
+    const aggregated = reactionRecords.reduce(
       (acc, record) => {
         acc[record.reaction] = (acc[record.reaction] || 0) + 1
         return acc
       },
       {} as Record<string, number>,
     )
+
+    return {
+      data: {
+        view: 0,
+        reactions: aggregated,
+      },
+    }
   }
 }

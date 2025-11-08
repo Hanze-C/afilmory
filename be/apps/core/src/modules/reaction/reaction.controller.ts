@@ -1,14 +1,18 @@
-import { Body, Controller, Get, Post, Query } from '@afilmory/framework'
-import { BizException, ErrorCode } from 'core/errors'
+import { Body, Controller, createZodSchemaDto, Get, Post, Query } from '@afilmory/framework'
+import type { AnalysisResponse } from '@afilmory/sdk'
+import { AnalysisDtoSchema, ReactionDtoSchema } from '@afilmory/sdk'
 
-import { ReactionDto } from './reaction.dto'
 import { ReactionService } from './reaction.service'
+
+class ReactionDto extends createZodSchemaDto(ReactionDtoSchema) {}
+
+class AnalysisDto extends createZodSchemaDto(AnalysisDtoSchema) {}
 
 @Controller('reactions')
 export class ReactionController {
   constructor(private readonly reactionService: ReactionService) {}
 
-  @Post('/')
+  @Post('/add')
   async addReaction(@Body() body: ReactionDto) {
     const { refKey, reaction } = body
 
@@ -16,35 +20,13 @@ export class ReactionController {
   }
 
   @Get('/')
-  async getReactions(@Query() query: { refKey?: string }): Promise<
-    Array<{
-      id: string
-      refKey: string
-      reaction: string
-      createdAt: string
-    }>
-  > {
-    const { refKey } = query
-
-    if (!refKey) {
-      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-        message: 'refKey query parameter is required',
-      })
-    }
-
-    return await this.reactionService.getReactionsByRefKey(refKey)
+  async getReactions(@Query() query: AnalysisDto): Promise<AnalysisResponse> {
+    return await this.reactionService.getReactionAnalysis(query.refKey)
   }
 
   @Get('/stats')
-  async getReactionStats(@Query() query: { refKey?: string }): Promise<Record<string, number>> {
-    const { refKey } = query
-
-    if (!refKey) {
-      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-        message: 'refKey query parameter is required',
-      })
-    }
-
-    return await this.reactionService.getReactionStats(refKey)
+  async getReactionStats(@Query() query: AnalysisDto): Promise<Record<string, number>> {
+    const analysis = await this.reactionService.getReactionAnalysis(query.refKey)
+    return analysis.data.reactions
   }
 }
