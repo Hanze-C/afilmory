@@ -1,13 +1,8 @@
-import type { UiSchema } from '../schema-form/types'
+import type { SchemaFormValue, UiSchema } from '../schema-form/types'
 
-export interface SuperAdminSettings {
-  allowRegistration: boolean
-  localProviderEnabled: boolean
-  maxRegistrableUsers: number | null
-  baseDomain: string
-}
+export type SuperAdminSettingField = string
 
-export type SuperAdminSettingField = keyof SuperAdminSettings
+export type SuperAdminSettings = Record<SuperAdminSettingField, SchemaFormValue | undefined>
 
 export interface SuperAdminStats {
   totalUsers: number
@@ -29,9 +24,6 @@ export type SuperAdminSettingsResponse =
       values?: never
     })
 
-export type UpdateSuperAdminSettingsPayload = Partial<{
-  allowRegistration: boolean
-  localProviderEnabled: boolean
-  maxRegistrableUsers: number | null
-  baseDomain: string
-}>
+export type UpdateSuperAdminSettingsPayload = Partial<
+  Record<SuperAdminSettingField, SchemaFormValue | null | undefined>
+>

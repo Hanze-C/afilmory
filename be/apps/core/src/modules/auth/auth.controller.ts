@@ -177,7 +177,7 @@ export class AuthController {
     return response
   }
 
-  @Post('/sign-up/email')
+  @Post('/sign-in/email')
   async signUpEmail(@ContextParam() context: Context, @Body() body: TenantSignUpRequest) {
     if (!body?.account) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册账号信息' })
@@ -209,7 +209,9 @@ export class AuthController {
               slug: body.tenant.slug ?? null,
             }
           : undefined,
-        settings: body.settings,
+        settings: body.settings?.filter(
+          (s): s is { key: string; value: unknown } => typeof s.key === 'string' && s.key.length > 0,
+        ),
       },
       headers,
     )

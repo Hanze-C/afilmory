@@ -1,44 +1,25 @@
 import { Button } from '@afilmory/ui'
-import { DEFAULT_BASE_DOMAIN, Spring } from '@afilmory/utils'
+import { Spring } from '@afilmory/utils'
+import { isEqual } from 'es-toolkit'
 import { m } from 'motion/react'
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { LinearBorderPanel } from '~/components/common/GlassPanel'
 
 import { SchemaFormRenderer } from '../../schema-form/SchemaFormRenderer'
-import type { SchemaFormValue } from '../../schema-form/types'
+import type { SchemaFormState, SchemaFormValue } from '../../schema-form/types'
 import { useSuperAdminSettingsQuery, useUpdateSuperAdminSettingsMutation } from '../hooks'
-import type {
-  SuperAdminSettingField,
-  SuperAdminSettings,
-  SuperAdminSettingsResponse,
-  UpdateSuperAdminSettingsPayload,
-} from '../types'
+import type { SuperAdminSettingsResponse, UpdateSuperAdminSettingsPayload } from '../types'
+import type { SuperAdminFieldMap } from '../utils/schema-form-adapter'
+import {
+  buildFieldMap,
+  createFormState,
+  createUpdatePayload,
+  detectFormChanges,
+  normalizeServerValues,
+} from '../utils/schema-form-adapter'
 
-type FormState = Record<SuperAdminSettingField, SchemaFormValue>
-
-const BOOLEAN_FIELDS = new Set<SuperAdminSettingField>(['allowRegistration', 'localProviderEnabled'])
-
-function asString(value: SchemaFormValue): string {
-  if (value === undefined || value === null) {
-    return ''
-  }
-
-  if (typeof value === 'string') {
-    return value
-  }
-
-  return String(value)
-}
-
-function toFormState(settings: SuperAdminSettings): FormState {
-  return {
-    allowRegistration: settings.allowRegistration,
-    localProviderEnabled: settings.localProviderEnabled,
-    maxRegistrableUsers: settings.maxRegistrableUsers === null ? '' : String(settings.maxRegistrableUsers),
-    baseDomain: (settings.baseDomain ?? DEFAULT_BASE_DOMAIN) || DEFAULT_BASE_DOMAIN,
-  }
-}
+type FormState = SchemaFormState<string>
 
 function areFormStatesEqual(left: FormState | null, right: FormState | null): boolean {
   if (left === right) {
@@ -49,81 +30,16 @@ function areFormStatesEqual(left: FormState | null, right: FormState | null): bo
     return false
   }
 
-  return (
-    left.allowRegistration === right.allowRegistration &&
-    left.localProviderEnabled === right.localProviderEnabled &&
-    left.maxRegistrableUsers === right.maxRegistrableUsers &&
-    asString(left.baseDomain).trim() === asString(right.baseDomain).trim()
-  )
+  return isEqual(left, right)
 }
 
-function normalizeMaxUsers(value: SchemaFormValue): string {
-  if (typeof value === 'string') {
-    return value
-  }
-
-  if (value == null) {
-    return ''
-  }
-
-  return String(value)
-}
-
-type PossiblySnakeCaseSettings = Partial<
-  SuperAdminSettings & {
-    allow_registration: boolean
-    local_provider_enabled: boolean
-    max_registrable_users: number | null
-    base_domain: string
-  }
->
-
-function coerceMaxUsers(value: unknown): number | null {
-  if (value === undefined || value === null) {
-    return null
-  }
-
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null
-  }
-
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function normalizeServerSettings(input: PossiblySnakeCaseSettings | null): SuperAdminSettings | null {
-  if (!input) {
-    return null
-  }
-
-  if ('allowRegistration' in input || 'localProviderEnabled' in input) {
-    return {
-      allowRegistration: input.allowRegistration ?? false,
-      localProviderEnabled: input.localProviderEnabled ?? false,
-      maxRegistrableUsers: coerceMaxUsers(input.maxRegistrableUsers),
-      baseDomain: ((input.baseDomain ?? DEFAULT_BASE_DOMAIN) || DEFAULT_BASE_DOMAIN).toString(),
-    }
-  }
-
-  if ('allow_registration' in input || 'local_provider_enabled' in input || 'max_registrable_users' in input) {
-    return {
-      allowRegistration: input.allow_registration ?? false,
-      localProviderEnabled: input.local_provider_enabled ?? false,
-      maxRegistrableUsers: coerceMaxUsers(input.max_registrable_users),
-      baseDomain: ((input.base_domain ?? DEFAULT_BASE_DOMAIN) || DEFAULT_BASE_DOMAIN).toString(),
-    }
-  }
-
-  return null
-}
-
-function extractServerValues(payload: SuperAdminSettingsResponse): SuperAdminSettings | null {
+function extractRawSettings(payload: SuperAdminSettingsResponse): Record<string, unknown> | null {
   if ('values' in payload) {
-    return normalizeServerSettings(payload.values ?? null)
+    return (payload.values ?? null) as Record<string, unknown> | null
   }
 
   if ('settings' in payload) {
-    return normalizeServerSettings(payload.settings ?? null)
+    return (payload.settings ?? null) as Record<string, unknown> | null
   }
 
   return null
@@ -131,18 +47,18 @@ function extractServerValues(payload: SuperAdminSettingsResponse): SuperAdminSet
 
 export function SuperAdminSettingsForm() {
   const { data, isLoading, isError, error } = useSuperAdminSettingsQuery()
+  const [fieldMap, setFieldMap] = useState<SuperAdminFieldMap>(() => new Map())
   const [formState, setFormState] = useState<FormState | null>(null)
   const [initialState, setInitialState] = useState<FormState | null>(null)
   const lastServerStateRef = useRef<FormState | null>(null)
 
   const syncFromServer = useCallback((payload: SuperAdminSettingsResponse) => {
-    const serverValues = extractServerValues(payload)
-    if (!serverValues) {
-      return
-    }
-
-    const nextState = toFormState(serverValues)
+    const map = buildFieldMap(payload.schema)
+    const rawValues = extractRawSettings(payload)
+    const normalizedValues = normalizeServerValues(map, rawValues ?? undefined)
+    const nextState = createFormState(map, normalizedValues)
     const lastState = lastServerStateRef.current
+
     if (lastState && areFormStatesEqual(lastState, nextState)) {
       return
     }
@@ -150,6 +66,7 @@ export function SuperAdminSettingsForm() {
     lastServerStateRef.current = nextState
 
     startTransition(() => {
+      setFieldMap(map)
       setFormState(nextState)
       setInitialState(nextState)
     })
@@ -167,75 +84,35 @@ export function SuperAdminSettingsForm() {
     syncFromServer(data)
   }, [data, syncFromServer])
 
-  const hasChanges = useMemo(() => {
-    if (!formState || !initialState) {
-      return false
-    }
+  const hasChanges = useMemo(
+    () => detectFormChanges(fieldMap, formState, initialState),
+    [fieldMap, formState, initialState],
+  )
 
-    return !areFormStatesEqual(formState, initialState)
-  }, [formState, initialState])
+  const handleChange = useCallback(
+    (key: string, value: SchemaFormValue) => {
+      setFormState((prev) => {
+        if (!prev || !fieldMap.has(key)) {
+          return prev
+        }
 
-  const handleChange = useCallback((key: SuperAdminSettingField, value: SchemaFormValue) => {
-    setFormState((prev) => {
-      if (!prev) {
-        return prev
-      }
+        if (Object.is(prev[key], value)) {
+          return prev
+        }
 
-      if (BOOLEAN_FIELDS.has(key)) {
         return {
           ...prev,
-          [key]: Boolean(value),
+          [key]: value,
         }
-      }
+      })
+    },
+    [fieldMap],
+  )
 
-      if (key === 'maxRegistrableUsers') {
-        return {
-          ...prev,
-          [key]: normalizeMaxUsers(value),
-        }
-      }
-
-      return {
-        ...prev,
-        [key]: value,
-      }
-    })
-  }, [])
-
-  const buildPayload = (): UpdateSuperAdminSettingsPayload | null => {
-    if (!formState || !initialState) {
-      return null
-    }
-
-    const payload: UpdateSuperAdminSettingsPayload = {}
-
-    if (formState.allowRegistration !== initialState.allowRegistration) {
-      payload.allowRegistration = Boolean(formState.allowRegistration)
-    }
-
-    if (formState.localProviderEnabled !== initialState.localProviderEnabled) {
-      payload.localProviderEnabled = Boolean(formState.localProviderEnabled)
-    }
-
-    if (formState.maxRegistrableUsers !== initialState.maxRegistrableUsers) {
-      const trimmed = normalizeMaxUsers(formState.maxRegistrableUsers).trim()
-      if (trimmed.length === 0) {
-        payload.maxRegistrableUsers = null
-      } else {
-        const parsed = Number(trimmed)
-        if (Number.isFinite(parsed)) {
-          payload.maxRegistrableUsers = Math.max(0, Math.floor(parsed))
-        }
-      }
-    }
-
-    if (asString(formState.baseDomain).trim() !== asString(initialState.baseDomain).trim()) {
-      const value = asString(formState.baseDomain).trim()
-      payload.baseDomain = (value.length > 0 ? value : DEFAULT_BASE_DOMAIN).toLowerCase()
-    }
-
-    return Object.keys(payload).length > 0 ? payload : null
-  }
+  const buildPayload = useCallback(
+    (): UpdateSuperAdminSettingsPayload | null => createUpdatePayload(fieldMap, formState, initialState),
+    [fieldMap, formState, initialState],
+  )
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault()
