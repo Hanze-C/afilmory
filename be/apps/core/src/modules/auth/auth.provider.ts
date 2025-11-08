@@ -1,4 +1,4 @@
-import { authAccounts, authSessions, authUsers, generateId } from '@afilmory/db'
+import { authAccounts, authSessions, authUsers, authVerifications, generateId } from '@afilmory/db'
 import type { OnModuleInit } from '@afilmory/framework'
 import { createLogger, HttpContext } from '@afilmory/framework'
 import { betterAuth } from 'better-auth'
@@ -51,6 +51,21 @@ export class AuthProvider implements OnModuleInit {
     } catch {
       return null
     }
+  }
+
+  private buildCookiePrefix(tenantSlug: string | null): string {
+    if (!tenantSlug) {
+      return 'better-auth'
+    }
+
+    const sanitizedSlug = tenantSlug
+      .trim()
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9_-]/g, '-')
+      .replaceAll(/-+/g, '-')
+      .replaceAll(/^-|-$/g, '')
+
+    return sanitizedSlug ? `better-auth-${sanitizedSlug}` : 'better-auth'
   }
 
   private async getModuleOptions(): Promise<AuthModuleOptions> {
@@ -118,13 +133,13 @@ export class AuthProvider implements OnModuleInit {
       (entry): entry is [keyof SocialProvidersConfig, SocialProviderOptions] => Boolean(entry[1]),
     )
 
-    return entries.reduce<Record<string, { clientId: string; clientSecret: string; redirectUri?: string }>>(
+    return entries.reduce<Record<string, { clientId: string; clientSecret: string; redirectURI?: string }>>(
       (acc, [key, value]) => {
         const redirectUri = this.buildRedirectUri(protocol, host, key, value)
         acc[key] = {
           clientId: value.clientId,
           clientSecret: value.clientSecret,
-          ...(redirectUri ? { redirectUri } : {}),
+          ...(redirectUri ? { redirectURI: redirectUri } : {}),
         }
         return acc
       },
@@ -145,10 +160,15 @@ export class AuthProvider implements OnModuleInit {
     return `${protocol}://${host}${basePath}`
   }
 
-  private async createAuthForEndpoint(host: string, protocol: string): Promise<BetterAuthInstance> {
+  private async createAuthForEndpoint(
+    host: string,
+    protocol: string,
+    tenantSlug: string | null,
+  ): Promise<BetterAuthInstance> {
     const options = await this.getModuleOptions()
     const db = this.drizzleProvider.getDb()
     const socialProviders = this.buildBetterAuthProvidersForHost(host, protocol, options.socialProviders)
+    const cookiePrefix = this.buildCookiePrefix(tenantSlug)
 
     return betterAuth({
       database: drizzleAdapter(db, {
@@ -157,10 +177,14 @@ export class AuthProvider implements OnModuleInit {
           user: authUsers,
           session: authSessions,
           account: authAccounts,
+          verification: authVerifications,
         },
       }),
       socialProviders: socialProviders as any,
       emailAndPassword: { enabled: true },
+      session: {
+        freshAge: 0,
+      },
       user: {
         additionalFields: {
           tenantId: { type: 'string', input: false },
@@ -218,6 +242,7 @@ export class AuthProvider implements OnModuleInit {
         },
       },
       advanced: {
+        cookiePrefix,
         database: {
           generateId: () => generateId(),
         },
@@ -259,10 +284,11 @@ export class AuthProvider implements OnModuleInit {
     const tenantSlug = this.resolveTenantSlugFromContext()
     const host = this.applyTenantSlugToHost(requestedHost || fallbackHost, fallbackHost, tenantSlug)
     const protocol = this.determineProtocol(host, endpoint.protocol)
-    const cacheKey = `${protocol}://${host}`
+    const slugKey = tenantSlug ?? 'global'
+    const cacheKey = `${protocol}://${host}::${slugKey}`
 
     if (!this.instances.has(cacheKey)) {
-      const instancePromise = this.createAuthForEndpoint(host, protocol).then((instance) => {
+      const instancePromise = this.createAuthForEndpoint(host, protocol, tenantSlug).then((instance) => {
         logger.info(`Better Auth initialized for ${cacheKey}`)
         return instance
       })

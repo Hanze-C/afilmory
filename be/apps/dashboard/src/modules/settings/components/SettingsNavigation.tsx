@@ -7,6 +7,12 @@ const SETTINGS_TABS = [
     path: '/settings/site',
     end: true,
   },
+  {
+    id: 'account',
+    label: '账号与登录',
+    path: '/settings/account',
+    end: true,
+  },
 ] as const
 
 type SettingsNavigationProps = {

@@ -1,97 +1,13 @@
-import { Button, ScrollArea } from '@afilmory/ui'
-import { clsxm } from '@afilmory/utils'
-import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { ScrollArea } from '@afilmory/ui'
+import { Outlet } from 'react-router'
 
-import { useAuthUserValue } from '~/atoms/auth'
-import { usePageRedirect } from '~/hooks/usePageRedirect'
-
-const navigationTabs = [
-  { label: 'Dashboard', path: '/' },
-  { label: 'Photos', path: '/photos' },
-  { label: 'Settings', path: '/settings' },
-  { label: 'Analytics', path: '/analytics' },
-] as const
+import { Header } from '~/components/common/Header'
 
 export function Component() {
-  const { logout } = usePageRedirect()
-  const user = useAuthUserValue()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-
-  const handleLogout = async () => {
-    if (isLoggingOut) return
-
-    setIsLoggingOut(true)
-    try {
-      await logout()
-    } catch (error) {
-      console.error('Logout failed:', error)
-      setIsLoggingOut(false)
-    }
-  }
-
   return (
     <div className="flex h-screen flex-col">
-      {/* Top Navigation - Sharp Edges Design */}
-      <nav className="bg-background-tertiary relative shrink-0 px-6 py-3">
-        {/* Bottom border with gradient */}
-        <div className="via-text/20 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-
-        <div className="flex items-center gap-6">
-          {/* Logo/Brand */}
-          <div className="text-text text-base font-semibold">Afilmory</div>
-
-          {/* Navigation Tabs - subtle rounded corners */}
-          <div className="flex flex-1 items-center gap-1">
-            {navigationTabs.map((tab) => (
-              <NavLink key={tab.path} to={tab.path} end={tab.path === '/'}>
-                {({ isActive }) => (
-                  <div
-                    className={clsxm(
-                      'relative overflow-hidden rounded-lg px-3 py-1.5',
-                      isActive ? 'bg-accent/10' : 'bg-transparent',
-                    )}
-                  >
-                    <span
-                      className="relative z-10 text-[13px] font-medium transition-colors"
-                      style={{
-                        color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
-                      }}
-                    >
-                      {tab.label}
-                    </span>
-                  </div>
-                )}
-              </NavLink>
-            ))}
-          </div>
-
-          {/* Right side actions */}
-          <div className="flex items-center gap-3">
-            {user && (
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <div className="text-text text-[13px] font-medium">{user.name || user.email}</div>
-                  <div className="text-text-tertiary text-[11px] capitalize">{user.role}</div>
-                </div>
-                {user.image && <img src={user.image} alt={user.name || user.email} className="size-7 rounded-full" />}
-              </div>
-            )}
-
-            <Button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              isLoading={isLoggingOut}
-              loadingText="Logging out..."
-              variant="primary"
-              size="sm"
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </nav>
+      {/* Top Navigation */}
+      <Header />
 
       {/* Main Content Area */}
       <main className="bg-background flex-1 overflow-hidden">
