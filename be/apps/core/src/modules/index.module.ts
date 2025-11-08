@@ -12,6 +12,7 @@ import { CacheModule } from './cache/cache.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { DataSyncModule } from './data-sync/data-sync.module'
 import { FeedModule } from './feed/feed.module'
+import { OgModule } from './og/og.module'
 import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
 import { ReactionModule } from './reaction/reaction.module'
@@ -51,6 +52,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
     TenantModule,
     DataSyncModule,
     FeedModule,
+    OgModule,
 
     // This must be last
     StaticWebModule,

@@ -93,7 +93,7 @@ export const GalleryThumbnail: FC<{
 
   return (
     <m.div
-      className="pb-safe border-accent/20 z-10 shrink-0 border-t backdrop-blur-2xl"
+      className="pb-safe border-accent/20 bg-material-medium z-10 shrink-0 border-t backdrop-blur-2xl"
       initial={{ y: 100, opacity: 0 }}
       animate={{
         y: visible ? 0 : 48,
@@ -103,8 +103,6 @@ export const GalleryThumbnail: FC<{
       transition={Spring.presets.smooth}
       style={{
         pointerEvents: visible ? 'auto' : 'none',
-        backgroundImage:
-          'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
         boxShadow:
           '0 -8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 -4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 -2px 8px rgba(0, 0, 0, 0.1)',
       }}

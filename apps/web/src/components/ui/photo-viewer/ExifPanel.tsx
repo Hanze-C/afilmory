@@ -72,7 +72,7 @@ export const ExifPanel: FC<{
       style={{
         pointerEvents: visible ? 'auto' : 'none',
         backgroundImage:
-          'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+          'linear-gradient(to bottom right, rgba(var(--color-materialMedium)), rgba(var(--color-materialThick)), transparent)',
         boxShadow:
           '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
       }}
@@ -101,7 +101,7 @@ export const ExifPanel: FC<{
 
       <ScrollArea
         rootClassName="flex-1 min-h-0 overflow-auto lg:overflow-hidden"
-        viewportClassName="px-4 pb-4 [&_*]:select-text"
+        viewportClassName="px-4 pb-4 **:select-text"
       >
         <div className={`space-y-${isMobile ? '3' : '4'}`}>
           {/* 基本信息和标签 - 合并到一个 section */}

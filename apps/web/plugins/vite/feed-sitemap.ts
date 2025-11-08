@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs'
 
 import type { PhotoManifestItem } from '@afilmory/builder'
-import { generateRSSFeed } from '@afilmory/utils'
+import { tsImport } from 'tsx/esm/api'
 import type { Plugin } from 'vite'
 
 import type { SiteConfig } from '../../../../site.config'
 import { MANIFEST_PATH } from './__internal__/constants'
+
+const { generateRSSFeed } = await tsImport('@afilmory/utils', import.meta.url)
 
 export function createFeedSitemapPlugin(siteConfig: SiteConfig): Plugin {
   return {
