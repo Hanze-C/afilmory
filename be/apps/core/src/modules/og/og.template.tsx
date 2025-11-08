@@ -1,13 +1,8 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from 'hono/jsx'
 
-export interface FrameDimensions {
-  frameWidth: number
-  frameHeight: number
-  imageAreaWidth: number
-  imageAreaHeight: number
-  displayWidth: number
-  displayHeight: number
+export interface PhotoDimensions {
+  width: number
+  height: number
 }
 
 export interface ExifInfo {
@@ -20,39 +15,179 @@ export interface ExifInfo {
 
 export interface OgTemplateProps {
   photoTitle: string
-  photoDescription: string
+  siteName: string
   tags: string[]
   formattedDate?: string
   exifInfo?: ExifInfo | null
   thumbnailSrc?: string | null
-  frame: FrameDimensions
-  photoId: string
+  photoDimensions: PhotoDimensions
+  accentColor?: string
+}
+
+const CANVAS = { width: 1200, height: 628 }
+
+type LayoutType = 'portrait' | 'square' | 'landscape' | 'wide'
+
+interface LayoutConfig {
+  type: LayoutType
+  padding: number
+  gap: number
+  photoBox: { maxWidth: number; maxHeight: number }
+  infoCompact: boolean
+  photoFit: 'cover' | 'contain'
+}
+
+interface LayoutPieces {
+  gap: number
+  photo: any
+  info: any
+  photoWidth: number
 }
 
 export function OgTemplate({
   photoTitle,
-  photoDescription,
+  siteName,
   tags,
   formattedDate,
   exifInfo,
   thumbnailSrc,
-  frame,
-  photoId,
-}: OgTemplateProps): JSX.Element {
+  photoDimensions,
+  accentColor = '#007bff',
+}: OgTemplateProps) {
+  const width = Number.isFinite(photoDimensions.width) && photoDimensions.width > 0 ? photoDimensions.width : 1
+  const height = Number.isFinite(photoDimensions.height) && photoDimensions.height > 0 ? photoDimensions.height : 1
+  const photoAspect = width / height
+
+  const layout = determineLayout(photoAspect)
+  const photoSize = fitWithinBox(photoAspect, layout.photoBox)
+  const exifItems = buildExifItems(exifInfo)
+
+  const photo = (
+    <PhotoFrame width={photoSize.width} height={photoSize.height} fit={layout.photoFit} src={thumbnailSrc} />
+  )
+
+  const info = (
+    <InfoPanel
+      title={photoTitle || 'Untitled Photo'}
+      tags={tags}
+      exifItems={exifItems}
+      camera={exifInfo?.camera ?? null}
+      formattedDate={formattedDate}
+      accentColor={accentColor}
+      compact={layout.infoCompact}
+    />
+  )
+
+  const layoutComponent = layout.type === 'wide' ? WideLayout : layout.type === 'landscape' ? StackLayout : SplitLayout
+
+  return (
+    <BaseCanvas padding={layout.padding} siteName={siteName}>
+      {layoutComponent({ gap: layout.gap, photo, info, photoWidth: photoSize.width })}
+    </BaseCanvas>
+  )
+}
+
+function determineLayout(aspect: number): LayoutConfig {
+  let finalAspect = aspect
+  if (!Number.isFinite(finalAspect) || finalAspect <= 0) {
+    finalAspect = 1
+  }
+
+  if (finalAspect < 0.9) {
+    const padding = 60
+    return {
+      type: 'portrait',
+      padding,
+      gap: 44,
+      photoBox: {
+        maxWidth: CANVAS.width * 0.44,
+        maxHeight: CANVAS.height - padding * 2,
+      },
+      infoCompact: false,
+      photoFit: 'cover',
+    }
+  }
+
+  if (finalAspect <= 1.1) {
+    const padding = 60
+    return {
+      type: 'square',
+      padding,
+      gap: 44,
+      photoBox: {
+        maxWidth: CANVAS.width * 0.5,
+        maxHeight: CANVAS.height - padding * 2,
+      },
+      infoCompact: false,
+      photoFit: 'cover',
+    }
+  }
+
+  if (finalAspect >= 2.35) {
+    const padding = 50
+    return {
+      type: 'wide',
+      padding,
+      gap: 28,
+      photoBox: {
+        maxWidth: CANVAS.width - padding * 2,
+        maxHeight: 340,
+      },
+      infoCompact: true,
+      photoFit: 'contain',
+    }
+  }
+
+  const padding = 54
+  return {
+    type: 'landscape',
+    padding,
+    gap: 26,
+    photoBox: {
+      maxWidth: CANVAS.width - padding * 2,
+      maxHeight: 410,
+    },
+    infoCompact: false,
+    photoFit: 'cover',
+  }
+}
+
+function fitWithinBox(aspect: number, { maxWidth, maxHeight }: LayoutConfig['photoBox']) {
+  let width = maxWidth
+  let height = width / aspect
+  if (height > maxHeight) {
+    height = maxHeight
+    width = height * aspect
+  }
+  return { width, height }
+}
+
+function buildExifItems(exifInfo?: ExifInfo | null) {
+  const items: Array<{ label: string; text: string }> = []
+  if (exifInfo?.aperture) items.push({ label: 'f', text: exifInfo.aperture })
+  if (exifInfo?.shutterSpeed) items.push({ label: 's', text: exifInfo.shutterSpeed })
+  if (exifInfo?.iso) items.push({ label: 'iso', text: `${exifInfo.iso}` })
+  if (exifInfo?.focalLength) items.push({ label: 'mm', text: exifInfo.focalLength })
+  return items
+}
+
+interface BaseCanvasProps {
+  padding: number
+  siteName: string
+  children: any
+}
+
+function BaseCanvas({ padding, siteName, children }: BaseCanvasProps) {
   return (
     <div
       style={{
-        height: '100%',
         width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        background:
-          'linear-gradient(145deg, #0d0d0d 0%, #1c1c1c 20%, #121212 40%, #1a1a1a 60%, #0f0f0f 80%, #0a0a0a 100%)',
-        padding: '80px',
-        fontFamily: 'Geist, system-ui, -apple-system, sans-serif',
+        height: '100%',
+        padding: `${padding}px`,
         position: 'relative',
+        background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)',
+        fontFamily: 'Geist, system-ui, -apple-system, sans-serif',
+        display: 'flex',
       }}
     >
       <div
@@ -62,534 +197,333 @@ export function OgTemplate({
           left: 0,
           width: '100%',
           height: '100%',
-          opacity: 0.03,
+          opacity: 0.02,
           background: `
-                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(0deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-              `,
-          backgroundSize: '60px 60px',
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          top: '0px',
-          left: '0px',
-          width: '240px',
-          height: '240px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(60,60,70,0.15) 0%, rgba(40,40,50,0.08) 40%, transparent 70%)',
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '0px',
-          right: '0px',
-          width: '300px',
-          height: '300px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(45,45,55,0.12) 0%, rgba(30,30,40,0.06) 50%, transparent 80%)',
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          top: '5%',
-          right: '25%',
-          width: '180px',
-          height: '480px',
-          background:
-            'linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 60%, transparent 100%)',
-          transform: 'rotate(15deg)',
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          top: '15%',
-          right: '5%',
-          width: '30px',
-          height: '180px',
-          background: 'linear-gradient(0deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '3px',
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(0deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+        }}
+      />
+
+      <div
+        style={{
+          position: 'absolute',
+          bottom: `${padding}px`,
+          right: `${padding}px`,
+          fontSize: '14px',
+          fontWeight: '500',
+          color: 'rgba(255,255,255,0.28)',
+          letterSpacing: '0.5px',
+          display: 'flex',
         }}
       >
-        {Array.from({ length: 6 }).map((_value, index) => (
-          <div
-            key={index}
-            style={{
-              marginTop: index === 0 ? '9px' : '15px',
-              width: '9px',
-              height: '9px',
-              background: '#0a0a0a',
-              borderRadius: '50%',
-            }}
-          />
-        ))}
+        {siteName}
       </div>
 
       <div
         style={{
-          position: 'absolute',
-          top: '30%',
-          right: '12%',
-          width: '120px',
-          height: '120px',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: '5px',
-          transform: 'rotate(12deg)',
-        }}
-      />
+          position: 'relative',
 
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function SplitLayout({ gap, photo, info }: LayoutPieces) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: `${gap}px`,
+        width: '100%',
+        height: '100%',
+      }}
+    >
+      <div style={{ display: 'flex', flexShrink: 0 }}>{photo}</div>
       <div
         style={{
-          position: 'absolute',
-          top: '35%',
-          right: '15%',
-          width: '90px',
-          height: '90px',
-          border: '1px solid rgba(255,255,255,0.04)',
-          borderRadius: '3px',
-          transform: 'rotate(-8deg)',
+          display: 'flex',
+          alignItems: 'center',
+          flex: 1,
+          height: '100%',
         }}
-      />
+      >
+        {info}
+      </div>
+    </div>
+  )
+}
 
+function StackLayout({ gap, photo, info, photoWidth }: LayoutPieces) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: `${gap}px`,
+        width: '100%',
+        height: '100%',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>{photo}</div>
       <div
         style={{
-          position: 'absolute',
-          bottom: '25%',
-          left: '12%',
-          width: '72px',
-          height: '72px',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: '50%',
+          width: '100%',
+          maxWidth: `${photoWidth}px`,
+          display: 'flex',
+          flexShrink: 0,
         }}
-      />
+      >
+        {info}
+      </div>
+    </div>
+  )
+}
 
+function WideLayout({ gap, photo, info, photoWidth }: LayoutPieces) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: `${gap}px`,
+        width: '100%',
+        height: '100%',
+        justifyContent: 'flex-start',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>{photo}</div>
       <div
         style={{
-          position: 'absolute',
-          bottom: '40%',
-          right: '8%',
-          width: '48px',
-          height: '48px',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '50%',
+          width: '100%',
+          maxWidth: `${photoWidth}px`,
+          margin: '0 auto',
+          display: 'flex',
+          flexShrink: 0,
+        }}
+      >
+        {info}
+      </div>
+    </div>
+  )
+}
+
+interface PhotoFrameProps {
+  width: number
+  height: number
+  fit: 'cover' | 'contain'
+  src?: string | null
+}
+
+function PhotoFrame({ width, height, fit, src }: PhotoFrameProps) {
+  if (!src) {
+    return (
+      <div
+        style={{
+          width: `${width}px`,
+          height: `${height}px`,
+          borderRadius: '10px',
+          backgroundColor: '#050505',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <div
+        <span
           style={{
-            width: '30px',
-            height: '30px',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            color: 'rgba(255,255,255,0.35)',
+            fontSize: '14px',
+            letterSpacing: '0.3px',
           }}
         >
-          <div
-            style={{
-              width: '15px',
-              height: '15px',
-              border: '1px solid rgba(255,255,255,0.04)',
-              borderRadius: '50%',
-            }}
-          />
-        </div>
+          No Preview
+        </span>
       </div>
+    )
+  }
 
+  return (
+    <div
+      style={{
+        width: `${width}px`,
+        height: `${height}px`,
+        position: 'relative',
+        borderRadius: '10px',
+        overflow: 'hidden',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+        backgroundColor: '#050505',
+        display: 'flex',
+      }}
+    >
+      <img
+        src={src}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: fit,
+        }}
+      />
       <div
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          maxWidth: '58%',
+        }}
+      />
+    </div>
+  )
+}
+
+interface InfoPanelProps {
+  title: string
+  tags: string[]
+  exifItems: Array<{ label: string; text: string }>
+  camera: string | null
+  formattedDate?: string
+  accentColor: string
+  compact: boolean
+}
+
+function InfoPanel({ title, tags, exifItems, camera, formattedDate, accentColor, compact }: InfoPanelProps) {
+  const tagLimit = compact ? 2 : 3
+  const fontScale = compact ? 0.8 : 1
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: compact ? '12px' : '16px',
+        color: '#ffffff',
+      }}
+    >
+      <h1
+        style={{
+          margin: 0,
+          fontSize: `${compact ? 28 : 40}px`,
+          fontWeight: 700,
+          letterSpacing: '-0.5px',
+          lineHeight: 1.25,
         }}
       >
-        <h1
-          style={{
-            fontSize: '80px',
-            fontWeight: 'bold',
-            color: 'white',
-            margin: '0 0 16px 0',
-            lineHeight: '1.1',
-            letterSpacing: '1px',
-            display: 'flex',
-          }}
-        >
-          {photoTitle || 'Untitled Photo'}
-        </h1>
+        {title}
+      </h1>
 
-        <p
-          style={{
-            fontSize: '36px',
-            color: 'rgba(255,255,255,0.9)',
-            margin: '0 0 16px 0',
-            lineHeight: '1.3',
-            letterSpacing: '0.3px',
-            display: 'flex',
-            fontFamily: 'Geist, SF Pro Display',
-          }}
-        >
-          {photoDescription}
-        </p>
-
-        {tags.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '16px',
-              margin: '0 0 32px 0',
-            }}
-          >
-            {tags.map((tag) => (
-              <div
-                key={tag}
-                style={{
-                  fontSize: '26px',
-                  color: 'rgba(255,255,255,0.9)',
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  padding: '12px 20px',
-                  borderRadius: '24px',
-                  letterSpacing: '0.3px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  backdropFilter: 'blur(8px)',
-                  fontFamily: 'Geist, SF Pro Display',
-                }}
-              >
-                #{tag}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {thumbnailSrc && (
+      {tags.length > 0 && (
         <div
           style={{
-            position: 'absolute',
-            top: '75px',
-            right: '45px',
-            width: `${frame.frameWidth}px`,
-            height: `${frame.frameHeight}px`,
-            background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%)',
-            borderRadius: '6px',
-            border: '1px solid #2a2a2a',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
             display: 'flex',
-            overflow: 'hidden',
+            gap: '8px',
+            flexWrap: 'wrap',
           }}
         >
-          <div
-            style={{
-              position: 'absolute',
-              left: '0px',
-              top: '0px',
-              width: '30px',
-              height: '100%',
-              background: 'linear-gradient(90deg, #0a0a0a 0%, #111 100%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-              paddingTop: '25px',
-              paddingBottom: '25px',
-            }}
-          >
-            {Array.from({ length: 7 }).map((_value, index) => (
-              <div
-                key={index}
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
-                  borderRadius: '50%',
-                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
-                }}
-              />
-            ))}
-          </div>
-
-          <div
-            style={{
-              position: 'absolute',
-              right: '0px',
-              top: '0px',
-              width: '30px',
-              height: '100%',
-              background: 'linear-gradient(90deg, #111 0%, #0a0a0a 100%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-              paddingTop: '25px',
-              paddingBottom: '25px',
-            }}
-          >
-            {Array.from({ length: 7 }).map((_value, index) => (
-              <div
-                key={index}
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  background: 'radial-gradient(circle, #000 40%, #222 70%, #333 100%)',
-                  borderRadius: '50%',
-                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.8)',
-                }}
-              />
-            ))}
-          </div>
-
-          <div
-            style={{
-              position: 'absolute',
-              left: '30px',
-              top: '30px',
-              width: `${frame.imageAreaWidth}px`,
-              height: `${frame.imageAreaHeight}px`,
-              background: '#000',
-              borderRadius: '2px',
-              border: '2px solid #1a1a1a',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'inset 0 0 8px rgba(0,0,0,0.5)',
-            }}
-          >
+          {tags.slice(0, tagLimit).map((tag) => (
             <div
+              key={tag}
               style={{
-                position: 'relative',
-                width: `${frame.displayWidth}px`,
-                height: `${frame.displayHeight}px`,
-                overflow: 'hidden',
-                display: 'flex',
+                fontSize: `${13 * fontScale}px`,
+                color: 'rgba(255,255,255,0.9)',
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                padding: `${compact ? 4 : 6}px ${compact ? 12 : 14}px`,
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.15)',
+                letterSpacing: '0.2px',
               }}
             >
-              <img
-                src={thumbnailSrc}
-                style={{
-                  width: `${frame.displayWidth}px`,
-                  height: `${frame.displayHeight}px`,
-                  objectFit: 'cover',
-                }}
-              />
+              #{tag}
             </div>
+          ))}
+        </div>
+      )}
 
-            <div
-              style={{
-                position: 'absolute',
-                top: '0',
-                left: '0',
-                width: '100%',
-                height: '100%',
-                background:
-                  'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.06) 25%, transparent 45%, transparent 55%, rgba(255,255,255,0.03) 75%, transparent 100%)',
-                pointerEvents: 'none',
-              }}
-            />
-          </div>
-
-          <div
+      {camera && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'rgba(255,255,255,0.7)',
+            fontSize: `${15 * fontScale}px`,
+          }}
+        >
+          <span
             style={{
-              position: 'absolute',
-              top: '0',
-              left: '30px',
-              width: `${frame.imageAreaWidth}px`,
-              height: '30px',
-              background: 'linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 30%, #1a1a1a 100%)',
-              borderBottom: '1px solid rgba(255,255,255,0.05)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '0',
-              left: '30px',
-              width: `${frame.imageAreaWidth}px`,
-              height: '30px',
-              background: 'linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 30%, #1a1a1a 100%)',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
-            }}
-          />
-
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '8px',
-              right: '38px',
-              fontSize: '14px',
-              color: '#555',
-              fontFamily: 'monospace',
-              letterSpacing: '0.5px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+              fontSize: `${11 * fontScale}px`,
+              color: 'rgba(255,255,255,0.45)',
+              letterSpacing: '0.3px',
+              textTransform: 'uppercase',
             }}
           >
-            {photoId}
-          </div>
+            cam
+          </span>
+          <span>{camera}</span>
+        </div>
+      )}
 
-          <div
-            style={{
-              position: 'absolute',
-              top: '8px',
-              left: '42px',
-              fontSize: '14px',
-              color: '#555',
-              letterSpacing: '0.5px',
-              fontFamily: 'monospace',
-              background: 'rgba(0,0,0,0.4)',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              border: '1px solid rgba(255,255,255,0.05)',
-            }}
-          >
-            FILM 400 | STUDIO CUT
-          </div>
+      {exifItems.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            gap: `${compact ? 12 : 18}px`,
+            color: 'rgba(255,255,255,0.75)',
+            fontSize: `${14 * fontScale}px`,
+            flexWrap: 'wrap',
+          }}
+        >
+          {exifItems.map((item) => (
+            <div key={`${item.label}-${item.text}`} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <span
+                style={{
+                  fontSize: `${10 * fontScale}px`,
+                  color: 'rgba(255,255,255,0.35)',
+                  letterSpacing: '0.2px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {item.label}
+              </span>
+              <span>{item.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '80%',
-              height: '80%',
-              border: '1px dashed rgba(255,255,255,0.05)',
-              transform: 'translate(-50%, -50%)',
-              opacity: 0.6,
-              pointerEvents: 'none',
-            }}
-          />
+      {formattedDate && (
+        <div
+          style={{
+            color: 'rgba(255,255,255,0.45)',
+            fontSize: `${13 * fontScale}px`,
+            marginTop: compact ? '2px' : '6px',
+          }}
+        >
+          {formattedDate}
         </div>
       )}
 
       <div
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: '28px',
+          width: compact ? '50px' : '80px',
+          height: '3px',
+          background: accentColor,
+          borderRadius: '2px',
         }}
-      >
-        {formattedDate && (
-          <div
-            style={{
-              fontSize: '28px',
-              color: 'rgba(255,255,255,0.7)',
-              letterSpacing: '0.3px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}
-          >
-            📸 {formattedDate}
-          </div>
-        )}
-
-        {exifInfo?.camera && (
-          <div
-            style={{
-              fontSize: '25px',
-              color: 'rgba(255,255,255,0.6)',
-              letterSpacing: '0.3px',
-              display: 'flex',
-            }}
-          >
-            📷 {exifInfo.camera}
-          </div>
-        )}
-
-        {exifInfo && (exifInfo.aperture || exifInfo.shutterSpeed || exifInfo.iso || exifInfo.focalLength) && (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '18px',
-              fontSize: '25px',
-              color: 'rgba(255,255,255,0.8)',
-            }}
-          >
-            {exifInfo.aperture && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  padding: '12px 18px',
-                  borderRadius: '12px',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                ⚫ {exifInfo.aperture}
-              </div>
-            )}
-
-            {exifInfo.shutterSpeed && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  padding: '12px 18px',
-                  borderRadius: '12px',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                ⏱️ {exifInfo.shutterSpeed}
-              </div>
-            )}
-
-            {exifInfo.iso && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  padding: '12px 18px',
-                  borderRadius: '12px',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                📊 ISO {exifInfo.iso}
-              </div>
-            )}
-
-            {exifInfo.focalLength && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  padding: '12px 18px',
-                  borderRadius: '12px',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                🔍 {exifInfo.focalLength}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      />
     </div>
   )
 }

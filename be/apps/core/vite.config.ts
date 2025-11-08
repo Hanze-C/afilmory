@@ -13,8 +13,8 @@ NODE_BUILT_IN_MODULES.push(...NODE_BUILT_IN_MODULES.map((m) => `node:${m}`))
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const external = ['sharp', 'nodejs-snowflake', 'ioredis', 'heic-convert']
-function generateExternalsPackageJson (externals: string[]) {
+const external = ['sharp', 'nodejs-snowflake', 'ioredis', 'heic-convert', 'satori', '@resvg/resvg-js']
+function generateExternalsPackageJson(externals: string[]) {
   const req = createRequire(import.meta.url)
   let outDirAbs = ''
   const plugin: import('vite').Plugin = {

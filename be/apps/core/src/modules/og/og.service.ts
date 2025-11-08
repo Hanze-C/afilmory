@@ -1,7 +1,8 @@
-import { readFile, stat } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 import type { PhotoManifestItem } from '@afilmory/builder'
+import type { OnModuleDestroy } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import type { Context } from 'hono'
 import type { SatoriOptions } from 'satori'
@@ -9,26 +10,12 @@ import { injectable } from 'tsyringe'
 
 import { ManifestService } from '../manifest/manifest.service'
 import { SiteSettingService } from '../site-setting/site-setting.service'
-import GeistMedium from './assets/Geist-Medium.ttf.ts'
-import PingFangSC from './assets/PingFangSC.ttf.ts'
+import geistFontUrl from './assets/Geist-Medium.ttf?url'
+import cjkFontUrl from './assets/SweiFistLegCJKsc-Medium-2.ttf?url'
 import { renderOgImage } from './og.renderer'
-import type { ExifInfo, FrameDimensions } from './og.template'
+import type { ExifInfo, PhotoDimensions } from './og.template'
 
 const CACHE_CONTROL = 'public, max-age=31536000, stale-while-revalidate=31536000'
-const LOCAL_THUMBNAIL_ROOT_CANDIDATES = [
-  resolve(process.cwd(), 'dist/static/web'),
-  resolve(process.cwd(), '../dist/static/web'),
-  resolve(process.cwd(), '../../dist/static/web'),
-  resolve(process.cwd(), 'static/web'),
-  resolve(process.cwd(), '../static/web'),
-  resolve(process.cwd(), '../../static/web'),
-  resolve(process.cwd(), 'apps/web/dist'),
-  resolve(process.cwd(), '../apps/web/dist'),
-  resolve(process.cwd(), '../../apps/web/dist'),
-  resolve(process.cwd(), 'apps/web/public'),
-  resolve(process.cwd(), '../apps/web/public'),
-  resolve(process.cwd(), '../../apps/web/public'),
-]
 
 interface ThumbnailCandidateResult {
   buffer: Buffer
@@ -36,14 +23,21 @@ interface ThumbnailCandidateResult {
 }
 
 @injectable()
-export class OgService {
+export class OgService implements OnModuleDestroy {
   private fontConfig: SatoriOptions['fonts'] | null = null
-  private localThumbnailRoots: string[] | null = null
+  private fontCleanupTimer: NodeJS.Timeout | null = null
 
   constructor(
     private readonly manifestService: ManifestService,
     private readonly siteSettingService: SiteSettingService,
   ) {}
+
+  onModuleDestroy(): void {
+    if (this.fontCleanupTimer) {
+      clearTimeout(this.fontCleanupTimer)
+      this.fontCleanupTimer = null
+    }
+  }
 
   async render(context: Context, photoId: string): Promise<Response> {
     const manifest = await this.manifestService.getManifest()
@@ -55,20 +49,20 @@ export class OgService {
     const siteConfig = await this.siteSettingService.getSiteConfig()
     const formattedDate = this.formatDate(photo.exif?.DateTimeOriginal ?? photo.lastModified)
     const exifInfo = this.buildExifInfo(photo)
-    const frame = this.computeFrameDimensions(photo)
+    const photoDimensions = this.getPhotoDimensions(photo)
     const tags = (photo.tags ?? []).slice(0, 3)
     const thumbnailSrc = await this.resolveThumbnailSrc(context, photo)
 
     const png = await renderOgImage({
       template: {
         photoTitle: photo.title || photo.id || 'Untitled Photo',
-        photoDescription: photo.description || siteConfig.name || siteConfig.title || '',
+        siteName: siteConfig.name || siteConfig.title || 'Photo Gallery',
         tags,
         formattedDate,
         exifInfo,
         thumbnailSrc,
-        frame,
-        photoId: photo.id,
+        photoDimensions,
+        accentColor: siteConfig.accentColor,
       },
       fonts: await this.getFontConfig(),
     })
@@ -83,27 +77,50 @@ export class OgService {
     return new Response(body, { status: 200, headers })
   }
 
-  private async getFontConfig(): Promise<SatoriOptions['fonts']> {
-    if (this.fontConfig) {
-      return this.fontConfig
-    }
+  private cjkFontPromise: Promise<NonSharedBuffer> | null = null
+  private geistFontPromise: Promise<NonSharedBuffer> | null = null
 
-    this.fontConfig = [
+  loadFonts() {
+    if (!this.cjkFontPromise || !this.geistFontPromise) {
+      this.cjkFontPromise = readFile(resolve(process.cwd(), `./${cjkFontUrl}`))
+      this.geistFontPromise = readFile(resolve(process.cwd(), `./${geistFontUrl}`))
+    }
+    this.resetFontCleanupTimer()
+  }
+
+  private async getFontConfig(): Promise<SatoriOptions['fonts']> {
+    this.loadFonts()
+
+    return [
       {
         name: 'Geist',
-        data: this.toArrayBuffer(GeistMedium),
+        data: await this.geistFontPromise!,
         style: 'normal',
         weight: 400,
       },
       {
-        name: 'SF Pro Display',
-        data: this.toArrayBuffer(PingFangSC),
+        name: '狮尾咏腿黑体',
+        data: await this.cjkFontPromise!,
         style: 'normal',
         weight: 400,
       },
     ]
+  }
 
-    return this.fontConfig
+  private resetFontCleanupTimer(): void {
+    if (this.fontCleanupTimer) {
+      clearTimeout(this.fontCleanupTimer)
+    }
+    // Clean font promises 10 minutes after last activity
+    this.fontCleanupTimer = setTimeout(
+      () => {
+        this.cjkFontPromise = null
+        this.geistFontPromise = null
+        this.fontConfig = null
+        this.fontCleanupTimer = null
+      },
+      10 * 60 * 1000,
+    )
   }
 
   private toArrayBuffer(source: ArrayBufferView): ArrayBuffer {
@@ -163,41 +180,10 @@ export class OgService {
     }
   }
 
-  private computeFrameDimensions(photo: PhotoManifestItem): FrameDimensions {
-    const imageWidth = photo.width || 1
-    const imageHeight = photo.height || 1
-    const aspectRatio = imageWidth / imageHeight
-
-    const maxFrameWidth = 500
-    const maxFrameHeight = 420
-    let frameWidth = maxFrameWidth
-    let frameHeight = maxFrameHeight
-
-    if (aspectRatio > maxFrameWidth / maxFrameHeight) {
-      frameHeight = maxFrameWidth / aspectRatio
-    } else {
-      frameWidth = maxFrameHeight * aspectRatio
-    }
-
-    const imageAreaWidth = frameWidth - 70
-    const imageAreaHeight = frameHeight - 70
-
-    let displayWidth = imageAreaWidth
-    let displayHeight = imageAreaHeight
-
-    if (aspectRatio > imageAreaWidth / imageAreaHeight) {
-      displayHeight = imageAreaWidth / aspectRatio
-    } else {
-      displayWidth = imageAreaHeight * aspectRatio
-    }
-
+  private getPhotoDimensions(photo: PhotoManifestItem): PhotoDimensions {
     return {
-      frameWidth,
-      frameHeight,
-      imageAreaWidth,
-      imageAreaHeight,
-      displayWidth,
-      displayHeight,
+      width: photo.width || 1,
+      height: photo.height || 1,
     }
   }
 
@@ -236,14 +222,6 @@ export class OgService {
       }
     }
 
-    const local = await this.tryReadLocalThumbnail(thumbnailPath)
-    if (local) {
-      return {
-        buffer: local,
-        contentType: 'image/jpeg',
-      }
-    }
-
     return null
   }
 
@@ -262,53 +240,6 @@ export class OgService {
     } catch {
       return null
     }
-  }
-
-  private async tryReadLocalThumbnail(thumbnailPath: string): Promise<Buffer | null> {
-    const roots = await this.getLocalThumbnailRoots()
-    if (roots.length === 0) {
-      return null
-    }
-
-    const normalizedPath = thumbnailPath.startsWith('/') ? thumbnailPath.slice(1) : thumbnailPath
-    const candidates = [normalizedPath]
-    if (!normalizedPath.startsWith('static/web/')) {
-      candidates.push(`static/web/${normalizedPath}`)
-    }
-
-    for (const root of roots) {
-      for (const candidate of candidates) {
-        try {
-          const absolute = resolve(root, candidate)
-          return await readFile(absolute)
-        } catch {
-          continue
-        }
-      }
-    }
-
-    return null
-  }
-
-  private async getLocalThumbnailRoots(): Promise<string[]> {
-    if (this.localThumbnailRoots) {
-      return this.localThumbnailRoots
-    }
-
-    const resolved: string[] = []
-    for (const candidate of LOCAL_THUMBNAIL_ROOT_CANDIDATES) {
-      try {
-        const stats = await stat(candidate)
-        if (stats.isDirectory()) {
-          resolved.push(candidate)
-        }
-      } catch {
-        continue
-      }
-    }
-
-    this.localThumbnailRoots = resolved
-    return resolved
   }
 
   private buildThumbnailUrlCandidates(context: Context, thumbnailPath: string): string[] {
