@@ -1,14 +1,15 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import type { PhotoManifestItem } from '@afilmory/builder'
+import type { Context } from 'hono'
+import { DOMParser } from 'linkedom'
 import { injectable } from 'tsyringe'
 
 import { ManifestService } from '../manifest/manifest.service'
 import { SiteSettingService } from '../site-setting/site-setting.service'
 import type { StaticAssetDocument } from './static-asset.service'
 import { StaticAssetService } from './static-asset.service'
-
-const STATIC_ROOT_ENV = process.env.STATIC_WEB_ROOT?.trim()
 
 const MODULE_DIR = fileURLToPath(new URL('.', import.meta.url))
 
@@ -17,7 +18,6 @@ const STATIC_WEB_ROUTE_SEGMENT = '/static/web'
 const STATIC_WEB_ROOT_CANDIDATES = Array.from(
   new Set(
     [
-      STATIC_ROOT_ENV,
       resolve(MODULE_DIR, '../../static/web'),
       resolve(process.cwd(), 'dist/static/web'),
       resolve(process.cwd(), '../dist/static/web'),
@@ -35,6 +35,7 @@ const STATIC_WEB_ROOT_CANDIDATES = Array.from(
   ),
 )
 
+const DOM_PARSER = new DOMParser()
 const STATIC_WEB_ASSET_LINK_RELS = [
   'stylesheet',
   'modulepreload',
@@ -67,6 +68,41 @@ export class StaticWebService extends StaticAssetService {
     this.injectConfigScript(document, siteConfig)
     this.injectSiteMetadata(document, siteConfig)
     await this.injectManifestScript(document)
+  }
+
+  async decoratePhotoPageResponse(context: Context, photoId: string, response: Response): Promise<Response> {
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!contentType.toLowerCase().includes('text/html')) {
+      return response
+    }
+
+    const html = await response.text()
+    const headers = new Headers(response.headers)
+    const photo = await this.findPhoto(photoId)
+    if (!photo) {
+      return this.createHtmlResponse(html, headers, 404)
+    }
+
+    const siteConfig = await this.siteSettingService.getSiteConfig()
+    const siteTitle = siteConfig.title?.trim() || siteConfig.name || 'Photo Gallery'
+    const origin = this.resolveRequestOrigin(context)
+    if (!origin) {
+      return this.createHtmlResponse(html, headers, response.status)
+    }
+
+    try {
+      const document = DOM_PARSER.parseFromString(html, 'text/html') as unknown as StaticAssetDocument
+      this.removeExistingSocialMeta(document)
+      this.updateDocumentTitle(document, `${photo.id} | ${siteTitle}`)
+      this.insertOpenGraphTags(document, photo, origin, siteTitle)
+      this.insertTwitterTags(document, photo, origin, siteTitle)
+
+      const serialized = document.documentElement.outerHTML
+      return this.createHtmlResponse(serialized, headers, 200)
+    } catch (error) {
+      this.logger.error('Failed to inject Open Graph tags for photo page', { error })
+      return this.createHtmlResponse(html, headers, response.status)
+    }
   }
 
   private injectConfigScript(document: StaticAssetDocument, siteConfig: TenantSiteConfig): void {
@@ -126,5 +162,102 @@ export class StaticWebService extends StaticAssetService {
 
     const manifest = await this.manifestService.getManifest()
     manifestScript.textContent = `window.__MANIFEST__ = ${JSON.stringify(manifest)};`
+  }
+
+  private async findPhoto(photoId: string): Promise<PhotoManifestItem | null> {
+    const manifest = await this.manifestService.getManifest()
+    const target = manifest.data.find((item) => item.id === photoId)
+    return target ?? null
+  }
+
+  private resolveRequestOrigin(context: Context): string | null {
+    const forwardedHost = context.req.header('x-forwarded-host')?.trim()
+    const forwardedProto = context.req.header('x-forwarded-proto')?.trim()
+    if (forwardedHost) {
+      return `${forwardedProto || 'https'}://${forwardedHost}`
+    }
+
+    const host = context.req.header('host')?.trim()
+    if (host) {
+      const protocol = host.includes('localhost') ? 'http' : 'https'
+      return `${protocol}://${host}`
+    }
+
+    try {
+      const url = new URL(context.req.url)
+      return url.origin
+    } catch {
+      return null
+    }
+  }
+
+  private removeExistingSocialMeta(document: StaticAssetDocument): void {
+    const metaElements = Array.from(document.head?.querySelectorAll('meta') ?? [])
+    for (const meta of metaElements) {
+      const name = meta.getAttribute('name')?.toLowerCase()
+      const property = meta.getAttribute('property')?.toLowerCase()
+      if (name?.startsWith('twitter:') || property?.startsWith('og:')) {
+        meta.remove()
+      }
+    }
+  }
+
+  private updateDocumentTitle(document: StaticAssetDocument, title: string): void {
+    if (!title) {
+      return
+    }
+    document.title = title
+  }
+
+  private insertOpenGraphTags(
+    document: StaticAssetDocument,
+    photo: PhotoManifestItem,
+    origin: string,
+    siteTitle: string,
+  ): void {
+    const tags: Record<string, string> = {
+      'og:type': 'website',
+      'og:title': `${photo.id} on ${siteTitle}`,
+      'og:description': photo.description || '',
+      'og:image': `${origin}/og/${photo.id}`,
+      'og:url': `${origin}/${photo.id}`,
+    }
+
+    for (const [property, content] of Object.entries(tags)) {
+      const element = document.createElement('meta')
+      element.setAttribute('property', property)
+      element.setAttribute('content', content)
+      document.head?.append(element)
+    }
+  }
+
+  private insertTwitterTags(
+    document: StaticAssetDocument,
+    photo: PhotoManifestItem,
+    origin: string,
+    siteTitle: string,
+  ): void {
+    const tags: Record<string, string> = {
+      'twitter:card': 'summary_large_image',
+      'twitter:title': `${photo.id} on ${siteTitle}`,
+      'twitter:description': photo.description || '',
+      'twitter:image': `${origin}/og/${photo.id}`,
+    }
+
+    for (const [name, content] of Object.entries(tags)) {
+      const element = document.createElement('meta')
+      element.setAttribute('name', name)
+      element.setAttribute('content', content)
+      document.head?.append(element)
+    }
+  }
+
+  private createHtmlResponse(html: string, baseHeaders: Headers, status: number): Response {
+    const headers = new Headers(baseHeaders)
+    headers.set('content-length', Buffer.byteLength(html, 'utf8').toString())
+    return new Response(html, {
+      status,
+      headers,
+    })
   }
 }

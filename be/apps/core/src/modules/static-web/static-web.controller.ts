@@ -1,4 +1,4 @@
-import { ContextParam, Controller, Get } from '@afilmory/framework'
+import { ContextParam, Controller, Get, Param } from '@afilmory/framework'
 import type { Context } from 'hono'
 
 import { SkipTenant } from '../../decorators/skip-tenant.decorator'
@@ -20,10 +20,15 @@ export class StaticWebController {
   }
 
   @Get(`/`)
-  @Get(`/photos/*`)
   @Get(`/explory`)
   async getStaticWebIndex(@ContextParam() context: Context) {
     return await this.serve(context, this.staticWebService, false)
+  }
+
+  @Get(`/photos/:photoId`)
+  async getStaticPhotoPage(@ContextParam() context: Context, @Param('photoId') photoId: string) {
+    const response = await this.serve(context, this.staticWebService, false)
+    return await this.staticWebService.decoratePhotoPageResponse(context, photoId, response)
   }
 
   @Get(`${STATIC_DASHBOARD_BASENAME}`)

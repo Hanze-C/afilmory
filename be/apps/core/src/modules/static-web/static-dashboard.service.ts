@@ -6,8 +6,6 @@ import { injectable } from 'tsyringe'
 import type { StaticAssetDocument } from './static-asset.service'
 import { StaticAssetService } from './static-asset.service'
 
-const STATIC_DASHBOARD_ROOT_ENV = process.env.STATIC_DASHBOARD_ROOT?.trim()
-
 const MODULE_DIR = fileURLToPath(new URL('.', import.meta.url))
 
 export const STATIC_DASHBOARD_BASENAME = '/platform'
@@ -17,7 +15,6 @@ const STATIC_DASHBOARD_ROUTE_SEGMENT = STATIC_DASHBOARD_BASENAME
 const STATIC_DASHBOARD_ROOT_CANDIDATES = Array.from(
   new Set(
     [
-      STATIC_DASHBOARD_ROOT_ENV,
       resolve(MODULE_DIR, '../../static/dashboard'),
       resolve(MODULE_DIR, '../../../../dashboard/dist'),
       resolve(process.cwd(), 'dist/static/dashboard'),
