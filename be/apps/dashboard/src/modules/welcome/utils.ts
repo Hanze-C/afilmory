@@ -1,22 +1,5 @@
 import type { SchemaFormState, SchemaFormValue, UiFieldNode, UiNode, UiSchema } from '~/modules/schema-form/types'
 
-import type { OnboardingSettingKey, SettingFieldDefinition } from './constants'
-import { ONBOARDING_SETTING_SECTIONS, ONBOARDING_STEPS } from './constants'
-import { DEFAULT_SITE_SETTINGS_VALUES } from './siteSchema'
-import type { SettingFormState } from './types'
-
-export function createInitialSettingsState(): SettingFormState {
-  const state = {} as SettingFormState
-  for (const section of ONBOARDING_SETTING_SECTIONS) {
-    for (const field of section.fields) {
-      state[field.key] = { enabled: false, value: '' }
-    }
-  }
-  return state
-}
-
-export const maskSecret = (value: string) => (value ? '•'.repeat(Math.min(10, value.length)) : '')
-
 export function slugify(value: string) {
   return value
     .toLowerCase()
@@ -24,31 +7,6 @@ export function slugify(value: string) {
     .replaceAll(/[^a-z0-9-]+/g, '-')
     .replaceAll(/-{2,}/g, '-')
     .replaceAll(/^-+|-+$/g, '')
-}
-
-export function isLikelyEmail(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed.includes('@')) {
-    return false
-  }
-  const [local, domain] = trimmed.split('@')
-  if (!local || !domain || domain.startsWith('.') || domain.endsWith('.')) {
-    return false
-  }
-  return domain.includes('.')
-}
-
-export const stepProgress = (index: number) => Math.round((index / (ONBOARDING_STEPS.length - 1 || 1)) * 100)
-
-export function getFieldByKey(key: OnboardingSettingKey): SettingFieldDefinition {
-  for (const section of ONBOARDING_SETTING_SECTIONS) {
-    for (const field of section.fields) {
-      if (field.key === key) {
-        return field
-      }
-    }
-  }
-  throw new Error(`Unknown onboarding setting key: ${key}`)
 }
 
 const traverseSchemaNodes = <Key extends string>(
@@ -71,16 +29,13 @@ export function collectSchemaFieldMap<Key extends string>(schema: UiSchema<Key>)
   return map
 }
 
-export function collectSchemaFieldKeys<Key extends string>(schema: UiSchema<Key>): Key[] {
-  return [...collectSchemaFieldMap(schema).keys()]
-}
-
 export function createInitialSiteStateFromFieldMap<Key extends string>(
   fieldMap: Map<Key, UiFieldNode<Key>>,
+  defaults: Record<string, SchemaFormValue | undefined>,
 ): SchemaFormState<Key> {
   const state = {} as SchemaFormState<Key>
   for (const [key, field] of fieldMap) {
-    const defaultValue = (DEFAULT_SITE_SETTINGS_VALUES as Record<string, SchemaFormValue | undefined>)[key as string]
+    const defaultValue = defaults[key as string]
     if (defaultValue !== undefined) {
       state[key] = defaultValue
       continue
@@ -94,10 +49,6 @@ export function createInitialSiteStateFromFieldMap<Key extends string>(
     state[key] = ''
   }
   return state
-}
-
-export function createInitialSiteStateFromSchema<Key extends string>(schema: UiSchema<Key>): SchemaFormState<Key> {
-  return createInitialSiteStateFromFieldMap(collectSchemaFieldMap(schema))
 }
 
 export function coerceSiteFieldValue<Key extends string>(

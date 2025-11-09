@@ -60,8 +60,8 @@ export function UserMenu({ user }: UserMenuProps) {
 
           {/* User Info - Hidden on small screens */}
           <div className="hidden text-left md:block">
-            <div className="text-text text-[13px] font-medium leading-tight">{user.name || user.email}</div>
-            <div className="text-text-tertiary text-[11px] capitalize leading-tight">{user.role}</div>
+            <div className="text-text text-[13px] leading-tight font-medium">{user.name || user.email}</div>
+            <div className="text-text-tertiary text-[11px] leading-tight capitalize">{user.role}</div>
           </div>
 
           {/* Chevron Icon */}
@@ -73,7 +73,7 @@ export function UserMenu({ user }: UserMenuProps) {
 
       <DropdownMenuContent
         align="end"
-        className="w-56 border-fill-tertiary bg-background shadow-lg"
+        className="border-fill-tertiary bg-background w-56 shadow-lg"
         style={{
           backgroundImage: 'none',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
@@ -98,7 +98,7 @@ export function UserMenu({ user }: UserMenuProps) {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} icon={<LogOut className="size-4 text-red" />}>
+        <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} icon={<LogOut className="text-red size-4" />}>
           <span className="text-red">{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

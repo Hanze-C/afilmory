@@ -2,12 +2,19 @@ import { isTenantSlugReserved } from '@afilmory/utils'
 import { BizException, ErrorCode } from 'core/errors'
 import { injectable } from 'tsyringe'
 
+import { AppStateService } from '../app-state/app-state.service'
 import { TenantRepository } from './tenant.repository'
 import type { TenantAggregate, TenantContext, TenantResolutionInput } from './tenant.types'
 
+const PLACEHOLDER_TENANT_SLUG = 'holding'
+const PLACEHOLDER_TENANT_NAME = 'Pending Workspace'
+
 @injectable()
 export class TenantService {
-  constructor(private readonly repository: TenantRepository) {}
+  constructor(
+    private readonly repository: TenantRepository,
+    private readonly appState: AppStateService,
+  ) {}
 
   async createTenant(payload: { name: string; slug: string }): Promise<TenantAggregate> {
     const normalizedSlug = this.normalizeSlug(payload.slug)
@@ -22,11 +29,38 @@ export class TenantService {
       throw new BizException(ErrorCode.TENANT_SLUG_RESERVED)
     }
 
-    return await this.repository.createTenant({
+    const aggregate = await this.repository.createTenant({
       ...payload,
       slug: normalizedSlug,
     })
+    await this.appState.markInitialized()
+    return aggregate
   }
+
+  async ensurePlaceholderTenant(): Promise<TenantAggregate> {
+    const existing = await this.repository.findBySlug(PLACEHOLDER_TENANT_SLUG)
+    if (existing) {
+      return existing
+    }
+
+    return await this.repository.createTenant({
+      name: PLACEHOLDER_TENANT_NAME,
+      slug: PLACEHOLDER_TENANT_SLUG,
+    })
+  }
+
+  getPlaceholderTenantSlug(): string {
+    return PLACEHOLDER_TENANT_SLUG
+  }
+
+  async isPlaceholderTenantId(tenantId: string | null | undefined): Promise<boolean> {
+    if (!tenantId) {
+      return false
+    }
+    const placeholder = await this.ensurePlaceholderTenant()
+    return placeholder.tenant.id === tenantId
+  }
+
   async resolve(input: TenantResolutionInput, noThrow: boolean): Promise<TenantContext | null>
   async resolve(input: TenantResolutionInput): Promise<TenantContext>
   async resolve(input: TenantResolutionInput, noThrow = false): Promise<TenantContext | null> {

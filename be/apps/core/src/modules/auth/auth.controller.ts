@@ -1,6 +1,7 @@
 import { authUsers } from '@afilmory/db'
 import { Body, ContextParam, Controller, Get, HttpContext, Post, UnauthorizedException } from '@afilmory/framework'
 import { freshSessionMiddleware } from 'better-auth/api'
+import { SkipTenant } from 'core/decorators/skip-tenant.decorator'
 import { BizException, ErrorCode } from 'core/errors'
 import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
@@ -61,6 +62,7 @@ type TenantSignUpRequest = {
     slug?: string | null
   }
   settings?: Array<{ key?: string; value?: unknown }>
+  useSessionAccount?: boolean
 }
 
 type SocialSignInRequest = {
@@ -258,9 +260,12 @@ export class AuthController {
     return response
   }
 
+  @SkipTenant()
   @Post('/sign-up/email')
   async signUpEmail(@ContextParam() context: Context, @Body() body: TenantSignUpRequest) {
-    if (!body?.account) {
+    const useSessionAccount = body?.useSessionAccount ?? false
+
+    if (!body?.account && !useSessionAccount) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册账号信息' })
     }
 
@@ -268,16 +273,21 @@ export class AuthController {
     if (!tenantContext && !body.tenant) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少租户信息' })
     }
+    if (tenantContext && useSessionAccount) {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前操作不支持使用已登录账号' })
+    }
 
     const headers = this.buildTenantAwareHeaders(context)
 
     const result = await this.registration.registerTenant(
       {
-        account: {
-          email: body.account.email ?? '',
-          password: body.account.password ?? '',
-          name: body.account.name ?? '',
-        },
+        account: body.account
+          ? {
+              email: body.account.email ?? '',
+              password: body.account.password ?? '',
+              name: body.account.name ?? '',
+            }
+          : undefined,
         tenant: body.tenant
           ? {
               name: body.tenant.name ?? '',
@@ -287,6 +297,7 @@ export class AuthController {
         settings: body.settings?.filter(
           (s): s is { key: string; value: unknown } => typeof s.key === 'string' && s.key.length > 0,
         ),
+        useSessionAccount,
       },
       headers,
     )

@@ -1,11 +1,11 @@
 import type { HttpMiddleware, OnModuleDestroy, OnModuleInit } from '@afilmory/framework'
 import { EventEmitterService, Middleware } from '@afilmory/framework'
-import { OnboardingService } from 'core/modules/onboarding/onboarding.service'
 import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 import { injectable } from 'tsyringe'
 
 import { logger } from '../helpers/logger.helper'
+import { AppStateService } from '../modules/app-state/app-state.service'
 import { SettingService } from '../modules/setting/setting.service'
 import { getTenantContext } from '../modules/tenant/tenant.context'
 import { TenantContextResolver } from '../modules/tenant/tenant-context-resolver.service'
@@ -52,7 +52,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     private readonly eventEmitter: EventEmitterService,
     private readonly settingService: SettingService,
     private readonly tenantContextResolver: TenantContextResolver,
-    private readonly onboardingService: OnboardingService,
+    private readonly appState: AppStateService,
   ) {}
 
   private readonly corsMiddleware = cors({
@@ -121,7 +121,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   }
 
   ['use']: HttpMiddleware['use'] = async (context, next) => {
-    const initialized = await this.onboardingService.isInitialized()
+    const initialized = await this.appState.isInitialized()
 
     if (!initialized) {
       this.logger.info(`Application not initialized yet, skip CORS middleware for ${context.req.path}`)

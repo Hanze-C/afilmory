@@ -1,8 +1,8 @@
 import { FormError, Input, Label } from '@afilmory/ui'
-import type { FC,MutableRefObject  } from 'react'
+import type { FC, MutableRefObject } from 'react'
 
 import type { useRegistrationForm } from '~/modules/auth/hooks/useRegistrationForm'
-import { slugify } from '~/modules/onboarding/utils'
+import { slugify } from '~/modules/welcome/utils'
 
 import { firstErrorMessage } from '../utils'
 

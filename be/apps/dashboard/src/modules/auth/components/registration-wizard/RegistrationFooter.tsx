@@ -5,11 +5,19 @@ type FooterProps = {
   disableBack: boolean
   isSubmitting: boolean
   isLastStep: boolean
+  disableNext?: boolean
   onBack: () => void
   onNext: () => void
 }
 
-export const RegistrationFooter: FC<FooterProps> = ({ disableBack, isSubmitting, isLastStep, onBack, onNext }) => (
+export const RegistrationFooter: FC<FooterProps> = ({
+  disableBack,
+  isSubmitting,
+  isLastStep,
+  disableNext,
+  onBack,
+  onNext,
+}) => (
   <footer className="flex flex-col gap-3 p-8 pt-6 sm:flex-row sm:items-center sm:justify-between">
     <div />
     <div className="flex gap-2">
@@ -25,7 +33,15 @@ export const RegistrationFooter: FC<FooterProps> = ({ disableBack, isSubmitting,
           Back
         </Button>
       )}
-      <Button type="button" variant="primary" size="md" className="min-w-40" onClick={onNext} isLoading={isSubmitting}>
+      <Button
+        type="button"
+        variant="primary"
+        size="md"
+        className="min-w-40"
+        onClick={onNext}
+        isLoading={isSubmitting}
+        disabled={disableNext}
+      >
         {isLastStep ? 'Create workspace' : 'Continue'}
       </Button>
     </div>

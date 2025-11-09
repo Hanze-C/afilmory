@@ -4,7 +4,7 @@ import { m } from 'motion/react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
 
-import { LinearBorderContainer } from '~/modules/onboarding/components/LinearBorderContainer'
+import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
 
 function getCurrentHostname() {
   if (typeof window === 'undefined') {
@@ -42,7 +42,7 @@ export function Component() {
                   </div>
                 )}
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button variant="primary" className="flex-1" onClick={() => navigate('/register', { replace: true })}>
+                  <Button variant="primary" className="flex-1" onClick={() => navigate('/welcome', { replace: true })}>
                     Create a workspace
                   </Button>
                   <Button variant="ghost" className="flex-1" onClick={() => navigate('/login', { replace: true })}>

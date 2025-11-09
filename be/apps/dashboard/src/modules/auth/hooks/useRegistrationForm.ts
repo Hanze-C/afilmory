@@ -2,23 +2,17 @@ import { useForm } from '@tanstack/react-form'
 import { useMemo } from 'react'
 import { z } from 'zod'
 
-import { DEFAULT_SITE_SETTINGS_VALUES, SITE_SETTINGS_KEYS, siteSettingsSchema } from '~/modules/onboarding/siteSchema'
-import type { SiteFormState } from '~/modules/onboarding/types'
-import { isLikelyEmail } from '~/modules/onboarding/utils'
+import type { SchemaFormState } from '~/modules/schema-form/types'
+import { DEFAULT_SITE_SETTINGS_VALUES, SITE_SETTINGS_KEYS, siteSettingsSchema } from '~/modules/welcome/siteSchema'
 
 export type TenantSiteFieldKey = (typeof SITE_SETTINGS_KEYS)[number]
+type SiteFormState = SchemaFormState<TenantSiteFieldKey>
 
 export type TenantRegistrationFormState = SiteFormState & {
   tenantName: string
   tenantSlug: string
-  accountName: string
-  email: string
-  password: string
-  confirmPassword: string
   termsAccepted: boolean
 }
-
-const REQUIRED_PASSWORD_LENGTH = 8
 
 const baseRegistrationSchema = z.object({
   tenantName: z.string().min(1, { error: 'Workspace name is required' }),
@@ -26,32 +20,12 @@ const baseRegistrationSchema = z.object({
     .string()
     .min(1, { error: 'Slug is required' })
     .regex(/^[a-z0-9-]+$/, { error: 'Use lowercase letters, numbers, and hyphen only' }),
-  accountName: z.string().min(1, { error: 'Administrator name is required' }),
-  email: z
-    .string()
-    .min(1, { error: 'Email is required' })
-    .refine((value) => isLikelyEmail(value), { error: 'Enter a valid email address' }),
-  password: z
-    .string()
-    .min(1, { error: 'Password is required' })
-    .min(REQUIRED_PASSWORD_LENGTH, {
-      error: `Password must be at least ${REQUIRED_PASSWORD_LENGTH} characters`,
-    }),
-  confirmPassword: z.string().min(1, { error: 'Confirm your password' }),
   termsAccepted: z.boolean({
     error: 'You must accept the terms to continue',
   }),
 })
 
-export const tenantRegistrationSchema = siteSettingsSchema.merge(baseRegistrationSchema).superRefine((data, ctx) => {
-  if (data.confirmPassword !== '' && data.password !== data.confirmPassword) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      error: 'Passwords do not match',
-      path: ['confirmPassword'],
-    })
-  }
-})
+export const tenantRegistrationSchema = siteSettingsSchema.merge(baseRegistrationSchema)
 
 export function buildRegistrationInitialValues(
   initial?: Partial<TenantRegistrationFormState>,
@@ -74,10 +48,6 @@ export function buildRegistrationInitialValues(
   return {
     tenantName: initial?.tenantName ?? '',
     tenantSlug: initial?.tenantSlug ?? '',
-    accountName: initial?.accountName ?? '',
-    email: initial?.email ?? '',
-    password: initial?.password ?? '',
-    confirmPassword: initial?.confirmPassword ?? '',
     termsAccepted: initial?.termsAccepted ?? false,
     ...siteValues,
   }

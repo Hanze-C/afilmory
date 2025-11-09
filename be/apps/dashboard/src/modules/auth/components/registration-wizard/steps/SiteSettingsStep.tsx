@@ -5,8 +5,8 @@ import type {
   TenantSiteFieldKey,
   useRegistrationForm,
 } from '~/modules/auth/hooks/useRegistrationForm'
-import { SiteStep } from '~/modules/onboarding/components/steps/SiteStep'
 import type { SchemaFormState, UiSchema } from '~/modules/schema-form/types'
+import { SiteSchemaForm } from '~/modules/welcome/components/SiteSchemaForm'
 
 type SiteSettingsStepProps = {
   form: ReturnType<typeof useRegistrationForm>
@@ -37,7 +37,7 @@ export const SiteSettingsStep: FC<SiteSettingsStepProps> = ({
               from the dashboard.
             </p>
           </section>
-          <div className="bg-fill/40 border border-white/5 h-56 animate-pulse rounded-2xl" />
+          <div className="bg-fill/40 h-56 animate-pulse rounded-2xl border border-white/5" />
         </div>
       )
     }
@@ -51,18 +51,18 @@ export const SiteSettingsStep: FC<SiteSettingsStepProps> = ({
           </p>
         </section>
         {errorMessage && (
-          <div className="border-red/50 bg-red/10 rounded-xl border px-4 py-3 text-sm text-red">{errorMessage}</div>
+          <div className="border-red/50 bg-red/10 text-red rounded-xl border px-4 py-3 text-sm">{errorMessage}</div>
         )}
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 -mx-6 -mt-12">
+    <div className="-mx-6 -mt-12 space-y-8">
       {errorMessage && (
-        <div className="border-red/50 bg-red/10 rounded-xl border px-4 py-3 text-sm text-red">{errorMessage}</div>
+        <div className="border-red/50 bg-red/10 text-red rounded-xl border px-4 py-3 text-sm">{errorMessage}</div>
       )}
-      <SiteStep
+      <SiteSchemaForm
         schema={schema}
         values={values as SchemaFormState<TenantSiteFieldKey>}
         errors={errors}

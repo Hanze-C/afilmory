@@ -9,7 +9,7 @@ export interface RegisterTenantAccountPayload {
 }
 
 export interface RegisterTenantPayload {
-  account: RegisterTenantAccountPayload
+  account?: RegisterTenantAccountPayload
   tenant: {
     name: string
     slug: string | null
@@ -18,6 +18,7 @@ export interface RegisterTenantPayload {
     key: string
     value: unknown
   }>
+  useSessionAccount?: boolean
 }
 
 export type RegisterTenantResult = FetchResponse<unknown>

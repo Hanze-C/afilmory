@@ -12,9 +12,7 @@
     "db:migrate": "pnpm -C ../../packages/db db:migrate",
     "db:studio": "pnpm -C ../../packages/db db:studio",
     "dev": "nodemon",
-    "dev:reset-superadmin-password": "vite-node src/index.ts --reset-superadmin-password",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "dev:reset-superadmin-password": "vite-node src/index.ts --reset-superadmin-password"
   },
   "dependencies": {
     "@afilmory/be-utils": "workspace:*",

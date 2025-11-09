@@ -4,47 +4,14 @@ import { useState } from 'react'
 
 import type { RegisterTenantPayload } from '~/modules/auth/api/registerTenant'
 import { registerTenant } from '~/modules/auth/api/registerTenant'
+import { resolveBaseDomain } from '~/modules/auth/utils/domain'
 
 import type { TenantSiteFieldKey } from './useRegistrationForm'
 
 interface TenantRegistrationRequest {
   tenantName: string
   tenantSlug: string
-  accountName: string
-  email: string
-  password: string
   settings: Array<{ key: TenantSiteFieldKey; value: string }>
-}
-
-const SECOND_LEVEL_PUBLIC_SUFFIXES = new Set(['ac', 'co', 'com', 'edu', 'gov', 'net', 'org'])
-
-function resolveBaseDomain(hostname: string): string {
-  const envValue = (import.meta.env as Record<string, unknown> | undefined)?.VITE_APP_TENANT_BASE_DOMAIN
-  if (typeof envValue === 'string' && envValue.trim().length > 0) {
-    return envValue.trim().replace(/^\./, '').toLowerCase()
-  }
-
-  if (!hostname) {
-    return ''
-  }
-
-  if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
-    return 'localhost'
-  }
-
-  const parts = hostname.split('.').filter(Boolean)
-  if (parts.length <= 2) {
-    return hostname
-  }
-
-  const tld = parts.at(-1) ?? ''
-  const secondLevel = parts.at(-2) ?? ''
-
-  if (tld.length === 2 && SECOND_LEVEL_PUBLIC_SUFFIXES.has(secondLevel) && parts.length >= 3) {
-    return parts.slice(-3).join('.').toLowerCase()
-  }
-
-  return parts.slice(-2).join('.').toLowerCase()
 }
 
 function buildTenantLoginUrl(slug: string): string {
@@ -80,11 +47,7 @@ export function useRegisterTenant() {
           name: data.tenantName.trim(),
           slug: data.tenantSlug.trim(),
         },
-        account: {
-          name: data.accountName.trim() || data.email.trim(),
-          email: data.email.trim(),
-          password: data.password,
-        },
+        useSessionAccount: true,
       }
 
       if (data.settings.length > 0) {

@@ -11,6 +11,7 @@ import { injectable } from 'tsyringe'
 
 import { DrizzleProvider } from '../../database/database.provider'
 import { SystemSettingService } from '../system-setting/system-setting.service'
+import { TenantService } from '../tenant/tenant.service'
 import type { AuthModuleOptions, SocialProviderOptions, SocialProvidersConfig } from './auth.config'
 import { AuthConfig } from './auth.config'
 
@@ -22,11 +23,13 @@ const logger = createLogger('Auth')
 export class AuthProvider implements OnModuleInit {
   private moduleOptionsPromise?: Promise<AuthModuleOptions>
   private instances = new Map<string, Promise<BetterAuthInstance>>()
+  private placeholderTenantId: string | null = null
 
   constructor(
     private readonly config: AuthConfig,
     private readonly drizzleProvider: DrizzleProvider,
     private readonly systemSettings: SystemSettingService,
+    private readonly tenantService: TenantService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -73,6 +76,20 @@ export class AuthProvider implements OnModuleInit {
       this.moduleOptionsPromise = this.config.getOptions()
     }
     return this.moduleOptionsPromise
+  }
+
+  private async resolveFallbackTenantId(): Promise<string | null> {
+    if (this.placeholderTenantId) {
+      return this.placeholderTenantId
+    }
+    try {
+      const placeholder = await this.tenantService.ensurePlaceholderTenant()
+      this.placeholderTenantId = placeholder.tenant.id
+      return this.placeholderTenantId
+    } catch (error) {
+      logger.error('Failed to ensure placeholder tenant', error)
+      return null
+    }
   }
 
   private resolveRequestEndpoint(): { host: string | null; protocol: string | null } {
@@ -196,14 +213,25 @@ export class AuthProvider implements OnModuleInit {
           create: {
             before: async (user) => {
               const tenantId = this.resolveTenantIdFromContext()
-              if (!tenantId) {
+              if (tenantId) {
+                return {
+                  data: {
+                    ...user,
+                    tenantId,
+                    role: user.role ?? 'guest',
+                  },
+                }
+              }
+
+              const fallbackTenantId = await this.resolveFallbackTenantId()
+              if (!fallbackTenantId) {
                 return { data: user }
               }
 
               return {
                 data: {
                   ...user,
-                  tenantId,
+                  tenantId: fallbackTenantId,
                   role: user.role ?? 'guest',
                 },
               }
@@ -214,10 +242,11 @@ export class AuthProvider implements OnModuleInit {
           create: {
             before: async (session) => {
               const tenantId = this.resolveTenantIdFromContext()
+              const fallbackTenantId = tenantId ?? session.tenantId ?? (await this.resolveFallbackTenantId())
               return {
                 data: {
                   ...session,
-                  tenantId: tenantId ?? session.tenantId ?? null,
+                  tenantId: fallbackTenantId ?? null,
                 },
               }
             },
@@ -227,14 +256,15 @@ export class AuthProvider implements OnModuleInit {
           create: {
             before: async (account) => {
               const tenantId = this.resolveTenantIdFromContext()
-              if (!tenantId) {
+              const resolvedTenantId = tenantId ?? (await this.resolveFallbackTenantId())
+              if (!resolvedTenantId) {
                 return { data: account }
               }
 
               return {
                 data: {
                   ...account,
-                  tenantId,
+                  tenantId: resolvedTenantId,
                 },
               }
             },

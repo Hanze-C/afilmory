@@ -2,6 +2,11 @@ import type { TenantRegistrationFormState } from '~/modules/auth/hooks/useRegist
 
 export const REGISTRATION_STEPS = [
   {
+    id: 'login',
+    title: 'Connect account',
+    description: 'Sign in with your identity provider to continue.',
+  },
+  {
     id: 'workspace',
     title: 'Workspace details',
     description: 'Give your workspace a recognizable name and choose a slug for tenant URLs.',
@@ -12,17 +17,12 @@ export const REGISTRATION_STEPS = [
     description: 'Configure the public gallery branding your visitors will see.',
   },
   {
-    id: 'admin',
-    title: 'Administrator account',
-    description: 'Set up the primary administrator who will manage the workspace after creation.',
-  },
-  {
     id: 'review',
     title: 'Review & confirm',
     description: 'Verify everything looks right and accept the terms before provisioning the workspace.',
   },
 ] as const satisfies ReadonlyArray<{
-  id: 'workspace' | 'site' | 'admin' | 'review'
+  id: 'login' | 'workspace' | 'site' | 'review'
   title: string
   description: string
 }>
@@ -30,9 +30,9 @@ export const REGISTRATION_STEPS = [
 export type RegistrationStepId = (typeof REGISTRATION_STEPS)[number]['id']
 
 export const STEP_FIELDS: Record<RegistrationStepId, Array<keyof TenantRegistrationFormState>> = {
+  login: [],
   workspace: ['tenantName', 'tenantSlug'],
   site: [],
-  admin: ['accountName', 'email', 'password', 'confirmPassword'],
   review: ['termsAccepted'],
 }
 

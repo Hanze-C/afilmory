@@ -6,25 +6,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
+import { useAuthUserValue } from '~/atoms/auth'
 import { useRegisterTenant } from '~/modules/auth/hooks/useRegisterTenant'
 import type { TenantRegistrationFormState, TenantSiteFieldKey } from '~/modules/auth/hooks/useRegistrationForm'
 import { useRegistrationForm } from '~/modules/auth/hooks/useRegistrationForm'
-import { getOnboardingSiteSchema } from '~/modules/onboarding/api'
-import { LinearBorderContainer } from '~/modules/onboarding/components/LinearBorderContainer'
-import { SITE_SETTINGS_KEYS, siteSettingsSchema } from '~/modules/onboarding/siteSchema'
+import type { SchemaFormValue, UiSchema } from '~/modules/schema-form/types'
+import { getWelcomeSiteSchema } from '~/modules/welcome/api'
+import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
+import { DEFAULT_SITE_SETTINGS_VALUES, SITE_SETTINGS_KEYS, siteSettingsSchema } from '~/modules/welcome/siteSchema'
 import {
   coerceSiteFieldValue,
   collectSchemaFieldMap,
   createInitialSiteStateFromFieldMap,
   serializeSiteFieldValue,
-} from '~/modules/onboarding/utils'
-import type { SchemaFormValue, UiSchema } from '~/modules/schema-form/types'
+} from '~/modules/welcome/utils'
 
 import { REGISTRATION_STEPS, STEP_FIELDS } from './constants'
 import { RegistrationFooter } from './RegistrationFooter'
 import { RegistrationHeader } from './RegistrationHeader'
 import { RegistrationSidebar } from './RegistrationSidebar'
-import { AdminStep } from './steps/AdminStep'
+import { LoginStep } from './steps/LoginStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { SiteSettingsStep } from './steps/SiteSettingsStep'
 import { WorkspaceStep } from './steps/WorkspaceStep'
@@ -35,6 +36,7 @@ export const RegistrationWizard: FC = () => {
   const formValues = useStore(form.store, (state) => state.values)
   const fieldMeta = useStore(form.store, (state) => state.fieldMeta)
   const { registerTenant, isLoading, error, clearError } = useRegisterTenant()
+  const authUser = useAuthUserValue()
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [maxVisitedIndex, setMaxVisitedIndex] = useState(0)
   const contentRef = useRef<HTMLElement | null>(null)
@@ -42,12 +44,19 @@ export const RegistrationWizard: FC = () => {
   const siteDefaultsAppliedRef = useRef(false)
 
   const siteSchemaQuery = useQuery({
-    queryKey: ['onboarding', 'site-schema'],
-    queryFn: getOnboardingSiteSchema,
+    queryKey: ['welcome', 'site-schema'],
+    queryFn: getWelcomeSiteSchema,
     staleTime: Infinity,
   })
 
   const [siteSchema, setSiteSchema] = useState<UiSchema<TenantSiteFieldKey> | null>(null)
+  const advanceStep = useCallback(() => {
+    setCurrentStepIndex((prev) => {
+      const nextIndex = Math.min(REGISTRATION_STEPS.length - 1, prev + 1)
+      setMaxVisitedIndex((visited) => Math.max(visited, nextIndex))
+      return nextIndex
+    })
+  }, [])
 
   useEffect(() => {
     const data = siteSchemaQuery.data as
@@ -70,7 +79,10 @@ export const RegistrationWizard: FC = () => {
     }
 
     const fieldMap = collectSchemaFieldMap(data.schema)
-    const defaults = createInitialSiteStateFromFieldMap(fieldMap)
+    const defaults = createInitialSiteStateFromFieldMap(
+      fieldMap,
+      DEFAULT_SITE_SETTINGS_VALUES as Record<string, SchemaFormValue>,
+    )
     const presetValues = data.values ?? {}
 
     let applied = false
@@ -157,6 +169,12 @@ export const RegistrationWizard: FC = () => {
     return () => cancelAnimationFrame(rafId)
   }, [currentStepIndex])
 
+  useEffect(() => {
+    if (authUser && currentStepIndex === 0) {
+      advanceStep()
+    }
+  }, [advanceStep, authUser, currentStepIndex])
+
   const canNavigateTo = useCallback((index: number) => index <= maxVisitedIndex, [maxVisitedIndex])
 
   const onFieldInteraction = useCallback(() => {
@@ -218,6 +236,14 @@ export const RegistrationWizard: FC = () => {
     if (isLoading) return
 
     const step = REGISTRATION_STEPS[currentStepIndex]
+    if (step.id === 'login') {
+      if (!authUser) {
+        toast.error('Please sign in to continue')
+        return
+      }
+      advanceStep()
+      return
+    }
     if (step.id === 'site') {
       const result = siteSettingsSchema.safeParse(formValues)
       if (!result.success) {
@@ -225,7 +251,7 @@ export const RegistrationWizard: FC = () => {
         return
       }
 
-      setCurrentStepIndex(currentStepIndex + 1)
+      advanceStep()
       return
     }
     const stepIsValid = await ensureStepValid(step.id)
@@ -266,24 +292,20 @@ export const RegistrationWizard: FC = () => {
       registerTenant({
         tenantName: trimmedTenantName,
         tenantSlug: trimmedTenantSlug,
-        accountName: state.values.accountName.trim(),
-        email: state.values.email.trim(),
-        password: state.values.password,
         settings: siteSettings,
       })
       return
     }
 
-    setCurrentStepIndex((prev) => {
-      const nextIndex = Math.min(REGISTRATION_STEPS.length - 1, prev + 1)
-      setMaxVisitedIndex((visited) => Math.max(visited, nextIndex))
-      return nextIndex
-    })
+    advanceStep()
   }, [
+    advanceStep,
+    authUser,
     currentStepIndex,
     ensureStepValid,
     focusFirstInvalidStep,
     form,
+    formValues,
     isLoading,
     onFieldInteraction,
     registerTenant,
@@ -328,6 +350,16 @@ export const RegistrationWizard: FC = () => {
   const StepComponent = useMemo(() => {
     const step = REGISTRATION_STEPS[currentStepIndex]
     switch (step.id) {
+      case 'login': {
+        return (
+          <LoginStep
+            isAuthenticated={Boolean(authUser)}
+            user={authUser}
+            onContinue={advanceStep}
+            isContinuing={isLoading}
+          />
+        )
+      }
       case 'workspace': {
         return (
           <WorkspaceStep
@@ -351,14 +383,12 @@ export const RegistrationWizard: FC = () => {
           />
         )
       }
-      case 'admin': {
-        return <AdminStep form={form} isSubmitting={isLoading} onFieldInteraction={onFieldInteraction} />
-      }
       case 'review': {
         return (
           <ReviewStep
             form={form}
             values={formValues}
+            authUser={authUser}
             siteSchema={siteSchema}
             siteSchemaLoading={siteSchemaLoading}
             siteSchemaError={siteSchemaErrorMessage}
@@ -373,6 +403,8 @@ export const RegistrationWizard: FC = () => {
       }
     }
   }, [
+    advanceStep,
+    authUser,
     currentStepIndex,
     error,
     form,
@@ -386,6 +418,7 @@ export const RegistrationWizard: FC = () => {
   ])
 
   const isLastStep = currentStepIndex === REGISTRATION_STEPS.length - 1
+  const disableNextButton = REGISTRATION_STEPS[currentStepIndex].id === 'login' && !authUser
 
   return (
     <div className="bg-background flex min-h-screen flex-col items-center justify-center px-4 py-10">
@@ -420,6 +453,7 @@ export const RegistrationWizard: FC = () => {
                 disableBack={currentStepIndex === 0}
                 isSubmitting={isLoading}
                 isLastStep={isLastStep}
+                disableNext={disableNextButton}
                 onBack={handleBack}
                 onNext={() => {
                   void handleNext()

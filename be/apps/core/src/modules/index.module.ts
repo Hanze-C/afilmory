@@ -3,17 +3,18 @@ import { AuthGuard } from 'core/guards/auth.guard'
 import { TenantResolverInterceptor } from 'core/interceptors/tenant-resolver.interceptor'
 import { CorsMiddleware } from 'core/middlewares/cors.middleware'
 import { DatabaseContextMiddleware } from 'core/middlewares/database-context.middleware'
+import { RequestContextMiddleware } from 'core/middlewares/request-context.middleware'
 import { RedisAccessor } from 'core/redis/redis.provider'
 
 import { DatabaseModule } from '../database/database.module'
 import { RedisModule } from '../redis/redis.module'
+import { AppStateModule } from './app-state/app-state.module'
 import { AuthModule } from './auth/auth.module'
 import { CacheModule } from './cache/cache.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { DataSyncModule } from './data-sync/data-sync.module'
 import { FeedModule } from './feed/feed.module'
 import { OgModule } from './og/og.module'
-import { OnboardingModule } from './onboarding/onboarding.module'
 import { PhotoModule } from './photo/photo.module'
 import { ReactionModule } from './reaction/reaction.module'
 import { SettingModule } from './setting/setting.module'
@@ -33,6 +34,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
 @Module({
   imports: [
     DatabaseModule,
+    AppStateModule,
     EventModule.forRootAsync({
       useFactory: createEventModuleOptions,
       inject: [RedisAccessor],
@@ -45,7 +47,6 @@ function createEventModuleOptions(redis: RedisAccessor) {
     SiteSettingModule,
     SystemSettingModule,
     SuperAdminModule,
-    OnboardingModule,
     PhotoModule,
     ReactionModule,
     DashboardModule,
@@ -58,6 +59,10 @@ function createEventModuleOptions(redis: RedisAccessor) {
     StaticWebModule,
   ],
   providers: [
+    {
+      provide: APP_MIDDLEWARE,
+      useClass: RequestContextMiddleware,
+    },
     {
       provide: APP_MIDDLEWARE,
       useClass: CorsMiddleware,

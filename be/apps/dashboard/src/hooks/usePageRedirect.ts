@@ -7,13 +7,9 @@ import { useSetAuthUser } from '~/atoms/auth'
 import type { SessionResponse } from '~/modules/auth/api/session'
 import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
 import { signOutBySource } from '~/modules/auth/auth-client'
-import { getOnboardingStatus } from '~/modules/onboarding/api'
-
-const ONBOARDING_STATUS_QUERY_KEY = ['onboarding', 'status'] as const
 
 const DEFAULT_LOGIN_PATH = '/login'
-const DEFAULT_ONBOARDING_PATH = '/onboarding'
-const DEFAULT_REGISTER_PATH = '/register'
+const DEFAULT_WELCOME_PATH = '/welcome'
 const TENANT_MISSING_PATH = '/tenant-missing'
 const DEFAULT_AUTHENTICATED_PATH = '/'
 const SUPERADMIN_ROOT_PATH = '/superadmin'
@@ -24,7 +20,7 @@ const AUTH_TENANT_NOT_FOUND_ERROR_CODE = 12
 const TENANT_NOT_FOUND_ERROR_CODE = 20
 const TENANT_MISSING_ERROR_CODES = new Set([AUTH_TENANT_NOT_FOUND_ERROR_CODE, TENANT_NOT_FOUND_ERROR_CODE])
 
-const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_ONBOARDING_PATH, DEFAULT_REGISTER_PATH, TENANT_MISSING_PATH])
+const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_WELCOME_PATH, TENANT_MISSING_PATH])
 
 type BizErrorPayload = { code?: number | string }
 type FetchErrorWithPayload = FetchError<BizErrorPayload> & {
@@ -79,12 +75,6 @@ export function usePageRedirect() {
     retry: false,
   })
 
-  const onboardingQuery = useQuery({
-    queryKey: ONBOARDING_STATUS_QUERY_KEY,
-    queryFn: getOnboardingStatus,
-    staleTime: Infinity,
-  })
-
   const logout = useCallback(async () => {
     try {
       await signOutBySource()
@@ -110,7 +100,7 @@ export function usePageRedirect() {
   }, [queryClient])
 
   useEffect(() => {
-    const matchedTenantNotFound = [sessionQuery.error, onboardingQuery.error].some((error) => {
+    const matchedTenantNotFound = [sessionQuery.error].some((error) => {
       const code = extractBizErrorCode(error)
       return code !== null && TENANT_MISSING_ERROR_CODES.has(code)
     })
@@ -125,30 +115,21 @@ export function usePageRedirect() {
     if (location.pathname !== TENANT_MISSING_PATH) {
       navigate(TENANT_MISSING_PATH, { replace: true })
     }
-  }, [location.pathname, navigate, onboardingQuery.error, queryClient, sessionQuery.error, setAuthUser])
+  }, [location.pathname, navigate, queryClient, sessionQuery.error, setAuthUser])
 
   useEffect(() => {
-    if (sessionQuery.isPending || onboardingQuery.isPending) {
+    if (sessionQuery.isPending) {
       return
     }
 
-    if (sessionQuery.isError || onboardingQuery.isError) {
+    if (sessionQuery.isError) {
       return
     }
 
     const { pathname } = location
     const session = sessionQuery.data
-    const onboardingInitialized = onboardingQuery.data?.initialized ?? false
     const isSuperAdmin = session?.user.role === 'superadmin'
     const isOnSuperAdminPage = pathname.startsWith(SUPERADMIN_ROOT_PATH)
-
-    // If onboarding is not complete, redirect to onboarding
-    if (!onboardingInitialized) {
-      if (pathname !== DEFAULT_ONBOARDING_PATH) {
-        navigate(DEFAULT_ONBOARDING_PATH, { replace: true })
-      }
-      return
-    }
 
     if (session && isSuperAdmin) {
       if (!isOnSuperAdminPage || pathname === DEFAULT_LOGIN_PATH) {
@@ -162,31 +143,19 @@ export function usePageRedirect() {
       return
     }
 
-    // If not authenticated and trying to access protected route
     if (!session && !PUBLIC_PATHS.has(pathname)) {
       navigate(DEFAULT_LOGIN_PATH, { replace: true })
       return
     }
 
-    // If authenticated but on login page, redirect to dashboard
     if (session && pathname === DEFAULT_LOGIN_PATH) {
       navigate(DEFAULT_AUTHENTICATED_PATH, { replace: true })
     }
-  }, [
-    location,
-    location.pathname,
-    navigate,
-    onboardingQuery.data,
-    onboardingQuery.isError,
-    onboardingQuery.isPending,
-    sessionQuery.data,
-    sessionQuery.isError,
-    sessionQuery.isPending,
-  ])
+  }, [location, location.pathname, navigate, sessionQuery.data, sessionQuery.isError, sessionQuery.isPending])
 
   return {
     sessionQuery,
-    onboardingQuery,
+
     logout,
     isAuthenticated: !!sessionQuery.data,
     user: sessionQuery.data?.user,

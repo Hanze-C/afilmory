@@ -1,9 +1,6 @@
 import { z } from 'zod'
 
-import type { OnboardingSiteSettingKey } from './constants'
-
 const stringValue = (validator: z.ZodString) => z.preprocess((value) => (value == null ? '' : String(value)), validator)
-
 const trimmed = (min: number, message: string) => stringValue(z.string().trim().min(min, { message }))
 
 export const siteSettingsSchema = z
@@ -16,8 +13,9 @@ export const siteSettingsSchema = z
 
 export type SiteSettingsSchema = typeof siteSettingsSchema
 export type SiteSettingsValues = z.infer<SiteSettingsSchema>
+export type WelcomeSiteSettingKey = keyof SiteSettingsSchema['shape']
 
-export const SITE_SETTINGS_KEYS = Object.keys(siteSettingsSchema.shape) as OnboardingSiteSettingKey[]
+export const SITE_SETTINGS_KEYS = Object.keys(siteSettingsSchema.shape) as WelcomeSiteSettingKey[]
 
 export const DEFAULT_SITE_SETTINGS_VALUES: SiteSettingsValues = {
   'site.name': '',

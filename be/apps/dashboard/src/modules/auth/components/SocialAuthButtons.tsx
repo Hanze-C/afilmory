@@ -74,7 +74,7 @@ export const SocialAuthButtons = memo(function SocialAuthButtons({
 
   return (
     <div className={cx('space-y-3', className)}>
-      {title ? <p className="text-text-tertiary text-xs uppercase tracking-wide">{title}</p> : null}
+      {title ? <p className="text-text-tertiary text-xs tracking-wide uppercase">{title}</p> : null}
       <div className={containerClass}>
         {providers.map((provider) => (
           <button

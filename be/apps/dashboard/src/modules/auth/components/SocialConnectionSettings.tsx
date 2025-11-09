@@ -107,7 +107,7 @@ export function SocialConnectionSettings() {
   if (hasError && errorMessage) {
     return (
       <LinearBorderPanel className="p-6">
-        <div className="flex items-center gap-3 text-sm text-red">
+        <div className="text-red flex items-center gap-3 text-sm">
           <i className="i-mingcute-close-circle-fill text-lg" />
           <span>{errorMessage}</span>
         </div>
@@ -120,7 +120,7 @@ export function SocialConnectionSettings() {
       <LinearBorderPanel className="p-6">
         <div className="flex flex-col gap-3">
           <p className="text-base font-semibold">未配置可用的 OAuth Provider</p>
-          <p className="text-sm text-text-tertiary">
+          <p className="text-text-tertiary text-sm">
             超级管理员尚未在系统设置中启用任何第三方登录方式，当前租户无法执行 OAuth 绑定。
           </p>
         </div>
@@ -132,9 +132,9 @@ export function SocialConnectionSettings() {
     <LinearBorderPanel className="p-6">
       <div className="space-y-6">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-text-tertiary">登录方式</p>
+          <p className="text-text-tertiary text-sm font-semibold tracking-wide uppercase">登录方式</p>
           <h2 className="mt-1 text-2xl font-semibold">OAuth 账号绑定</h2>
-          <p className="mt-2 text-sm text-text-tertiary">
+          <p className="text-text-tertiary mt-2 text-sm">
             绑定后即可使用对应平台的账号快速登录后台，并同步基础资料。解除绑定不会删除原有后台账号。
           </p>
         </div>
@@ -155,7 +155,7 @@ export function SocialConnectionSettings() {
                     <i className={cx('text-2xl', provider.icon)} aria-hidden />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-base font-semibold leading-tight">{provider.name}</p>
+                    <p className="text-base leading-tight font-semibold">{provider.name}</p>
                     {linkedAccount ? (
                       <p className="text-text-tertiary mt-1 text-xs">
                         已绑定 · {formatTimestamp(linkedAccount.createdAt)}

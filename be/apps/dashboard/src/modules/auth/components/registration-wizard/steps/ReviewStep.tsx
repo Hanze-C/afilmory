@@ -9,6 +9,7 @@ import type {
   TenantSiteFieldKey,
   useRegistrationForm,
 } from '~/modules/auth/hooks/useRegistrationForm'
+import type { BetterAuthUser } from '~/modules/auth/types'
 import type { SchemaFormValue, UiFieldNode, UiSchema } from '~/modules/schema-form/types'
 
 import { collectSiteFields, firstErrorMessage } from '../utils'
@@ -16,6 +17,7 @@ import { collectSiteFields, firstErrorMessage } from '../utils'
 type ReviewStepProps = {
   form: ReturnType<typeof useRegistrationForm>
   values: TenantRegistrationFormState
+  authUser: BetterAuthUser | null
   siteSchema: UiSchema<string> | null
   siteSchemaLoading: boolean
   siteSchemaError?: string
@@ -27,6 +29,7 @@ type ReviewStepProps = {
 export const ReviewStep: FC<ReviewStepProps> = ({
   form,
   values,
+  authUser,
   siteSchema,
   siteSchemaLoading,
   siteSchemaError,
@@ -67,40 +70,40 @@ export const ReviewStep: FC<ReviewStepProps> = ({
           Double-check the details below. You can go back to make adjustments before creating the workspace.
         </p>
       </section>
-      <dl className="bg-fill/40 border border-white/5 grid gap-x-6 gap-y-4 rounded-2xl p-6 md:grid-cols-2">
+      <dl className="bg-fill/40 grid gap-x-6 gap-y-4 rounded-2xl border border-white/5 p-6 md:grid-cols-2">
         <div>
-          <dt className="text-text-tertiary text-xs uppercase tracking-wide">Workspace name</dt>
+          <dt className="text-text-tertiary text-xs tracking-wide uppercase">Workspace name</dt>
           <dd className="text-text mt-1 text-sm font-medium">{values.tenantName || '—'}</dd>
         </div>
         <div>
-          <dt className="text-text-tertiary text-xs uppercase tracking-wide">Workspace slug</dt>
+          <dt className="text-text-tertiary text-xs tracking-wide uppercase">Workspace slug</dt>
           <dd className="text-text mt-1 text-sm font-medium">{values.tenantSlug || '—'}</dd>
         </div>
         <div>
-          <dt className="text-text-tertiary text-xs uppercase tracking-wide">Administrator name</dt>
-          <dd className="text-text mt-1 text-sm font-medium">{values.accountName || '—'}</dd>
+          <dt className="text-text-tertiary text-xs tracking-wide uppercase">Administrator name</dt>
+          <dd className="text-text mt-1 text-sm font-medium">{authUser?.name || authUser?.email || '—'}</dd>
         </div>
         <div>
-          <dt className="text-text-tertiary text-xs uppercase tracking-wide">Administrator email</dt>
-          <dd className="text-text mt-1 text-sm font-medium">{values.email || '—'}</dd>
+          <dt className="text-text-tertiary text-xs tracking-wide uppercase">Administrator email</dt>
+          <dd className="text-text mt-1 text-sm font-medium">{authUser?.email || '—'}</dd>
         </div>
       </dl>
 
       <section className="space-y-4">
         <h3 className="text-text text-base font-semibold">Site details</h3>
-        {siteSchemaLoading && <div className="bg-fill/40 border border-white/5 h-32 animate-pulse rounded-2xl" />}
+        {siteSchemaLoading && <div className="bg-fill/40 h-32 animate-pulse rounded-2xl border border-white/5" />}
         {!siteSchemaLoading && siteSchemaError && (
-          <div className="border-red/60 bg-red/10 rounded-2xl border px-4 py-3 text-sm text-red">{siteSchemaError}</div>
+          <div className="border-red/60 bg-red/10 text-red rounded-2xl border px-4 py-3 text-sm">{siteSchemaError}</div>
         )}
         {!siteSchemaLoading && !siteSchemaError && siteSchema && (
-          <dl className="bg-fill/40 border border-white/5 grid gap-x-6 gap-y-4 rounded-2xl p-6 md:grid-cols-2">
+          <dl className="bg-fill/40 grid gap-x-6 gap-y-4 rounded-2xl border border-white/5 p-6 md:grid-cols-2">
             {siteSummary.map(({ field, value }) => {
               const spanClass = field.component?.type === 'textarea' ? 'md:col-span-2' : ''
               const isMono = field.key === 'site.accentColor'
 
               return (
                 <div key={field.id} className={cx(spanClass, 'min-w-0')}>
-                  <dt className="text-text-tertiary text-xs uppercase tracking-wide">{field.title}</dt>
+                  <dt className="text-text-tertiary text-xs tracking-wide uppercase">{field.title}</dt>
                   <dd
                     className={cx(
                       'text-text mt-1 text-sm font-medium wrap-break-word',

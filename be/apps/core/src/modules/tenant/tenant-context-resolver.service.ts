@@ -5,7 +5,7 @@ import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
 import { logger } from '../../helpers/logger.helper'
-import { OnboardingService } from '../onboarding/onboarding.service'
+import { AppStateService } from '../app-state/app-state.service'
 import { SystemSettingService } from '../system-setting/system-setting.service'
 import { TenantService } from './tenant.service'
 import type { TenantContext } from './tenant.types'
@@ -25,7 +25,7 @@ export class TenantContextResolver {
 
   constructor(
     private readonly tenantService: TenantService,
-    private readonly onboardingService: OnboardingService,
+    private readonly appState: AppStateService,
     private readonly systemSettingService: SystemSettingService,
   ) {}
 
@@ -39,7 +39,7 @@ export class TenantContextResolver {
     }
 
     if (!options.skipInitializationCheck) {
-      const initialized = await this.onboardingService.isInitialized()
+      const initialized = await this.appState.isInitialized()
       if (!initialized) {
         this.log.info(`Application not initialized yet, skip tenant resolution for ${context.req.path}`)
         return null
@@ -54,17 +54,16 @@ export class TenantContextResolver {
     const tenantId = this.normalizeString(context.req.header(HEADER_TENANT_ID))
     const tenantSlugHeader = this.normalizeSlug(context.req.header(HEADER_TENANT_SLUG))
 
-    this.log.verbose(
-      `Resolve tenant for request ${context.req.method} ${context.req.path} (host=${host ?? 'n/a'}, id=${tenantId ?? 'n/a'}, slug=${tenantSlugHeader ?? 'n/a'})`,
-    )
-
     const baseDomain = await this.getBaseDomain()
 
-    let derivedSlug = tenantSlugHeader
+    let derivedSlug = host ? this.extractSlugFromHost(host, baseDomain) : undefined
 
-    if (!derivedSlug && host) {
-      derivedSlug = this.extractSlugFromHost(host, baseDomain)
+    if (!derivedSlug) {
+      derivedSlug = tenantSlugHeader
     }
+    this.log.verbose(
+      `Resolve tenant for request ${context.req.method} ${context.req.path} (host=${host ?? 'n/a'}, id=${tenantId ?? 'n/a'}, slug=${derivedSlug ?? 'n/a'})`,
+    )
 
     const tenantContext = await this.tenantService.resolve(
       {
@@ -80,8 +79,6 @@ export class TenantContextResolver {
       }
       return null
     }
-
-    HttpContext.setValue('tenant', tenantContext)
 
     if (options.setResponseHeaders !== false) {
       this.applyTenantHeaders(context, tenantContext)

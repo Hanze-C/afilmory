@@ -3,12 +3,6 @@ import { BizException, ErrorCode } from 'core/errors'
 
 import type { TenantContext } from './tenant.types'
 
-declare module '@afilmory/framework' {
-  interface HttpContextValues {
-    tenant?: TenantContext
-  }
-}
-
 export function getTenantContext<TRequired extends boolean = false>(options?: {
   required?: TRequired
 }): TRequired extends true ? TenantContext : TenantContext | undefined {

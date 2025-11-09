@@ -1,4 +1,5 @@
 import { authUsers } from '@afilmory/db'
+import { HttpContext } from '@afilmory/framework'
 import { BizException, ErrorCode } from 'core/errors'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
@@ -13,6 +14,7 @@ import { getTenantContext } from '../tenant/tenant.context'
 import { TenantRepository } from '../tenant/tenant.repository'
 import { TenantService } from '../tenant/tenant.service'
 import type { TenantRecord } from '../tenant/tenant.types'
+import type { AuthSession } from './auth.provider'
 import { AuthProvider } from './auth.provider'
 
 type RegisterTenantAccountInput = {
@@ -22,12 +24,13 @@ type RegisterTenantAccountInput = {
 }
 
 type RegisterTenantInput = {
-  account: RegisterTenantAccountInput
+  account?: RegisterTenantAccountInput
   tenant?: {
     name: string
     slug?: string | null
   }
   settings?: Array<{ key: string; value: unknown }>
+  useSessionAccount?: boolean
 }
 
 export interface RegisterTenantResult {
@@ -62,9 +65,21 @@ export class AuthRegistrationService {
     await this.systemSettings.ensureRegistrationAllowed()
 
     const tenantContext = getTenantContext()
-    const account = this.normalizeAccountInput(input.account)
+    const account = input.account ? this.normalizeAccountInput(input.account) : null
+    const useSessionAccount = input.useSessionAccount ?? false
+    const sessionUser = this.getSessionUser()
+
+    if (useSessionAccount && !sessionUser) {
+      throw new BizException(ErrorCode.AUTH_UNAUTHORIZED, { message: '请先登录后再创建工作区' })
+    }
 
     if (tenantContext) {
+      if (useSessionAccount) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前租户上下文下不支持会话注册' })
+      }
+      if (!account) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册账号信息' })
+      }
       return await this.registerExistingTenantMember(account, headers, tenantContext.tenant)
     }
 
@@ -72,7 +87,7 @@ export class AuthRegistrationService {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '租户信息不能为空' })
     }
 
-    return await this.registerNewTenant(account, input.tenant, headers, input.settings)
+    return await this.registerNewTenant(account, input.tenant, headers, input.settings, useSessionAccount)
   }
 
   private async generateUniqueSlug(base: string): Promise<string> {
@@ -197,10 +212,11 @@ export class AuthRegistrationService {
   }
 
   private async registerNewTenant(
-    account: Required<RegisterTenantAccountInput>,
+    account: RegisterTenantAccountInput | null,
     tenantInput: RegisterTenantInput['tenant'],
     headers: Headers,
     settings?: RegisterTenantInput['settings'],
+    useSessionAccount?: boolean,
   ): Promise<RegisterTenantResult> {
     const tenantName = tenantInput?.name?.trim() ?? ''
     if (!tenantName) {
@@ -216,59 +232,71 @@ export class AuthRegistrationService {
 
     let tenantId: string | null = null
     try {
+      const sessionUser = useSessionAccount ? this.getSessionUser() : null
+      if (!account && !sessionUser) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册账号信息' })
+      }
+
       const tenantAggregate = await this.tenantService.createTenant({
         name: tenantName,
         slug,
       })
       tenantId = tenantAggregate.tenant.id
 
-      const auth = await this.authProvider.getAuth()
-      const response = await auth.api.signUpEmail({
-        body: {
-          email: account.email,
-          password: account.password,
-          name: account.name,
-        },
-        headers,
-        asResponse: true,
-      })
-
-      if (!response.ok) {
-        if (tenantId) {
-          await this.tenantService.deleteTenant(tenantId).catch(() => {})
-          tenantId = null
-        }
-        return { response, success: false }
-      }
-
+      let response: Response | null = null
       let userId: string | undefined
-      try {
-        const payload = (await response.clone().json()) as { user?: { id?: string } } | null
-        userId = payload?.user?.id
-      } catch {
-        userId = undefined
-      }
+      const db = this.dbAccessor.get()
 
-      if (!userId) {
-        if (tenantId) {
+      if (account) {
+        const auth = await this.authProvider.getAuth()
+        const signupResponse = await auth.api.signUpEmail({
+          body: {
+            email: account.email,
+            password: account.password,
+            name: account.name,
+          },
+          headers,
+          asResponse: true,
+        })
+
+        if (!signupResponse.ok) {
           await this.tenantService.deleteTenant(tenantId).catch(() => {})
           tenantId = null
+          return { response: signupResponse, success: false }
         }
-        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
-          message: '注册成功但未返回用户信息，请稍后重试。',
+
+        try {
+          const payload = (await signupResponse.clone().json()) as { user?: { id?: string } } | null
+          userId = payload?.user?.id
+        } catch {
+          userId = undefined
+        }
+
+        if (!userId) {
+          await this.tenantService.deleteTenant(tenantId).catch(() => {})
+          tenantId = null
+          throw new BizException(ErrorCode.COMMON_BAD_REQUEST, {
+            message: '注册成功但未返回用户信息，请稍后重试。',
+          })
+        }
+
+        await db.update(authUsers).set({ tenantId, role: 'admin' }).where(eq(authUsers.id, userId))
+        response = signupResponse
+      } else if (sessionUser && tenantId) {
+        userId = await this.attachSessionUserToTenant(tenantId)
+        response = new Response(JSON.stringify({ user: { id: userId } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
-      const db = this.dbAccessor.get()
-      await db.update(authUsers).set({ tenantId, role: 'admin' }).where(eq(authUsers.id, userId))
-
       const initialSettings = this.normalizeSettings(settings)
-      if (initialSettings.length > 0) {
+      if (initialSettings.length > 0 && tenantId) {
         await this.settingService.setMany(
           initialSettings.map((entry) => ({
             ...entry,
             options: {
-              ...(tenantId ? { tenantId } : {}),
+              tenantId,
               isSensitive: false,
             },
           })),
@@ -278,7 +306,7 @@ export class AuthRegistrationService {
       const refreshed = await this.tenantService.getById(tenantId)
 
       return {
-        response,
+        response: response ?? new Response(null, { status: 200 }),
         tenant: refreshed.tenant,
         accountId: userId,
         success: true,
@@ -289,5 +317,51 @@ export class AuthRegistrationService {
       }
       throw error
     }
+  }
+
+  private getSessionUser(): AuthSession['user'] | null {
+    try {
+      const auth = HttpContext.getValue('auth') as { user?: AuthSession['user'] } | undefined
+      return auth?.user ?? null
+    } catch {
+      return null
+    }
+  }
+
+  private async attachSessionUserToTenant(tenantId: string): Promise<string> {
+    const sessionUser = this.getSessionUser()
+    const sessionUserId = (sessionUser as { id?: string } | null)?.id
+    if (!sessionUserId) {
+      throw new BizException(ErrorCode.AUTH_UNAUTHORIZED, { message: '当前登录状态无效，请重新登录。' })
+    }
+
+    const db = this.dbAccessor.get()
+    const [record] = await db
+      .select({ tenantId: authUsers.tenantId })
+      .from(authUsers)
+      .where(eq(authUsers.id, sessionUserId))
+      .limit(1)
+
+    if (!record) {
+      throw new BizException(ErrorCode.AUTH_UNAUTHORIZED, { message: '无法找到当前用户信息。' })
+    }
+
+    if (record.tenantId) {
+      const isPlaceholder = await this.tenantService.isPlaceholderTenantId(record.tenantId)
+      if (!isPlaceholder) {
+        throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前账号已属于其它工作区，无法重复注册。' })
+      }
+    }
+
+    await db
+      .update(authUsers)
+      .set({
+        tenantId,
+        role: 'admin',
+        name: sessionUser.name ?? sessionUser.email ?? 'Workspace Admin',
+      })
+      .where(eq(authUsers.id, sessionUserId))
+
+    return sessionUserId
   }
 }
