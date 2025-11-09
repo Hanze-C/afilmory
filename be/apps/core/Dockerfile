@@ -31,6 +31,7 @@ FROM node:${NODE_VERSION}-slim AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
+RUN apk install --no-cache perl
 COPY --from=builder /workspace/be/apps/core/dist ./dist
 COPY --from=builder /workspace/be/apps/core/drizzle ./drizzle
 
