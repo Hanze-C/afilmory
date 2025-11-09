@@ -9,7 +9,6 @@ import { createDefaultBuilderConfig } from './defaults.js'
 export interface LoadBuilderConfigOptions {
   cwd?: string
   configFile?: string
-  defaults?: BuilderConfig
 }
 
 function normalizeBuilderConfig(defaults: BuilderConfig, input: BuilderConfigInput): BuilderConfig {
@@ -30,8 +29,6 @@ function normalizeBuilderConfig(defaults: BuilderConfig, input: BuilderConfigInp
 }
 
 export async function loadBuilderConfig(options: LoadBuilderConfigOptions = {}): Promise<BuilderConfig> {
-  const defaults = options.defaults ?? createDefaultBuilderConfig()
-
   const result = await loadConfig<BuilderConfigInput>({
     name: 'builder',
     cwd: options.cwd ?? process.cwd(),
@@ -42,7 +39,12 @@ export async function loadBuilderConfig(options: LoadBuilderConfigOptions = {}):
 
   const userConfig = result.config ?? {}
 
+  const defaults = createDefaultBuilderConfig()
   const config = normalizeBuilderConfig(defaults, userConfig)
+
+  if (!config.storage) {
+    throw new Error('缺失存储配置，请配置 storage 字段')
+  }
 
   if (process.env.DEBUG === '1') {
     const logger = consola.withTag('CONFIG')
