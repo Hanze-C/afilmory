@@ -138,6 +138,7 @@ export class HonoHttpApplication {
   private readonly pendingGlobalInterceptorResolvers: Array<() => Interceptor> = []
   private readonly pendingGlobalFilterResolvers: Array<() => ExceptionFilter> = []
   private readonly pendingGlobalMiddlewareResolvers: Array<() => MiddlewareDefinition> = []
+  private httpContextMiddlewareRegistered = false
 
   constructor(
     private readonly rootModule: Constructor,
@@ -151,6 +152,7 @@ export class HonoHttpApplication {
     this.moduleName = rawModuleName && rawModuleName.trim().length > 0 ? rawModuleName : 'AnonymousModule'
     this.container = options.container ?? rootContainer.createChildContainer()
     ContainerRef.set(this.container)
+    this.ensureHttpContextMiddleware()
     this.logger.info(
       `Initialized application container for module ${this.moduleName}`,
       colors.green(`+${performance.now().toFixed(2)}ms`),
@@ -181,19 +183,6 @@ export class HonoHttpApplication {
     }
     if (this.pendingGlobalMiddlewareResolvers.length > 0) {
       const middlewares = this.pendingGlobalMiddlewareResolvers.map((r) => r())
-
-      const hasHttpContextMiddleware = middlewares.some(
-        (definition) => definition.handler === HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE,
-      )
-
-      if (!hasHttpContextMiddleware) {
-        middlewares.unshift({
-          handler: HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE,
-          path: '/*',
-          priority: HTTP_CONTEXT_MIDDLEWARE_PRIORITY,
-        })
-      }
-
       this.useGlobalMiddlewares(...middlewares)
     }
 
@@ -541,34 +530,7 @@ export class HonoHttpApplication {
   }
 
   useGlobalMiddlewares(...middlewares: MiddlewareDefinition[]): void {
-    const normalized = middlewares.map((definition) => this.normalizeMiddlewareDefinition(definition))
-    normalized.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
-
-    for (const definition of normalized) {
-      this.globalEnhancers.middlewares.push(definition)
-      let { path } = definition
-      if (path == null) {
-        path = '/*'
-        definition.path = path
-      }
-      const handlerName = definition.handler.constructor.name || 'AnonymousMiddleware'
-      const middlewareFn = async (context: Context, next: Next) => {
-        return await definition.handler.use(context, next)
-      }
-
-      if (Array.isArray(path)) {
-        for (const entry of path) {
-          this.app.use(entry as any, middlewareFn)
-        }
-      } else {
-        this.app.use(path as any, middlewareFn)
-      }
-
-      this.middlewareLogger.verbose(
-        `Registered middleware ${handlerName} on ${this.describeMiddlewarePath(path)}`,
-        colors.green(`+${performance.now().toFixed(2)}ms`),
-      )
-    }
+    this.registerMiddlewareDefinitions(middlewares)
   }
 
   /**
@@ -604,6 +566,56 @@ export class HonoHttpApplication {
       `Invalid provider configuration for ${String(provideToken)}: ` +
         `must specify useClass, useExisting, useValue, or useFactory`,
     )
+  }
+
+  private ensureHttpContextMiddleware(): void {
+    if (this.httpContextMiddlewareRegistered) {
+      return
+    }
+
+    this.httpContextMiddlewareRegistered = true
+    this.registerMiddlewareDefinitions([
+      {
+        handler: HTTP_CONTEXT_INITIALIZATION_MIDDLEWARE,
+        path: '/*',
+        priority: HTTP_CONTEXT_MIDDLEWARE_PRIORITY,
+      },
+    ])
+  }
+
+  private registerMiddlewareDefinitions(definitions: MiddlewareDefinition[]): void {
+    if (definitions.length === 0) {
+      return
+    }
+
+    let normalized = definitions.map((definition) => this.normalizeMiddlewareDefinition(definition))
+    normalized = normalized.toSorted((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
+
+    for (const definition of normalized) {
+      this.globalEnhancers.middlewares.push(definition)
+      let { path } = definition
+      if (path == null) {
+        path = '/*'
+        definition.path = path
+      }
+      const handlerName = definition.handler.constructor.name || 'AnonymousMiddleware'
+      const middlewareFn = async (context: Context, next: Next) => {
+        return await definition.handler.use(context, next)
+      }
+
+      if (Array.isArray(path)) {
+        for (const entry of path) {
+          this.app.use(entry as any, middlewareFn)
+        }
+      } else {
+        this.app.use(path as any, middlewareFn)
+      }
+
+      this.middlewareLogger.verbose(
+        `Registered middleware ${handlerName} on ${this.describeMiddlewarePath(path)}`,
+        colors.green(`+${performance.now().toFixed(2)}ms`),
+      )
+    }
   }
 
   /**
@@ -879,35 +891,22 @@ export class HonoHttpApplication {
       const fullPath = this.buildPath(controllerMetadata, route.path)
 
       this.app.on(method, fullPath, async (context: Context) => {
-        return await HttpContext.run(context, async () => {
-          const handler = Reflect.get(controllerInstance, route.handlerName) as (...args: any[]) => any
-          const executionContext = createExecutionContext(this.container, controller, handler)
+        const handler = Reflect.get(controllerInstance, route.handlerName) as (...args: any[]) => any
+        const executionContext = createExecutionContext(this.container, controller, handler)
 
-          try {
-            await this.executeGuards(controller, route.handlerName, executionContext)
+        try {
+          await this.executeGuards(controller, route.handlerName, executionContext)
 
-            const response = await this.executeInterceptors(
-              controller,
-              route.handlerName,
-              executionContext,
-              async () => {
-                const args = await this.resolveArguments(
-                  controller,
-                  route.handlerName,
-                  handler,
-                  context,
-                  executionContext,
-                )
-                const result = await handler.apply(controllerInstance, args)
-                return this.transformResult(context, result)
-              },
-            )
+          const response = await this.executeInterceptors(controller, route.handlerName, executionContext, async () => {
+            const args = await this.resolveArguments(controller, route.handlerName, handler, context, executionContext)
+            const result = await handler.apply(controllerInstance, args)
+            return this.transformResult(context, result)
+          })
 
-            return response
-          } catch (error) {
-            return await this.handleException(controller, route.handlerName, error, executionContext, context)
-          }
-        })
+          return response
+        } catch (error) {
+          return await this.handleException(controller, route.handlerName, error, executionContext, context)
+        }
       })
 
       this.routerLogger.verbose(

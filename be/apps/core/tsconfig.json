@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "target": "es2022",
+    "target": "esnext",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "baseUrl": ".",
@@ -11,13 +11,7 @@
     "types": ["node"],
     "paths": {
       "core": ["./src"],
-      "core/*": ["./src/*"],
-      "@afilmory/db": ["../../packages/db/src"],
-      "@afilmory/db/*": ["../../packages/db/src/*"],
-      "@afilmory/be-utils": ["../../packages/utils/src"],
-      "@afilmory/be-utils/*": ["../../packages/utils/src/*"],
-      "@afilmory/websocket": ["../../packages/websocket/src"],
-      "@afilmory/websocket/*": ["../../packages/websocket/src/*"]
+      "core/*": ["./src/*"]
     },
     "resolveJsonModule": true,
     "allowJs": true,

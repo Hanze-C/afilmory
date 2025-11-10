@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "target": "es2022",
+    "target": "esnext",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "emitDecoratorMetadata": true,

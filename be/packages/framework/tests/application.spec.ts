@@ -340,6 +340,38 @@ class MiddlewareController {
 })
 class MiddlewareTestModule {}
 
+@injectable()
+class ContextPropagationMiddleware implements HttpMiddleware {
+  async use(context: Context, next: Next): Promise<void> {
+    HttpContext.assign({
+      auth: {
+        ...HttpContext.get().auth,
+        apiKey: context.req.header('x-api-key') ?? 'missing',
+      },
+    })
+    await next()
+  }
+}
+
+@Controller('context-prop')
+class ContextPropagationController {
+  @Get('/')
+  read() {
+    return { apiKey: HttpContext.get().auth?.apiKey }
+  }
+}
+
+@Module({
+  controllers: [ContextPropagationController],
+  providers: [
+    {
+      provide: APP_MIDDLEWARE as unknown as Constructor,
+      useClass: ContextPropagationMiddleware,
+    },
+  ],
+})
+class ContextPropagationModule {}
+
 const BodySchema = z
   .object({
     message: z.string({ message: 'message required' }),
@@ -668,6 +700,23 @@ describe('HonoHttpApplication end-to-end', () => {
       }),
     )
     expect(await response.text()).toBe('raw-body')
+  })
+
+  it('preserves HttpContext values assigned by middleware for downstream handlers', async () => {
+    const app = await createApplication(ContextPropagationModule)
+    const hono = app.getInstance()
+    const fetcher = (request: Request) => Promise.resolve(hono.fetch(request))
+
+    const response = await fetcher(
+      createRequest('/context-prop', {
+        headers: { 'x-api-key': 'from-middleware' },
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ apiKey: 'from-middleware' })
+
+    await app.close('context-propagation')
   })
 
   it('supports array buffer and readable stream responses', async () => {
