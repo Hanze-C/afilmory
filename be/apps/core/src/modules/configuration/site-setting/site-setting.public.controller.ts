@@ -1,11 +1,11 @@
 import { Controller, Get } from '@afilmory/framework'
-import { SkipTenant } from 'core/decorators/skip-tenant.decorator'
+import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
 import { BypassResponseTransform } from 'core/interceptors/response-transform.decorator'
 
 import { SiteSettingService } from './site-setting.service'
 
 @Controller('public/site-settings')
-@SkipTenant()
+@SkipTenantGuard()
 export class SiteSettingPublicController {
   constructor(private readonly siteSettingService: SiteSettingService) {}
 

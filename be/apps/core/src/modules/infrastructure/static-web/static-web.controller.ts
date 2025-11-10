@@ -1,5 +1,5 @@
 import { ContextParam, Controller, Get, Param } from '@afilmory/framework'
-import { SkipTenant } from 'core/decorators/skip-tenant.decorator'
+import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
 import type { Context } from 'hono'
 
 import type { StaticAssetService } from './static-asset.service'
@@ -37,7 +37,7 @@ export class StaticWebController {
     return await this.serve(context, this.staticDashboardService, false)
   }
 
-  @SkipTenant()
+  @SkipTenantGuard()
   @Get('/*')
   async getAsset(@ContextParam() context: Context) {
     return await this.handleRequest(context, false)

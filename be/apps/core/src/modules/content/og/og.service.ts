@@ -11,7 +11,6 @@ import { injectable } from 'tsyringe'
 
 import { ManifestService } from '../manifest/manifest.service'
 import geistFontUrl from './assets/Geist-Medium.ttf?url'
-import cjkFontUrl from './assets/SweiFistLegCJKsc-Medium-2.ttf?url'
 import { renderOgImage } from './og.renderer'
 import type { ExifInfo, PhotoDimensions } from './og.template'
 
@@ -77,12 +76,12 @@ export class OgService implements OnModuleDestroy {
     return new Response(body, { status: 200, headers })
   }
 
-  private cjkFontPromise: Promise<NonSharedBuffer> | null = null
+  // private cjkFontPromise: Promise<NonSharedBuffer> | null = null
   private geistFontPromise: Promise<NonSharedBuffer> | null = null
 
   loadFonts() {
-    if (!this.cjkFontPromise || !this.geistFontPromise) {
-      this.cjkFontPromise = readFile(resolve(process.cwd(), `./${cjkFontUrl}`))
+    if (!this.geistFontPromise) {
+      // this.cjkFontPromise = readFile(resolve(process.cwd(), `./${cjkFontUrl}`))
       this.geistFontPromise = readFile(resolve(process.cwd(), `./${geistFontUrl}`))
     }
     this.resetFontCleanupTimer()
@@ -98,12 +97,12 @@ export class OgService implements OnModuleDestroy {
         style: 'normal',
         weight: 400,
       },
-      {
-        name: '狮尾咏腿黑体',
-        data: await this.cjkFontPromise!,
-        style: 'normal',
-        weight: 400,
-      },
+      // {
+      //   name: '狮尾咏腿黑体',
+      //   data: await this.cjkFontPromise!,
+      //   style: 'normal',
+      //   weight: 400,
+      // },
     ]
   }
 
@@ -114,7 +113,7 @@ export class OgService implements OnModuleDestroy {
     // Clean font promises 10 minutes after last activity
     this.fontCleanupTimer = setTimeout(
       () => {
-        this.cjkFontPromise = null
+        // this.cjkFontPromise = null
         this.geistFontPromise = null
         this.fontConfig = null
         this.fontCleanupTimer = null

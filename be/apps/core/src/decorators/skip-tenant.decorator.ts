@@ -6,7 +6,7 @@ function setSkipTenantMetadata(target: DecoratorTarget): void {
   Reflect.defineMetadata(SKIP_TENANT_METADATA, true, target)
 }
 
-export function SkipTenant(): ClassDecorator & MethodDecorator {
+export function SkipTenantGuard(): ClassDecorator & MethodDecorator {
   return ((target: DecoratorTarget, _propertyKey?: string | symbol, descriptor?: PropertyDescriptor) => {
     if (descriptor?.value && typeof descriptor.value === 'function') {
       setSkipTenantMetadata(descriptor.value)

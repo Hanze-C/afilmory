@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { builtinModules, createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -42,6 +42,7 @@ function generateExternalsPackageJson(externals: string[]) {
         type: 'module',
         dependencies,
       }
+      await mkdir(outDirAbs, { recursive: true })
       await writeFile(resolve(outDirAbs, 'package.json'), JSON.stringify(content, null, 2))
     },
   }

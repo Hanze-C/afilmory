@@ -1,10 +1,11 @@
 import { authUsers } from '@afilmory/db'
-import { Body, ContextParam, Controller, Get, HttpContext, Post, UnauthorizedException } from '@afilmory/framework'
+import { Body, ContextParam, Controller, Get, HttpContext, Post } from '@afilmory/framework'
 import { freshSessionMiddleware } from 'better-auth/api'
 import { DbAccessor } from 'core/database/database.provider'
-import { SkipTenant } from 'core/decorators/skip-tenant.decorator'
+import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
 import { BizException, ErrorCode } from 'core/errors'
 import { RoleBit, Roles } from 'core/guards/roles.decorator'
+import { BypassResponseTransform } from 'core/interceptors/response-transform.decorator'
 import { SystemSettingService } from 'core/modules/configuration/system-setting/system-setting.service'
 import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
@@ -105,10 +106,15 @@ export class AuthController {
   ) {}
 
   @Get('/session')
+  @SkipTenantGuard()
   async getSession(@ContextParam() _context: Context) {
+    const tenant = HttpContext.getValue('tenant')
+    if (!tenant) {
+      return null
+    }
     const authContext = HttpContext.getValue('auth')
     if (!authContext?.user || !authContext.session) {
-      throw new UnauthorizedException()
+      return null
     }
     return {
       user: authContext.user,
@@ -117,6 +123,8 @@ export class AuthController {
   }
 
   @Get('/social/providers')
+  @BypassResponseTransform()
+  @SkipTenantGuard()
   async getSocialProviders() {
     const { socialProviders } = await this.systemSettings.getAuthModuleConfig()
     return { providers: buildProviderResponse(socialProviders) }
@@ -260,7 +268,7 @@ export class AuthController {
     return response
   }
 
-  @SkipTenant()
+  @SkipTenantGuard()
   @Post('/sign-up/email')
   async signUpEmail(@ContextParam() context: Context, @Body() body: TenantSignUpRequest) {
     const useSessionAccount = body?.useSessionAccount ?? false
