@@ -15,12 +15,14 @@ export class StaticWebController {
 
   @Get('/static/web')
   @Get('/static/dashboard')
+  @SkipTenantGuard()
   async getStaticWebRoot(@ContextParam() context: Context) {
     return await this.serve(context, this.staticWebService, false)
   }
 
   @Get(`/`)
   @Get(`/explory`)
+  @SkipTenantGuard()
   async getStaticWebIndex(@ContextParam() context: Context) {
     return await this.serve(context, this.staticWebService, false)
   }
@@ -31,6 +33,7 @@ export class StaticWebController {
     return await this.staticWebService.decoratePhotoPageResponse(context, photoId, response)
   }
 
+  @SkipTenantGuard()
   @Get(`${STATIC_DASHBOARD_BASENAME}`)
   @Get(`${STATIC_DASHBOARD_BASENAME}/*`)
   async getStaticDashboardIndexWithBasename(@ContextParam() context: Context) {
