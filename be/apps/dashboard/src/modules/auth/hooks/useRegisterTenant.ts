@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import type { RegisterTenantPayload } from '~/modules/auth/api/registerTenant'
 import { registerTenant } from '~/modules/auth/api/registerTenant'
-import { resolveBaseDomain } from '~/modules/auth/utils/domain'
+import { buildTenantUrl } from '~/modules/auth/utils/domain'
 
 import type { TenantSiteFieldKey } from './useRegistrationForm'
 
@@ -12,29 +12,6 @@ interface TenantRegistrationRequest {
   tenantName: string
   tenantSlug: string
   settings: Array<{ key: TenantSiteFieldKey; value: string }>
-}
-
-function buildTenantLoginUrl(slug: string): string {
-  const normalizedSlug = slug.trim().toLowerCase()
-  if (!normalizedSlug) {
-    throw new Error('Registration succeeded but a workspace slug was not returned.')
-  }
-
-  const { protocol, hostname, port } = window.location
-  const baseDomain = resolveBaseDomain(hostname)
-
-  if (!baseDomain) {
-    throw new Error('Unable to resolve base domain for workspace login redirect.')
-  }
-
-  const shouldAppendPort = Boolean(
-    port && (baseDomain === 'localhost' || hostname === baseDomain || hostname.endsWith(`.${baseDomain}`)),
-  )
-
-  const portSegment = shouldAppendPort ? `:${port}` : ''
-  const scheme = protocol || 'https:'
-
-  return `${scheme}//${normalizedSlug}.${baseDomain}${portSegment}/login`
 }
 
 export function useRegisterTenant() {
@@ -70,7 +47,7 @@ export function useRegisterTenant() {
     },
     onSuccess: ({ slug }) => {
       try {
-        const loginUrl = buildTenantLoginUrl(slug)
+        const loginUrl = buildTenantUrl(slug, '/login')
         setErrorMessage(null)
         window.location.replace(loginUrl)
       } catch (redirectError) {

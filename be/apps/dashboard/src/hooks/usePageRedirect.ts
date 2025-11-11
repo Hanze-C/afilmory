@@ -4,23 +4,23 @@ import { useCallback, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { useSetAuthUser } from '~/atoms/auth'
+import { PUBLIC_ROUTES, ROUTE_PATHS } from '~/constants/routes'
 import type { SessionResponse } from '~/modules/auth/api/session'
 import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
 import { signOutBySource } from '~/modules/auth/auth-client'
-
-const DEFAULT_LOGIN_PATH = '/login'
-const DEFAULT_WELCOME_PATH = '/welcome'
-const TENANT_MISSING_PATH = '/tenant-missing'
-const DEFAULT_AUTHENTICATED_PATH = '/'
-const SUPERADMIN_ROOT_PATH = '/superadmin'
-const SUPERADMIN_DEFAULT_PATH = '/superadmin/settings'
+import { buildTenantUrl, getTenantSlugFromHost } from '~/modules/auth/utils/domain'
 
 const AUTH_FAILURE_STATUSES = new Set([401, 403, 419])
 const AUTH_TENANT_NOT_FOUND_ERROR_CODE = 12
 const TENANT_NOT_FOUND_ERROR_CODE = 20
 const TENANT_MISSING_ERROR_CODES = new Set([AUTH_TENANT_NOT_FOUND_ERROR_CODE, TENANT_NOT_FOUND_ERROR_CODE])
-
-const PUBLIC_PATHS = new Set([DEFAULT_LOGIN_PATH, DEFAULT_WELCOME_PATH, TENANT_MISSING_PATH])
+const {
+  LOGIN: DEFAULT_LOGIN_PATH,
+  TENANT_MISSING: TENANT_MISSING_PATH,
+  DEFAULT_AUTHENTICATED: DEFAULT_AUTHENTICATED_PATH,
+  SUPERADMIN_ROOT: SUPERADMIN_ROOT_PATH,
+  SUPERADMIN_DEFAULT: SUPERADMIN_DEFAULT_PATH,
+} = ROUTE_PATHS
 
 type BizErrorPayload = { code?: number | string }
 type FetchErrorWithPayload = FetchError<BizErrorPayload> & {
@@ -143,7 +143,7 @@ export function usePageRedirect() {
       return
     }
 
-    if (!session && !PUBLIC_PATHS.has(pathname)) {
+    if (!session && !PUBLIC_ROUTES.has(pathname)) {
       navigate(DEFAULT_LOGIN_PATH, { replace: true })
       return
     }
@@ -152,6 +152,38 @@ export function usePageRedirect() {
       navigate(DEFAULT_AUTHENTICATED_PATH, { replace: true })
     }
   }, [location, location.pathname, navigate, sessionQuery.data, sessionQuery.isError, sessionQuery.isPending])
+
+  useEffect(() => {
+    if (sessionQuery.isPending) {
+      return
+    }
+
+    const session = sessionQuery.data
+    if (!session || session.user.role === 'superadmin') {
+      return
+    }
+
+    const {tenant} = session
+    if (!tenant || tenant.isPlaceholder || !tenant.slug) {
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const currentSlug = getTenantSlugFromHost(window.location.hostname)
+    if (currentSlug && currentSlug === tenant.slug) {
+      return
+    }
+
+    try {
+      const targetUrl = buildTenantUrl(tenant.slug, '/')
+      window.location.replace(targetUrl)
+    } catch (error) {
+      console.error('Failed to redirect to tenant workspace', error)
+    }
+  }, [sessionQuery.data, sessionQuery.isPending])
 
   return {
     sessionQuery,

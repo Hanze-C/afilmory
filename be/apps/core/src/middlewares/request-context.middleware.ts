@@ -19,7 +19,8 @@ export class RequestContextMiddleware implements HttpMiddleware {
   ) {}
 
   async use(context: Context, next: Next): Promise<Response | void> {
-    await Promise.all([this.ensureTenantContext(context), this.ensureAuthContext(context)])
+    await this.ensureTenantContext(context)
+    await this.ensureAuthContext(context)
     return await next()
   }
 

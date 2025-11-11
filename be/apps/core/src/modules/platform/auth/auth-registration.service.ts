@@ -10,7 +10,7 @@ import { SystemSettingService } from 'core/modules/configuration/system-setting/
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
-import { getTenantContext } from '../tenant/tenant.context'
+import { getTenantContext, isPlaceholderTenantContext } from '../tenant/tenant.context'
 import { TenantRepository } from '../tenant/tenant.repository'
 import { TenantService } from '../tenant/tenant.service'
 import type { TenantRecord } from '../tenant/tenant.types'
@@ -65,6 +65,7 @@ export class AuthRegistrationService {
     await this.systemSettings.ensureRegistrationAllowed()
 
     const tenantContext = getTenantContext()
+    const effectiveTenantContext = isPlaceholderTenantContext(tenantContext) ? null : tenantContext
     const account = input.account ? this.normalizeAccountInput(input.account) : null
     const useSessionAccount = input.useSessionAccount ?? false
     const sessionUser = this.getSessionUser()
@@ -73,14 +74,14 @@ export class AuthRegistrationService {
       throw new BizException(ErrorCode.AUTH_UNAUTHORIZED, { message: '请先登录后再创建工作区' })
     }
 
-    if (tenantContext) {
+    if (effectiveTenantContext) {
       if (useSessionAccount) {
         throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前租户上下文下不支持会话注册' })
       }
       if (!account) {
         throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少注册账号信息' })
       }
-      return await this.registerExistingTenantMember(account, headers, tenantContext.tenant)
+      return await this.registerExistingTenantMember(account, headers, effectiveTenantContext.tenant)
     }
 
     if (!input.tenant) {

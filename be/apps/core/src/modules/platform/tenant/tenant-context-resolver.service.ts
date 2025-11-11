@@ -7,8 +7,9 @@ import { AppStateService } from 'core/modules/infrastructure/app-state/app-state
 import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
+import { PLACEHOLDER_TENANT_SLUG } from './tenant.constants'
 import { TenantService } from './tenant.service'
-import type { TenantContext } from './tenant.types'
+import type { TenantAggregate, TenantContext } from './tenant.types'
 
 const HEADER_TENANT_ID = 'x-tenant-id'
 const HEADER_TENANT_SLUG = 'x-tenant-slug'
@@ -65,13 +66,23 @@ export class TenantContextResolver {
       `Resolve tenant for request ${context.req.method} ${context.req.path} (host=${host ?? 'n/a'}, id=${tenantId ?? 'n/a'}, slug=${derivedSlug ?? 'n/a'})`,
     )
 
-    const tenantContext = await this.tenantService.resolve(
+    let tenantContext = await this.tenantService.resolve(
       {
         tenantId,
         slug: derivedSlug,
       },
       true,
     )
+
+    if (!tenantContext && this.shouldFallbackToPlaceholder(tenantId, derivedSlug)) {
+      const placeholder = await this.tenantService.ensurePlaceholderTenant()
+      tenantContext = this.asTenantContext(placeholder, true)
+      this.log.verbose(
+        `Applied placeholder tenant context for ${context.req.method} ${context.req.path} (host=${host ?? 'n/a'})`,
+      )
+    } else if (tenantContext) {
+      tenantContext = this.asTenantContext(tenantContext, tenantContext.tenant.slug === PLACEHOLDER_TENANT_SLUG)
+    }
 
     if (!tenantContext) {
       if (options.throwOnMissing && (tenantId || derivedSlug)) {
@@ -169,5 +180,16 @@ export class TenantContextResolver {
     }
 
     return undefined
+  }
+
+  private shouldFallbackToPlaceholder(tenantId?: string, slug?: string): boolean {
+    return !(tenantId && tenantId.length > 0) && !(slug && slug.length > 0)
+  }
+
+  private asTenantContext(source: TenantAggregate, isPlaceholder: boolean): TenantContext {
+    return {
+      tenant: source.tenant,
+      isPlaceholder,
+    }
   }
 }

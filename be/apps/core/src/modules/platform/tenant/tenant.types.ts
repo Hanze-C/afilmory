@@ -7,7 +7,9 @@ export interface TenantAggregate {
   tenant: TenantRecord
 }
 
-export type TenantContext = TenantAggregate
+export interface TenantContext extends TenantAggregate {
+  readonly isPlaceholder?: boolean
+}
 
 export interface TenantResolutionInput {
   tenantId?: string | null

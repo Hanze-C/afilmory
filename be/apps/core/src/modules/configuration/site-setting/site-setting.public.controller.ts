@@ -1,4 +1,5 @@
 import { Controller, Get } from '@afilmory/framework'
+import { AllowPlaceholderTenant } from 'core/decorators/allow-placeholder.decorator'
 import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
 import { BypassResponseTransform } from 'core/interceptors/response-transform.decorator'
 
@@ -9,6 +10,7 @@ import { SiteSettingService } from './site-setting.service'
 export class SiteSettingPublicController {
   constructor(private readonly siteSettingService: SiteSettingService) {}
 
+  @AllowPlaceholderTenant()
   @Get('/welcome-schema')
   @BypassResponseTransform()
   async getWelcomeSchema() {

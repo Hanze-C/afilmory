@@ -3,11 +3,9 @@ import { BizException, ErrorCode } from 'core/errors'
 import { AppStateService } from 'core/modules/infrastructure/app-state/app-state.service'
 import { injectable } from 'tsyringe'
 
+import { PLACEHOLDER_TENANT_NAME, PLACEHOLDER_TENANT_SLUG } from './tenant.constants'
 import { TenantRepository } from './tenant.repository'
 import type { TenantAggregate, TenantContext, TenantResolutionInput } from './tenant.types'
-
-const PLACEHOLDER_TENANT_SLUG = 'holding'
-const PLACEHOLDER_TENANT_NAME = 'Pending Workspace'
 
 @injectable()
 export class TenantService {

@@ -2,6 +2,7 @@ import { authUsers } from '@afilmory/db'
 import { Body, ContextParam, Controller, Get, HttpContext, Post } from '@afilmory/framework'
 import { freshSessionMiddleware } from 'better-auth/api'
 import { DbAccessor } from 'core/database/database.provider'
+import { AllowPlaceholderTenant } from 'core/decorators/allow-placeholder.decorator'
 import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
 import { BizException, ErrorCode } from 'core/errors'
 import { RoleBit, Roles } from 'core/guards/roles.decorator'
@@ -10,7 +11,8 @@ import { SystemSettingService } from 'core/modules/configuration/system-setting/
 import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
 
-import { getTenantContext } from '../tenant/tenant.context'
+import { getTenantContext, isPlaceholderTenantContext } from '../tenant/tenant.context'
+import { TenantService } from '../tenant/tenant.service'
 import type { SocialProvidersConfig } from './auth.config'
 import { AuthProvider } from './auth.provider'
 import { AuthRegistrationService } from './auth-registration.service'
@@ -103,25 +105,51 @@ export class AuthController {
     private readonly dbAccessor: DbAccessor,
     private readonly systemSettings: SystemSettingService,
     private readonly registration: AuthRegistrationService,
+    private readonly tenantService: TenantService,
   ) {}
 
+  @AllowPlaceholderTenant()
   @Get('/session')
   @SkipTenantGuard()
   async getSession(@ContextParam() _context: Context) {
-    const tenant = HttpContext.getValue('tenant')
-    if (!tenant) {
-      return null
-    }
+    let tenantContext = getTenantContext()
     const authContext = HttpContext.getValue('auth')
+
     if (!authContext?.user || !authContext.session) {
       return null
     }
+
+    if (!tenantContext || isPlaceholderTenantContext(tenantContext)) {
+      const {tenantId} = (authContext.user as { tenantId?: string | null })
+      if (tenantId) {
+        try {
+          const aggregate = await this.tenantService.getById(tenantId)
+          tenantContext = {
+            tenant: aggregate.tenant,
+            isPlaceholder: false,
+          }
+        } catch {
+          // ignore; fallback to placeholder context if resolution fails
+        }
+      }
+    }
+
+    if (!tenantContext) {
+      return null
+    }
+
     return {
       user: authContext.user,
       session: authContext.session,
+      tenant: {
+        id: tenantContext.tenant.id,
+        slug: tenantContext.tenant.slug ?? null,
+        isPlaceholder: isPlaceholderTenantContext(tenantContext),
+      },
     }
   }
 
+  @AllowPlaceholderTenant()
   @Get('/social/providers')
   @BypassResponseTransform()
   @SkipTenantGuard()
@@ -201,6 +229,19 @@ export class AuthController {
     return result
   }
 
+  @Get('/permissions/dashboard')
+  @Roles(RoleBit.ADMIN)
+  checkDashboardPermission() {
+    return { allowed: true }
+  }
+
+  @Get('/permissions/superadmin')
+  @Roles(RoleBit.SUPERADMIN)
+  checkSuperAdminPermission() {
+    return { allowed: true }
+  }
+
+  @AllowPlaceholderTenant()
   @Post('/sign-in/email')
   async signInEmail(@ContextParam() context: Context, @Body() body: { email: string; password: string }) {
     const email = body.email.trim()
@@ -237,6 +278,7 @@ export class AuthController {
     return response
   }
 
+  @AllowPlaceholderTenant()
   @Post('/social')
   async signInSocial(@ContextParam() context: Context, @Body() body: SocialSignInRequest) {
     const provider = body?.provider?.trim()
@@ -269,6 +311,7 @@ export class AuthController {
   }
 
   @SkipTenantGuard()
+  @AllowPlaceholderTenant()
   @Post('/sign-up/email')
   async signUpEmail(@ContextParam() context: Context, @Body() body: TenantSignUpRequest) {
     const useSessionAccount = body?.useSessionAccount ?? false
@@ -278,10 +321,11 @@ export class AuthController {
     }
 
     const tenantContext = getTenantContext()
-    if (!tenantContext && !body.tenant) {
+    const isPlaceholderTenant = isPlaceholderTenantContext(tenantContext)
+    if ((!tenantContext || isPlaceholderTenant) && !body.tenant) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少租户信息' })
     }
-    if (tenantContext && useSessionAccount) {
+    if (tenantContext && !isPlaceholderTenant && useSessionAccount) {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前操作不支持使用已登录账号' })
     }
 
@@ -324,11 +368,13 @@ export class AuthController {
     return { ok: true }
   }
 
+  @AllowPlaceholderTenant()
   @Get('/*')
   async passthroughGet(@ContextParam() context: Context) {
     return await this.auth.handler(context)
   }
 
+  @AllowPlaceholderTenant()
   @Post('/*')
   async passthroughPost(@ContextParam() context: Context) {
     return await this.auth.handler(context)

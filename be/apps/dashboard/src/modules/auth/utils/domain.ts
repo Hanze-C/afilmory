@@ -58,3 +58,31 @@ export function getTenantSlugFromHost(hostname: string): string | null {
 
   return null
 }
+
+export function buildTenantUrl(slug: string, path = '/'): string {
+  const normalizedSlug = slug?.trim().toLowerCase() ?? ''
+  if (!normalizedSlug) {
+    throw new Error('Workspace slug is required to build tenant URL.')
+  }
+
+  if (typeof window === 'undefined') {
+    throw new TypeError('Cannot build tenant URL outside the browser environment.')
+  }
+
+  const { protocol, hostname, port } = window.location
+  const baseDomain = resolveBaseDomain(hostname)
+
+  if (!baseDomain) {
+    throw new Error('Unable to resolve base domain for tenant URL.')
+  }
+
+  const shouldAppendPort = Boolean(
+    port && (baseDomain === 'localhost' || hostname === baseDomain || hostname.endsWith(`.${baseDomain}`)),
+  )
+
+  const portSegment = shouldAppendPort ? `:${port}` : ''
+  const scheme = protocol || 'https:'
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  return `${scheme}//${normalizedSlug}.${baseDomain}${portSegment}${normalizedPath}`
+}

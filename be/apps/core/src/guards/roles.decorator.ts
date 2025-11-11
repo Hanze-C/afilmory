@@ -3,10 +3,10 @@ import { applyDecorators } from '@afilmory/framework'
 export const ROLES_METADATA = Symbol.for('core.auth.allowed_roles')
 
 export enum RoleBit {
-  GUEST = 0,
-  USER = 1 << 0,
-  ADMIN = 1 << 1,
-  SUPERADMIN = 1 << 2,
+  GUEST = 1 << 0,
+  USER = 1 << 1,
+  ADMIN = 1 << 2,
+  SUPERADMIN = 1 << 3,
 }
 
 export type RoleName = 'user' | 'admin' | 'superadmin' | (string & {})
@@ -14,14 +14,32 @@ export type RoleName = 'user' | 'admin' | 'superadmin' | (string & {})
 export function roleNameToBit(name?: RoleName): RoleBit {
   switch (name) {
     case 'superadmin': {
-      return RoleBit.SUPERADMIN | RoleBit.ADMIN | RoleBit.USER | RoleBit.GUEST
+      return RoleBit.SUPERADMIN
     }
 
     case 'admin': {
-      return RoleBit.ADMIN | RoleBit.USER | RoleBit.GUEST
+      return RoleBit.ADMIN
     }
 
     case 'user': {
+      return RoleBit.USER
+    }
+
+    default: {
+      return RoleBit.GUEST
+    }
+  }
+}
+
+export function roleBitWithInheritance(bit: RoleBit): number {
+  switch (bit) {
+    case RoleBit.SUPERADMIN: {
+      return RoleBit.SUPERADMIN | RoleBit.ADMIN | RoleBit.USER | RoleBit.GUEST
+    }
+    case RoleBit.ADMIN: {
+      return RoleBit.ADMIN | RoleBit.USER | RoleBit.GUEST
+    }
+    case RoleBit.USER: {
       return RoleBit.USER | RoleBit.GUEST
     }
 

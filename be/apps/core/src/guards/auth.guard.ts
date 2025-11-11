@@ -4,21 +4,24 @@ import { HttpContext } from '@afilmory/framework'
 import type { HttpContextAuth } from 'core/context/http-context.values'
 import { applyTenantIsolationContext, DbAccessor } from 'core/database/database.provider'
 import { BizException, ErrorCode } from 'core/errors'
-import { getTenantContext } from 'core/modules/platform/tenant/tenant.context'
+import type { AuthSession } from 'core/modules/platform/auth/auth.provider'
+import { getTenantContext, isPlaceholderTenantContext } from 'core/modules/platform/tenant/tenant.context'
+import { TenantService } from 'core/modules/platform/tenant/tenant.service'
 import type { TenantContext } from 'core/modules/platform/tenant/tenant.types'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import { shouldSkipTenant } from '../decorators/skip-tenant.decorator'
 import { logger } from '../helpers/logger.helper'
-import type { AuthSession } from '../modules/auth/auth.provider'
-import { getAllowedRoleMask, roleNameToBit } from './roles.decorator'
 
 @injectable()
 export class AuthGuard implements CanActivate {
   private readonly log = logger.extend('AuthGuard')
 
-  constructor(private readonly dbAccessor: DbAccessor) {}
+  constructor(
+    private readonly dbAccessor: DbAccessor,
+    private readonly tenantService: TenantService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const store = context.getContext()
@@ -36,16 +39,23 @@ export class AuthGuard implements CanActivate {
 
     this.log.verbose(`Evaluating guard for ${method} ${path}`)
 
-    const tenantContext = this.requireTenantContext(method, path)
+    const tenantContext = await this.requireTenantContext(method, path)
+    if (isPlaceholderTenantContext(tenantContext) && !this.isPlaceholderAllowedPath(path)) {
+      this.log.warn(`Denied access: placeholder tenant cannot access ${method} ${path}`)
+      throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND_GUARD)
+    }
 
     await this.enforceTenantOwnership(authContext, tenantContext, method, path)
-    this.enforceRoleRequirements(handler, authContext, method, path)
 
     return true
   }
 
-  private requireTenantContext(method: string, path: string) {
-    const tenantContext = getTenantContext()
+  private async requireTenantContext(method: string, path: string): Promise<TenantContext> {
+    let tenantContext = getTenantContext()
+    if (!tenantContext && this.isPlaceholderAllowedPath(path)) {
+      tenantContext = (await this.createPlaceholderContext(method, path)) as TenantContext
+    }
+
     if (!tenantContext) {
       this.log.warn(`Tenant context not resolved for ${method} ${path}`)
       throw new BizException(ErrorCode.AUTH_TENANT_NOT_FOUND_GUARD)
@@ -120,35 +130,42 @@ export class AuthGuard implements CanActivate {
     return sessionTenantId
   }
 
-  private enforceRoleRequirements(
-    handler: ReturnType<ExecutionContext['getHandler']>,
-    authContext: HttpContextAuth | undefined,
-    method: string,
-    path: string,
-  ): void {
-    const requiredMask = getAllowedRoleMask(handler)
-    if (requiredMask === 0) {
-      return
+  private isPlaceholderAllowedPath(path: string): boolean {
+    const normalizedPath = path?.trim() || ''
+    if (!normalizedPath) {
+      return false
     }
 
-    if (!authContext?.user || !authContext.session) {
-      this.log.warn(`Denied access: missing session for protected resource ${method} ${path}`)
-      throw new BizException(ErrorCode.AUTH_UNAUTHORIZED)
+    if (normalizedPath === '/auth' || normalizedPath === '/auth/') {
+      return true
+    }
+    if (normalizedPath.startsWith('/auth/')) {
+      return true
     }
 
-    const userRoleName = (authContext.user as { role?: string }).role as
-      | 'user'
-      | 'admin'
-      | 'superadmin'
-      | 'guest'
-      | undefined
-    const userMask = userRoleName ? roleNameToBit(userRoleName) : 0
-    const hasRole = (requiredMask & userMask) !== 0
-    if (!hasRole) {
-      this.log.warn(
-        `Denied access: user ${(authContext.user as { id?: string }).id ?? 'unknown'} role=${userRoleName ?? 'n/a'} lacks permission mask=${requiredMask} on ${method} ${path}`,
-      )
-      throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+    if (normalizedPath === '/api/auth' || normalizedPath === '/api/auth/') {
+      return true
+    }
+    if (normalizedPath.startsWith('/api/auth/')) {
+      return true
+    }
+
+    return false
+  }
+
+  private async createPlaceholderContext(method: string, path: string): Promise<TenantContext | null> {
+    try {
+      const placeholder = await this.tenantService.ensurePlaceholderTenant()
+      const context: TenantContext = {
+        tenant: placeholder.tenant,
+        isPlaceholder: true,
+      }
+      HttpContext.setValue('tenant', context)
+      this.log.verbose(`Placeholder tenant context injected for ${method} ${path}`)
+      return context
+    } catch (error) {
+      this.log.error('Failed to inject placeholder tenant context', error)
+      return null
     }
   }
 }

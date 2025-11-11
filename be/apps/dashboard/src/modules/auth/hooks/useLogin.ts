@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 
 import { useSetAuthUser } from '~/atoms/auth'
 import { AUTH_SESSION_QUERY_KEY, fetchSession } from '~/modules/auth/api/session'
+import { buildTenantUrl, getTenantSlugFromHost } from '~/modules/auth/utils/domain'
 
 import { signInAuth } from '../auth-client'
 
@@ -40,7 +41,24 @@ export function useLogin() {
       queryClient.setQueryData(AUTH_SESSION_QUERY_KEY, session)
       setAuthUser(session.user)
       setErrorMessage(null)
-      const destination = session.user.role === 'superadmin' ? '/superadmin/settings' : '/'
+
+      const {tenant} = session
+      const isSuperAdmin = session.user.role === 'superadmin'
+
+      if (tenant && !tenant.isPlaceholder && tenant.slug) {
+        const currentSlug = typeof window !== 'undefined' ? getTenantSlugFromHost(window.location.hostname) : null
+        if (!isSuperAdmin && tenant.slug !== currentSlug) {
+          try {
+            const targetUrl = buildTenantUrl(tenant.slug, '/')
+            window.location.replace(targetUrl)
+            return
+          } catch (redirectError) {
+            console.error('Failed to redirect to tenant workspace after login:', redirectError)
+          }
+        }
+      }
+
+      const destination = isSuperAdmin ? '/superadmin/settings' : '/'
       navigate(destination, { replace: true })
     },
     onError: (error: Error) => {

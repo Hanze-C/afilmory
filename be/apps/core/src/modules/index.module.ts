@@ -1,5 +1,7 @@
 import { APP_GUARD, APP_INTERCEPTOR, APP_MIDDLEWARE, EventModule, Module } from '@afilmory/framework'
 import { AuthGuard } from 'core/guards/auth.guard'
+import { PlaceholderTenantGuard } from 'core/guards/placeholder-tenant.guard'
+import { RolesGuard } from 'core/guards/roles.guard'
 import { TenantResolverInterceptor } from 'core/interceptors/tenant-resolver.interceptor'
 import { CorsMiddleware } from 'core/middlewares/cors.middleware'
 import { DatabaseContextMiddleware } from 'core/middlewares/database-context.middleware'
@@ -76,7 +78,15 @@ function createEventModuleOptions(redis: RedisAccessor) {
 
     {
       provide: APP_GUARD,
+      useClass: PlaceholderTenantGuard,
+    },
+    {
+      provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_INTERCEPTOR,
