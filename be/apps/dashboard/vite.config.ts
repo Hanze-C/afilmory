@@ -1,6 +1,7 @@
 import 'dotenv/config'
 
-import { fileURLToPath, resolve } from 'node:url'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
 import reactRefresh from '@vitejs/plugin-react'
@@ -18,16 +19,17 @@ const API_TARGET = process.env.CORE_API_URL || 'http://localhost:3000'
 
 export default defineConfig({
   plugins: [
+    codeInspectorPlugin({
+      bundler: 'vite',
+      hotKeys: ['altKey'],
+    }),
     reactRefresh(),
     tsconfigPaths(),
     checker({
       typescript: true,
       enableBuild: true,
     }),
-    codeInspectorPlugin({
-      bundler: 'vite',
-      hotKeys: ['altKey'],
-    }),
+
     tailwindcss(),
     routeBuilderPlugin({
       pagePattern: `${resolve(ROOT, './src/pages')}/**/*.tsx`,
@@ -67,6 +69,14 @@ export default defineConfig({
             }
           })
         },
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(ROOT, 'index.html'),
+        'tenant-missing': resolve(ROOT, 'tenant-missing.html'),
       },
     },
   },

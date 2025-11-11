@@ -80,14 +80,14 @@ export class StaticWebService extends StaticAssetService {
     const headers = new Headers(response.headers)
     const photo = await this.findPhoto(photoId)
     if (!photo) {
-      return this.createHtmlResponse(html, headers, 404)
+      return this.createManualHtmlResponse(html, headers, 404)
     }
 
     const siteConfig = await this.siteSettingService.getSiteConfig()
     const siteTitle = siteConfig.title?.trim() || siteConfig.name || 'Photo Gallery'
     const origin = this.resolveRequestOrigin(context)
     if (!origin) {
-      return this.createHtmlResponse(html, headers, response.status)
+      return this.createManualHtmlResponse(html, headers, response.status)
     }
 
     try {
@@ -98,10 +98,10 @@ export class StaticWebService extends StaticAssetService {
       this.insertTwitterTags(document, photo, origin, siteTitle)
 
       const serialized = document.documentElement.outerHTML
-      return this.createHtmlResponse(serialized, headers, 200)
+      return this.createManualHtmlResponse(serialized, headers, 200)
     } catch (error) {
       this.logger.error('Failed to inject Open Graph tags for photo page', { error })
-      return this.createHtmlResponse(html, headers, response.status)
+      return this.createManualHtmlResponse(html, headers, response.status)
     }
   }
 
@@ -252,12 +252,9 @@ export class StaticWebService extends StaticAssetService {
     }
   }
 
-  private createHtmlResponse(html: string, baseHeaders: Headers, status: number): Response {
+  private createManualHtmlResponse(html: string, baseHeaders: Headers, status: number): Response {
     const headers = new Headers(baseHeaders)
     headers.set('content-length', Buffer.byteLength(html, 'utf8').toString())
-    return new Response(html, {
-      status,
-      headers,
-    })
+    return new Response(html, { status, headers })
   }
 }

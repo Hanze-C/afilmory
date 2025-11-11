@@ -1,10 +1,13 @@
 import { ContextParam, Controller, Get, Param } from '@afilmory/framework'
 import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
+import { getTenantContext, isPlaceholderTenantContext } from 'core/modules/platform/tenant/tenant.context'
 import type { Context } from 'hono'
 
 import type { StaticAssetService } from './static-asset.service'
 import { STATIC_DASHBOARD_BASENAME, StaticDashboardService } from './static-dashboard.service'
 import { StaticWebService } from './static-web.service'
+
+const TENANT_MISSING_ENTRY_PATH = `${STATIC_DASHBOARD_BASENAME}/tenant-missing.html`
 
 @Controller({ bypassGlobalPrefix: true })
 export class StaticWebController {
@@ -24,12 +27,26 @@ export class StaticWebController {
   @Get(`/explory`)
   @SkipTenantGuard()
   async getStaticWebIndex(@ContextParam() context: Context) {
-    return await this.serve(context, this.staticWebService, false)
+    if (this.shouldRenderTenantMissingPage()) {
+      return await this.renderTenantMissingPage()
+    }
+
+    const response = await this.serve(context, this.staticWebService, false)
+    if (response.status === 404) {
+      return await this.renderTenantMissingPage()
+    }
+    return response
   }
 
   @Get(`/photos/:photoId`)
   async getStaticPhotoPage(@ContextParam() context: Context, @Param('photoId') photoId: string) {
+    if (this.shouldRenderTenantMissingPage()) {
+      return await this.renderTenantMissingPage()
+    }
     const response = await this.serve(context, this.staticWebService, false)
+    if (response.status === 404) {
+      return await this.renderTenantMissingPage()
+    }
     return await this.staticWebService.decoratePhotoPageResponse(context, photoId, response)
   }
 
@@ -37,7 +54,15 @@ export class StaticWebController {
   @Get(`${STATIC_DASHBOARD_BASENAME}`)
   @Get(`${STATIC_DASHBOARD_BASENAME}/*`)
   async getStaticDashboardIndexWithBasename(@ContextParam() context: Context) {
-    return await this.serve(context, this.staticDashboardService, false)
+    const isHtmlRoute = this.isHtmlRoute(context.req.path)
+    if (isHtmlRoute && this.shouldRenderTenantMissingPage()) {
+      return await this.renderTenantMissingPage()
+    }
+    const response = await this.serve(context, this.staticDashboardService, false)
+    if (isHtmlRoute && response.status === 404) {
+      return await this.renderTenantMissingPage()
+    }
+    return response
   }
 
   @SkipTenantGuard()
@@ -96,5 +121,49 @@ export class StaticWebController {
 
   private isLegacyDashboardPath(pathname: string): boolean {
     return pathname === '/static/dashboard' || pathname.startsWith('/static/dashboard/')
+  }
+
+  private isHtmlRoute(pathname: string): boolean {
+    if (!pathname) {
+      return true
+    }
+
+    const normalized = pathname.split('?')[0]?.trim() ?? ''
+    if (!normalized || normalized === '/' || normalized.endsWith('/')) {
+      return true
+    }
+
+    const lastSegment = normalized.split('/').pop()
+    if (!lastSegment) {
+      return true
+    }
+
+    if (lastSegment.endsWith('.html')) {
+      return true
+    }
+
+    return !lastSegment.includes('.')
+  }
+
+  private shouldRenderTenantMissingPage(): boolean {
+    const tenantContext = getTenantContext()
+    return !tenantContext || isPlaceholderTenantContext(tenantContext)
+  }
+
+  private async renderTenantMissingPage(): Promise<Response> {
+    const response = await this.staticDashboardService.handleRequest(TENANT_MISSING_ENTRY_PATH, false)
+    if (response) {
+      return this.cloneResponseWithStatus(response, 404)
+    }
+
+    return new Response('Workspace unavailable', { status: 404 })
+  }
+
+  private cloneResponseWithStatus(response: Response, status: number): Response {
+    const headers = new Headers(response.headers)
+    return new Response(response.body, {
+      status,
+      headers,
+    })
   }
 }

@@ -307,8 +307,8 @@ export abstract class StaticAssetService {
   }
 
   private async createResponse(file: ResolvedStaticAsset, headOnly: boolean): Promise<Response> {
-    if (file.relativePath === 'index.html') {
-      return await this.createIndexResponse(file, headOnly)
+    if (this.isHtml(file.relativePath)) {
+      return await this.createHtmlResponse(file, headOnly)
     }
 
     const mimeType = lookupMimeType(file.absolutePath) || 'application/octet-stream'
@@ -328,7 +328,7 @@ export abstract class StaticAssetService {
     return new Response(body, { headers, status: 200 })
   }
 
-  private async createIndexResponse(file: ResolvedStaticAsset, headOnly: boolean): Promise<Response> {
+  private async createHtmlResponse(file: ResolvedStaticAsset, headOnly: boolean): Promise<Response> {
     const html = await readFile(file.absolutePath, 'utf-8')
     const transformed = await this.transformIndexHtml(html, file)
     const headers = new Headers()
