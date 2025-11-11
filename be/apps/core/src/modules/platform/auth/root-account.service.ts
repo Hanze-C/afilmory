@@ -2,10 +2,8 @@ import { randomBytes } from 'node:crypto'
 
 import { authUsers } from '@afilmory/db'
 import { env } from '@afilmory/env'
-import type { OnModuleInit } from '@afilmory/framework'
 import { createLogger } from '@afilmory/framework'
 import { DbAccessor } from 'core/database/database.provider'
-import { AppStateService } from 'core/modules/infrastructure/app-state/app-state.service'
 import { STATIC_DASHBOARD_BASENAME } from 'core/modules/infrastructure/static-web/static-dashboard.service'
 import { eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
@@ -15,45 +13,43 @@ import { AuthProvider } from './auth.provider'
 const log = createLogger('RootAccount')
 
 @injectable()
-export class RootAccountProvisioner implements OnModuleInit {
+export class RootAccountProvisioner {
   constructor(
     private readonly dbAccessor: DbAccessor,
     private readonly authProvider: AuthProvider,
-    private readonly appState: AppStateService,
   ) {}
 
-  async onModuleInit(): Promise<void> {
-    const initialized = await this.appState.isInitialized()
-    if (initialized) {
-      return
-    }
-    await this.ensureRootAccount()
-  }
-
-  private async ensureRootAccount(): Promise<void> {
+  async ensureRootAccount(rootTenantId: string): Promise<void> {
     const db = this.dbAccessor.get()
     const email = env.DEFAULT_SUPERADMIN_EMAIL
     const username = env.DEFAULT_SUPERADMIN_USERNAME
 
     const [existing] = await db
-      .select({ id: authUsers.id, role: authUsers.role })
+      .select({ id: authUsers.id, role: authUsers.role, tenantId: authUsers.tenantId })
       .from(authUsers)
       .where(eq(authUsers.email, email))
       .limit(1)
 
     if (existing) {
-      if (existing.role !== 'superadmin') {
+      if (existing.role !== 'superadmin' || existing.tenantId !== rootTenantId) {
         await db
           .update(authUsers)
           .set({
             role: 'superadmin',
-            tenantId: null,
+            tenantId: rootTenantId,
             name: username,
             username,
             displayUsername: username,
           })
           .where(eq(authUsers.id, existing.id))
-        log.info(`Existing account ${email} promoted to superadmin`)
+
+        const changeSummary =
+          existing.role !== 'superadmin'
+            ? 'promoted to superadmin'
+            : existing.tenantId !== rootTenantId
+              ? 'linked to root tenant'
+              : 'updated'
+        log.info(`Existing account ${email} ${changeSummary}`)
       } else {
         log.info('Root account already exists, skipping provisioning')
       }
@@ -78,7 +74,7 @@ export class RootAccountProvisioner implements OnModuleInit {
         .update(authUsers)
         .set({
           role: 'superadmin',
-          tenantId: null,
+          tenantId: rootTenantId,
           name: username,
           username,
           displayUsername: username,

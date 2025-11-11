@@ -10,6 +10,7 @@ import { RedisAccessor } from 'core/redis/redis.provider'
 
 import { DatabaseModule } from '../database/database.module'
 import { RedisModule } from '../redis/redis.module'
+import { AppInitializationModule } from './app/app-initialization.module'
 import { BuilderSettingModule } from './configuration/builder-setting/builder-setting.module'
 import { SettingModule } from './configuration/setting/setting.module'
 import { SiteSettingModule } from './configuration/site-setting/site-setting.module'
@@ -58,6 +59,7 @@ function createEventModuleOptions(redis: RedisAccessor) {
     DataSyncModule,
     FeedModule,
     OgModule,
+    AppInitializationModule,
 
     // This must be last
     StaticWebModule,

@@ -1,7 +1,6 @@
 import type { HttpMiddleware, OnModuleDestroy, OnModuleInit } from '@afilmory/framework'
 import { EventEmitterService, Middleware } from '@afilmory/framework'
 import { logger } from 'core/helpers/logger.helper'
-import { SettingService } from 'core/modules/configuration/setting/setting.service'
 import { AppStateService } from 'core/modules/infrastructure/app-state/app-state.service'
 import { getTenantContext } from 'core/modules/platform/tenant/tenant.context'
 import { TenantContextResolver } from 'core/modules/platform/tenant/tenant-context-resolver.service'
@@ -49,7 +48,7 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   private readonly logger = logger.extend('CorsMiddleware')
   constructor(
     private readonly eventEmitter: EventEmitterService,
-    private readonly settingService: SettingService,
+
     private readonly tenantContextResolver: TenantContextResolver,
     private readonly appState: AppStateService,
   ) {}
@@ -156,15 +155,15 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
   }
 
   private async reloadAllowedOrigins(tenantId: string): Promise<void> {
-    let raw: string | null = null
+    // let raw: string | null = null
 
-    try {
-      raw = await this.settingService.get('http.cors.allowedOrigins', { tenantId })
-    } catch (error) {
-      this.logger.warn('Failed to load CORS configuration from settings for tenant', tenantId, error)
-    }
+    // try {
+    //   raw = await this.settingService.get('http.cors.allowedOrigins', { tenantId })
+    // } catch (error) {
+    //   this.logger.warn('Failed to load CORS configuration from settings for tenant', tenantId, error)
+    // }
 
-    this.updateAllowedOrigins(tenantId, raw)
+    this.updateAllowedOrigins(tenantId, null)
   }
 
   private updateAllowedOrigins(tenantId: string, next: string | null): void {

@@ -7,6 +7,5 @@ import { SystemSettingStore } from './system-setting.store.service'
 @Module({
   imports: [DatabaseModule],
   providers: [SystemSettingStore, SystemSettingService],
-  exports: [SystemSettingStore, SystemSettingService],
 })
 export class SystemSettingModule {}

@@ -86,3 +86,11 @@ export function buildTenantUrl(slug: string, path = '/'): string {
 
   return `${scheme}//${normalizedSlug}.${baseDomain}${portSegment}${normalizedPath}`
 }
+
+export function buildRootTenantUrl(path = '/root-login'): string {
+  try {
+    return buildTenantUrl('root', path)
+  } catch {
+    return path
+  }
+}

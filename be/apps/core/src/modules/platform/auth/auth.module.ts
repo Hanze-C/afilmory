@@ -9,11 +9,10 @@ import { AuthConfig } from './auth.config'
 import { AuthController } from './auth.controller'
 import { AuthProvider } from './auth.provider'
 import { AuthRegistrationService } from './auth-registration.service'
-import { RootAccountProvisioner } from './root-account.service'
 
 @Module({
   imports: [DatabaseModule, SystemSettingModule, SettingModule, TenantModule, AppStateModule],
   controllers: [AuthController],
-  providers: [AuthProvider, AuthConfig, AuthRegistrationService, RootAccountProvisioner],
+  providers: [AuthProvider, AuthConfig, AuthRegistrationService],
 })
 export class AuthModule {}

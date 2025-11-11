@@ -133,10 +133,6 @@ export function Component() {
                   </p>
                 </div>
                 <SocialAuthButtons layout="row" title="" />
-                <p className="text-text-tertiary text-xs">
-                  Need to access the root administrator account? Use the dashboard base domain to sign in with email and
-                  password.
-                </p>
               </div>
             </div>
           )}

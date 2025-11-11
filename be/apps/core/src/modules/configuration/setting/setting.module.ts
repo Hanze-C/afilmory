@@ -8,6 +8,5 @@ import { SettingService } from './setting.service'
   imports: [DatabaseModule],
   providers: [SettingService],
   controllers: [SettingController],
-  exports: [SettingService],
 })
 export class SettingModule {}

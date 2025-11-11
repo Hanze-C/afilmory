@@ -36,7 +36,6 @@ export const RESERVED_SLUGS = [
 
   // 站点级别
   'www', 'home', 'landing', 'index', 'holding', 'test', 'dev', 'beta', 'staging',
-
   // 其他常见保留词
   'search', 'explore', 'discover', 'new', 'create', 'edit', 'update', 'delete', 'remove',
   'api-docs', 'health', 'ping', 'robots', 'sitemap', 'manifest', 'favicon', 'version',

@@ -16,6 +16,7 @@ const TENANT_NOT_FOUND_ERROR_CODE = 20
 const TENANT_MISSING_ERROR_CODES = new Set([AUTH_TENANT_NOT_FOUND_ERROR_CODE, TENANT_NOT_FOUND_ERROR_CODE])
 const {
   LOGIN: DEFAULT_LOGIN_PATH,
+  ROOT_LOGIN: ROOT_LOGIN_PATH,
   TENANT_MISSING: TENANT_MISSING_PATH,
   DEFAULT_AUTHENTICATED: DEFAULT_AUTHENTICATED_PATH,
   SUPERADMIN_ROOT: SUPERADMIN_ROOT_PATH,
@@ -130,9 +131,10 @@ export function usePageRedirect() {
     const session = sessionQuery.data
     const isSuperAdmin = session?.user.role === 'superadmin'
     const isOnSuperAdminPage = pathname.startsWith(SUPERADMIN_ROOT_PATH)
+    const isOnRootLoginPage = pathname === ROOT_LOGIN_PATH
 
     if (session && isSuperAdmin) {
-      if (!isOnSuperAdminPage || pathname === DEFAULT_LOGIN_PATH) {
+      if (!isOnSuperAdminPage || pathname === DEFAULT_LOGIN_PATH || isOnRootLoginPage) {
         navigate(SUPERADMIN_DEFAULT_PATH, { replace: true })
       }
       return
@@ -148,7 +150,7 @@ export function usePageRedirect() {
       return
     }
 
-    if (session && pathname === DEFAULT_LOGIN_PATH) {
+    if (session && (pathname === DEFAULT_LOGIN_PATH || pathname === ROOT_LOGIN_PATH)) {
       navigate(DEFAULT_AUTHENTICATED_PATH, { replace: true })
     }
   }, [location, location.pathname, navigate, sessionQuery.data, sessionQuery.isError, sessionQuery.isPending])

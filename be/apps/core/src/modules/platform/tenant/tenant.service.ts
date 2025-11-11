@@ -1,18 +1,19 @@
 import { isTenantSlugReserved } from '@afilmory/utils'
 import { BizException, ErrorCode } from 'core/errors'
-import { AppStateService } from 'core/modules/infrastructure/app-state/app-state.service'
 import { injectable } from 'tsyringe'
 
-import { PLACEHOLDER_TENANT_NAME, PLACEHOLDER_TENANT_SLUG } from './tenant.constants'
+import {
+  PLACEHOLDER_TENANT_NAME,
+  PLACEHOLDER_TENANT_SLUG,
+  ROOT_TENANT_NAME,
+  ROOT_TENANT_SLUG,
+} from './tenant.constants'
 import { TenantRepository } from './tenant.repository'
 import type { TenantAggregate, TenantContext, TenantResolutionInput } from './tenant.types'
 
 @injectable()
 export class TenantService {
-  constructor(
-    private readonly repository: TenantRepository,
-    private readonly appState: AppStateService,
-  ) {}
+  constructor(private readonly repository: TenantRepository) {}
 
   async createTenant(payload: { name: string; slug: string }): Promise<TenantAggregate> {
     const normalizedSlug = this.normalizeSlug(payload.slug)
@@ -27,12 +28,10 @@ export class TenantService {
       throw new BizException(ErrorCode.TENANT_SLUG_RESERVED)
     }
 
-    const aggregate = await this.repository.createTenant({
+    return await this.repository.createTenant({
       ...payload,
       slug: normalizedSlug,
     })
-    await this.appState.markInitialized()
-    return aggregate
   }
 
   async ensurePlaceholderTenant(): Promise<TenantAggregate> {
@@ -49,6 +48,18 @@ export class TenantService {
 
   getPlaceholderTenantSlug(): string {
     return PLACEHOLDER_TENANT_SLUG
+  }
+
+  async ensureRootTenant(): Promise<TenantAggregate> {
+    const existing = await this.repository.findBySlug(ROOT_TENANT_SLUG)
+    if (existing) {
+      return existing
+    }
+
+    return await this.repository.createTenant({
+      name: ROOT_TENANT_NAME,
+      slug: ROOT_TENANT_SLUG,
+    })
   }
 
   async isPlaceholderTenantId(tenantId: string | null | undefined): Promise<boolean> {

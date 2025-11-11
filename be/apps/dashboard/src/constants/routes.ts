@@ -1,5 +1,6 @@
 export const ROUTE_PATHS = {
   LOGIN: '/login',
+  ROOT_LOGIN: '/root-login',
   WELCOME: '/welcome',
   TENANT_MISSING: '/tenant-missing',
   DEFAULT_AUTHENTICATED: '/',
@@ -10,6 +11,7 @@ export const ROUTE_PATHS = {
 
 export const PUBLIC_ROUTES = new Set<string>([
   ROUTE_PATHS.LOGIN,
+  ROUTE_PATHS.ROOT_LOGIN,
   ROUTE_PATHS.WELCOME,
   ROUTE_PATHS.TENANT_MISSING,
   ROUTE_PATHS.NO_ACCESS,
