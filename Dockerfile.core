@@ -32,6 +32,9 @@ WORKDIR /app
 RUN apk add --no-cache perl
 COPY --from=builder /workspace/be/apps/core/dist ./dist
 COPY --from=builder /workspace/be/packages/db/migrations ./migrations
+COPY --from=builder /workspace/be/apps/core/docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN chmod +x ./docker-entrypoint.sh
 
 RUN if [ -f dist/package.json ]; then \
   cd dist && \
@@ -40,4 +43,5 @@ RUN if [ -f dist/package.json ]; then \
 
 EXPOSE 1841
 
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "./dist/main.js"]

@@ -1,3 +1,5 @@
+import type { MigrationCliOptions } from './migrate'
+import { handleMigrationCli, parseMigrationCliArgs } from './migrate'
 import type { ResetCliOptions } from './reset-superadmin'
 import { handleResetSuperAdminPassword, parseResetCliArgs } from './reset-superadmin'
 
@@ -9,6 +11,14 @@ type CliCommand<TOptions> = {
 }
 
 const cliCommands: Array<CliCommand<unknown>> = [
+  {
+    name: 'db:migrate',
+    parse: parseMigrationCliArgs,
+    execute: (options) => handleMigrationCli(options as MigrationCliOptions),
+    onError: (error) => {
+      console.error('Database migration failed', error)
+    },
+  },
   {
     name: 'reset-superadmin-password',
     parse: parseResetCliArgs,
