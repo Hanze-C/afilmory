@@ -5,15 +5,14 @@
 
 /**
  * 阴影层级系统
- * 从 subtle（轻微）到 heavy（强烈）
- * 针对浅色背景优化，使用更柔和的阴影
+ * 针对浅色背景优化，使用极简阴影
  */
 export const shadows = {
-  subtle: 'shadow-[0_2px_8px_rgba(0,0,0,0.02)]',
-  light: 'shadow-[0_4px_16px_rgba(0,0,0,0.04)]',
-  medium: 'shadow-[0_8px_24px_rgba(0,0,0,0.06)]',
-  strong: 'shadow-[0_12px_32px_rgba(0,0,0,0.08)]',
-  heavy: 'shadow-[0_16px_48px_rgba(0,0,0,0.10)]',
+  subtle: 'shadow-none',
+  light: 'shadow-none',
+  medium: 'shadow-none',
+  strong: 'shadow-none',
+  heavy: 'shadow-none',
 } as const
 
 /**

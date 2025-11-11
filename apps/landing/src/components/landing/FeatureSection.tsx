@@ -7,43 +7,43 @@ import { FeatureCard } from './Card'
 
 const featureGroups = [
   {
-    icon: 'i-lucide-cpu',
-    title: '性能与体验',
-    description: 'WebGL viewer、Masonry 布局与全屏手势带来原生级互动。',
+    icon: 'i-lucide-sparkles',
+    title: '精美展示',
+    description: '瀑布流布局自动适配，让每张照片都以最佳方式呈现',
     bullets: [
-      'GPU 管线渲染 · Free transform · Tone mapping',
-      'Blurhash 占位、响应式断点与浮动操作面板',
-      'Glassmorphic Depth 系统 + Motion spring 动画',
+      '智能排版算法，完美利用屏幕空间',
+      '流畅的加载动画，媲美专业杂志',
+      '支持高清大图，不损失画质细节',
     ],
   },
   {
-    icon: 'i-lucide-database',
-    title: '数据与同步',
-    description: 'builder 多进程处理 + manifest 驱动数据流，自动增量同步。',
+    icon: 'i-lucide-image',
+    title: '照片管理',
+    description: '自动识别相机信息，保留每张照片背后的故事',
     bullets: [
-      'S3 / GitHub / Eagle / 本地多源存储抽象',
-      'EXIF、Live Photo、Fujifilm Recipe 与缩略图生成',
-      'window.__MANIFEST__ 注入，前端无感刷新',
+      '自动读取相机型号、镜头和拍摄参数',
+      '支持 Apple Live Photo 动态照片',
+      '记录拍摄地点，在地图上回顾旅程',
     ],
   },
   {
-    icon: 'i-lucide-plug',
-    title: '接入模式',
-    description: 'SPA、Next.js SSR、be/apps/core 后端三种模式自由切换。',
+    icon: 'i-lucide-share-2',
+    title: '便捷分享',
+    description: '一键生成分享链接，让更多人看到你的作品',
     bullets: [
-      '静态/SSR 共享 UI：apps/web + apps/ssr',
-      'be/apps/core 以 Hono + Drizzle 提供实时能力',
-      'OG 渲染 / SEO 元数据 / OpenGraph API',
+      '精美的社交媒体预览卡片',
+      '支持单张照片快速分享',
+      '自动生成作品集展示页面',
     ],
   },
   {
-    icon: 'i-lucide-globe',
-    title: '全球化 & 分享',
-    description: '多语言、OG、分享嵌入，天然适合出海作品集。',
+    icon: 'i-lucide-zap',
+    title: '快速搭建',
+    description: '无需编程知识，5分钟即可拥有专业摄影网站',
     bullets: [
-      'i18next 平台化，11+ 语言文件',
-      '动态 OG 图 + /og/[photoId] API',
-      '分享/嵌入组件、一键复制链接或 iframe',
+      '提供详细的使用文档和教程',
+      '支持多种部署方式，完全免费',
+      '持续更新优化，长期维护支持',
     ],
   },
 ]
@@ -52,14 +52,13 @@ export const FeatureSection = () => (
   <section className={spacing.content}>
     <header className={spacing.tight}>
       <p className="text-text-secondary text-sm font-semibold tracking-[0.3em] uppercase">
-        核心能力
+        为什么选择 Afilmory
       </p>
       <h2 className={clsxm(typography.h1, 'text-white')}>
-        从性能到叙事的全链路方案
+        让你的作品得到应有的关注
       </h2>
       <p className="text-text-secondary max-w-3xl text-base">
-        项目按照 Performance / Data / Integrations / Global Experience
-        四个维度拆分，便于独立扩展与部署。
+        专为摄影师设计，无论你是专业摄影师还是摄影爱好者，都能轻松打造属于自己的作品展示空间。
       </p>
     </header>
 

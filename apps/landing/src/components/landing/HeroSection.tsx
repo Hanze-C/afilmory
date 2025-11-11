@@ -8,44 +8,44 @@ import { blur } from '~/lib/design-tokens'
 import { clsxm } from '~/lib/helper'
 
 const heroHighlights = [
-  { title: 'WebGL Viewer', description: '60fps 缩放 / 漫游 / HDR' },
-  { title: 'Manifest 驱动', description: 'window.__MANIFEST__ 即时注入' },
-  { title: '地图探索', description: 'MapLibre GPS / Cluster / Heatmap' },
+  { title: '丝滑流畅', description: '像翻阅实体相册般顺滑' },
+  { title: '地图旅程', description: '在世界地图上回顾足迹' },
+  { title: '完整记忆', description: '保留每张照片的故事' },
 ]
 
 const heroTiles = [
   {
     id: 'tile-masonry',
-    title: 'Masonry Flow',
-    subtitle: '自适应列 · Blurhash 过渡',
-    badge: 'GPU',
+    title: '智能布局',
+    subtitle: '自动排列，完美呈现',
+    badge: '瀑布流',
     className: 'col-span-2 row-span-2',
     gradient:
       'linear-gradient(135deg, rgba(100,160,220,0.35), rgba(140,200,255,0.2))',
   },
   {
     id: 'tile-exif',
-    title: 'EXIF',
-    subtitle: 'Fujifilm Recipe · HDR',
-    badge: 'metadata',
+    title: '拍摄信息',
+    subtitle: '相机 · 镜头 · 参数',
+    badge: '详细',
     className: 'col-span-1 row-span-1',
     gradient:
       'linear-gradient(135deg, rgba(160,140,200,0.35), rgba(200,180,255,0.2))',
   },
   {
     id: 'tile-map',
-    title: 'Map Explorer',
-    subtitle: 'GPS Cluster / Heatmap',
-    badge: 'MapLibre',
+    title: '世界地图',
+    subtitle: '旅行轨迹可视化',
+    badge: '探索',
     className: 'col-span-1 row-span-2',
     gradient:
       'linear-gradient(135deg, rgba(100,200,180,0.35), rgba(140,240,220,0.2))',
   },
   {
     id: 'tile-viewer',
-    title: 'Fullscreen Viewer',
-    subtitle: 'Live Photo / 分享',
-    badge: 'viewer',
+    title: '沉浸查看',
+    subtitle: '全屏 · 动态照片',
+    badge: '体验',
     className: 'col-span-2 row-span-1',
     gradient:
       'linear-gradient(135deg, rgba(255,180,120,0.35), rgba(255,210,160,0.2))',
@@ -57,20 +57,19 @@ export const HeroSection = () => (
     <div className="flex flex-1 flex-col gap-8">
       <span className="text-accent/90 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-sm backdrop-blur">
         <i className="i-lucide-sparkles size-4" aria-hidden />
-        Glassmorphic Depth Design System
+        为摄影师打造的展示平台
       </span>
 
       <div className="space-y-5">
         <h1 className="text-4xl leading-tight font-semibold text-white sm:text-5xl lg:text-6xl">
           Afilmory
           <span className="via-accent block bg-gradient-to-r from-sky-300 to-purple-400 bg-clip-text text-transparent">
-            让照片叙事具备科幻感
+            让每一张照片都值得被看见
           </span>
         </h1>
         <p className="text-text-secondary max-w-2xl text-base sm:text-lg">
-          以 WebGL、Motion 与 manifest 驱动的全栈照片站框架。支持增量同步、EXIF
-          深度解析、MapLibre 地理探索，以及 Next.js 提供的 SEO / OG
-          能力，帮你轻松打造沉浸式影像叙事。
+          优雅展示你的摄影作品，自动记录拍摄信息，在地图上标注旅行足迹。
+          无论是专业摄影师还是摄影爱好者，都能快速搭建属于自己的影像世界。
         </p>
       </div>
 
@@ -84,7 +83,7 @@ export const HeroSection = () => (
             target="_blank"
             rel="noreferrer"
           >
-            立即体验
+            在线预览
           </Link>
         </Button>
         <Button asChild variant="secondary">
@@ -93,7 +92,7 @@ export const HeroSection = () => (
             target="_blank"
             rel="noreferrer"
           >
-            查看 README
+            了解更多
           </Link>
         </Button>
         <Link
@@ -102,7 +101,7 @@ export const HeroSection = () => (
           rel="noreferrer"
           className="group text-text-secondary hover:text-text inline-flex items-center gap-1.5 text-sm transition"
         >
-          <span>Star on GitHub</span>
+          <span>免费使用</span>
           <i className="i-lucide-arrow-up-right size-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Link>
       </div>
@@ -137,7 +136,7 @@ const HeroPreview = () => (
           <m.div
             key={tile.id}
             className={clsxm(
-              'group relative overflow-hidden rounded-[28px] border border-white/20 bg-white/40 p-4 text-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.06)] backdrop-blur-xl',
+              'group relative overflow-hidden rounded-[28px] border border-white/20 bg-white/40 p-4 text-gray-800 backdrop-blur-xl',
               tile.className,
             )}
             style={{ backgroundImage: tile.gradient }}
@@ -168,7 +167,7 @@ const HeroPreview = () => (
       <m.div
         aria-hidden
         className={clsxm(
-          'absolute top-4 -right-6 w-56 rounded-3xl border border-white/20 bg-white/60 p-4 text-sm text-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)]',
+          'absolute top-4 -right-6 w-56 rounded-3xl border border-white/20 bg-white/60 p-4 text-sm text-gray-800',
           blur['2xl'],
         )}
         initial={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -176,22 +175,22 @@ const HeroPreview = () => (
         transition={{ delay: 0.35, duration: 0.6, ease: 'easeOut' }}
       >
         <div className="flex items-center justify-between text-xs font-medium text-gray-600">
-          window.__MANIFEST__
+          照片集合
           <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] text-cyan-700">
-            hydrated
+            已加载
           </span>
         </div>
-        <div className="mt-3 space-y-2 font-mono text-[11px] leading-relaxed text-gray-700">
-          <p>{'{ data: 2048 photos }'}</p>
-          <p>{'cameras: 12 · lenses: 18'}</p>
-          <p>{'blurhash: true · livePhoto: 86'}</p>
+        <div className="mt-3 space-y-2 text-[11px] leading-relaxed text-gray-700">
+          <p>2,048 张照片</p>
+          <p>12 台相机 · 18 支镜头</p>
+          <p>86 张 Live Photo</p>
         </div>
       </m.div>
 
       <m.div
         aria-hidden
         className={clsxm(
-          'absolute bottom-6 -left-6 w-60 rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-100/60 to-white/60 p-4 text-sm shadow-[0_8px_32px_rgba(0,0,0,0.08)]',
+          'absolute bottom-6 -left-6 w-60 rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-100/60 to-white/60 p-4 text-sm',
           blur['2xl'],
         )}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -200,14 +199,12 @@ const HeroPreview = () => (
       >
         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
           <i className="i-lucide-map-pin size-4" />
-          Map Explorer
+          旅行地图
         </div>
-        <p className="mt-3 text-xs text-gray-700">
-          242 geotagged stories online.
-        </p>
+        <p className="mt-3 text-xs text-gray-700">242 个地点的影像记录</p>
         <div className="mt-4 flex items-center justify-between text-[11px] text-gray-600">
-          <span>Cluster · Heatmap</span>
-          <span>↗︎ fully interactive</span>
+          <span>聚类显示 · 热力图</span>
+          <span>↗︎ 可交互探索</span>
         </div>
       </m.div>
     </div>

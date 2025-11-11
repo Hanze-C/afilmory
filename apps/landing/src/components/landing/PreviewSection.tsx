@@ -7,22 +7,22 @@ import { IconCard } from './Card'
 
 const previewHighlights = [
   {
-    icon: 'i-lucide-aperture',
-    title: 'EXIF HUD',
-    description: '完整记录光圈、快门、ISO、镜头、配方、HDR 信息。',
+    icon: 'i-lucide-camera',
+    title: '拍摄参数',
+    description: '自动记录每张照片的相机、镜头、光圈、快门等信息',
     meta: 'f/1.4 · 1/125s · ISO 200',
   },
   {
-    icon: 'i-lucide-map',
-    title: '地图探索',
-    description: 'MapLibre 地图、GPS 聚合、热力探索每一次旅程。',
-    meta: '84% 带 GPS · Cluster & Pin',
+    icon: 'i-lucide-map-pin',
+    title: '地点标记',
+    description: '在世界地图上查看你的摄影足迹，重温每次旅行',
+    meta: '支持 GPS 定位',
   },
   {
-    icon: 'i-lucide-maximize',
-    title: 'Fullscreen Viewer',
-    description: 'WebGL 全屏查看器支持手势、Live Photo 与分享。',
-    meta: '手势 · 分享 · Live',
+    icon: 'i-lucide-expand',
+    title: '全屏欣赏',
+    description: '沉浸式大图查看，支持动态照片和一键分享',
+    meta: '手势操作 · 快速分享',
   },
 ]
 
@@ -30,15 +30,14 @@ export const PreviewSection = () => (
   <section className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
     <div className="space-y-6">
       <p className="text-text-secondary text-sm font-semibold tracking-[0.3em] uppercase">
-        即刻预览
+        核心功能
       </p>
       <h2 className={clsxm(typography.h1, 'text-white')}>
-        沉浸式图库体验的每个细节
+        专为摄影作品设计的展示方式
       </h2>
       <p className="text-text-secondary text-base">
-        Masonry 布局、MapLibre 地图、WebGL Viewer、EXIF HUD 等模块相互呼应，通过
-        motion 的 spring 动画与 glassmorphic
-        深度层级，构建出一个既具未来感又保持性能稳定的浏览体验。
+        智能瀑布流布局让每张照片都有最佳呈现，流畅的动画过渡带来杂志般的阅读体验。
+        无论是在电脑还是手机上，都能完美展示你的作品。
       </p>
 
       <div className="space-y-4">
@@ -87,11 +86,11 @@ const PreviewMockup = () => (
       </div>
       <div className="bg-background/70 text-text-secondary mt-6 rounded-2xl border border-white/10 p-4 text-sm">
         <div className="text-text flex items-center justify-between">
-          <span className="font-medium">EXIF · X-T5 · XF16mmF1.4</span>
-          <span className="text-text-tertiary text-xs">Map locked</span>
+          <span className="font-medium">富士 X-T5 · 16mm f/1.4</span>
+          <span className="text-text-tertiary text-xs">📍 东京</span>
         </div>
         <p className="text-text-secondary mt-2">
-          GPS 35.6895 / 139.6917 · Fujifilm Classic Chrome · Blurhash ready.
+          经典负片模拟 · 拍摄于 2024 年 3 月
         </p>
       </div>
     </div>

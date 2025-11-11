@@ -8,10 +8,10 @@ import { clsxm } from '~/lib/helper'
 import { MetricCard } from './Card'
 
 const metrics = [
-  { label: 'WebGL 渲染', value: '60fps', detail: '平移 · 缩放 · HDR' },
-  { label: '增量同步', value: 'S3 · GitHub', detail: '多存储后端' },
-  { label: '照片节点', value: '2k+', detail: 'EXIF · Live Photo · Blurhash' },
-  { label: '多语言', value: '11', detail: 'i18n · 动态 OG' },
+  { label: '流畅体验', value: '丝滑', detail: '杂志般的浏览感受' },
+  { label: '多端适配', value: '响应式', detail: '手机 · 平板 · 电脑' },
+  { label: '照片容量', value: '不限', detail: '支持大量照片展示' },
+  { label: '完全免费', value: '开源', detail: '永久免费使用' },
 ]
 
 export const MetricStrip = () => (
