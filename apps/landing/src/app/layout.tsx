@@ -14,8 +14,6 @@ import { InitInClient } from './InitInClient'
 
 init()
 
-export const revalidate = 60
-
 export function generateViewport(): Viewport {
   return {
     themeColor: [

@@ -11,7 +11,7 @@ const isProd = process.env.NODE_ENV === 'production'
 let nextConfig: NextConfig = {
   reactStrictMode: false,
   productionBrowserSourceMaps: true,
-  output: 'standalone',
+  output: 'export',
   assetPrefix: isProd ? env.ASSETPREFIX || undefined : undefined,
   compiler: {
     // reactRemoveProperties: { properties: ['^data-id$', '^data-(\\w+)-id$'] },
