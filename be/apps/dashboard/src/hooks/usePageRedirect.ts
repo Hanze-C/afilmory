@@ -163,7 +163,7 @@ export function usePageRedirect() {
       return
     }
 
-    const {tenant} = session
+    const { tenant } = session
     if (!tenant || tenant.isPlaceholder || !tenant.slug) {
       return
     }
@@ -179,7 +179,15 @@ export function usePageRedirect() {
 
     try {
       const targetUrl = buildTenantUrl(tenant.slug, '/')
-      window.location.replace(targetUrl)
+      ;(async () => {
+        try {
+          await signOutBySource()
+        } catch (error) {
+          console.error('Failed to clear placeholder session before redirect', error)
+        } finally {
+          window.location.replace(targetUrl)
+        }
+      })()
     } catch (error) {
       console.error('Failed to redirect to tenant workspace', error)
     }
