@@ -42,6 +42,8 @@ const STAGE_ORDER: PhotoSyncProgressStage[] = [
   'status-reconciliation',
 ]
 
+const MAX_SYNC_LOGS = 200
+
 function createInitialStages(totals: PhotoSyncProgressState['totals']): PhotoSyncProgressState['stages'] {
   return STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
     (acc, stage) => {
@@ -109,6 +111,7 @@ export function PhotoPage() {
           stages: createInitialStages(totals),
           startedAt: Date.now(),
           updatedAt: Date.now(),
+          logs: [],
           lastAction: undefined,
           error: undefined,
         })
@@ -132,6 +135,34 @@ export function PhotoPage() {
               }
             : prev,
         )
+        return
+      }
+
+      if (event.type === 'log') {
+        setSyncProgress((prev) => {
+          if (!prev) {
+            return prev
+          }
+
+          const parsedTimestamp = Date.parse(event.payload.timestamp)
+          const entry = {
+            id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            timestamp: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp,
+            level: event.payload.level,
+            message: event.payload.message,
+            stage: event.payload.stage ?? null,
+            storageKey: event.payload.storageKey ?? undefined,
+            details: event.payload.details ?? null,
+          }
+
+          const nextLogs = prev.logs.length >= MAX_SYNC_LOGS ? [...prev.logs.slice(1), entry] : [...prev.logs, entry]
+
+          return {
+            ...prev,
+            logs: nextLogs,
+            updatedAt: Date.now(),
+          }
+        })
         return
       }
 

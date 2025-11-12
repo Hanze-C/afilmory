@@ -78,6 +78,17 @@ export interface PhotoSyncStageTotals {
   'status-reconciliation': number
 }
 
+export type PhotoSyncLogLevel = 'info' | 'success' | 'warn' | 'error'
+
+export interface PhotoSyncLogPayload {
+  level: PhotoSyncLogLevel
+  message: string
+  timestamp: string
+  stage?: PhotoSyncProgressStage | null
+  storageKey?: string
+  details?: Record<string, unknown> | null
+}
+
 export type PhotoSyncProgressEvent =
   | {
       type: 'start'
@@ -117,6 +128,10 @@ export type PhotoSyncProgressEvent =
         message: string
       }
     }
+  | {
+      type: 'log'
+      payload: PhotoSyncLogPayload
+    }
 
 export type PhotoSyncStageStatus = 'pending' | 'running' | 'completed'
 
@@ -134,6 +149,7 @@ export interface PhotoSyncProgressState {
   >
   startedAt: number
   updatedAt: number
+  logs: PhotoSyncLogEntry[]
   lastAction?: {
     stage: PhotoSyncProgressStage
     index: number
@@ -141,6 +157,16 @@ export interface PhotoSyncProgressState {
     action: PhotoSyncAction
   }
   error?: string
+}
+
+export interface PhotoSyncLogEntry {
+  id: string
+  timestamp: number
+  level: PhotoSyncLogLevel
+  message: string
+  stage?: PhotoSyncProgressStage | null
+  storageKey?: string
+  details?: Record<string, unknown> | null
 }
 
 export interface PhotoAssetManifestPayload {

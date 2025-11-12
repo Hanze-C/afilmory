@@ -2,7 +2,7 @@ import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 
 import { getConflictTypeLabel, PHOTO_ACTION_TYPE_CONFIG } from '../../constants'
-import type { PhotoSyncAction, PhotoSyncProgressStage, PhotoSyncProgressState } from '../../types'
+import type { PhotoSyncAction, PhotoSyncLogLevel, PhotoSyncProgressStage, PhotoSyncProgressState } from '../../types'
 import { BorderOverlay } from './PhotoSyncResultPanel'
 
 const STAGE_CONFIG: Record<PhotoSyncProgressStage, { label: string; description: string }> = {
@@ -37,6 +37,13 @@ const STATUS_LABEL: Record<PhotoSyncProgressState['stages'][PhotoSyncProgressSta
   completed: '已完成',
 }
 
+const LOG_LEVEL_CONFIG: Record<PhotoSyncLogLevel, { label: string; className: string }> = {
+  info: { label: '信息', className: 'border border-sky-500/30 bg-sky-500/10 text-sky-200' },
+  success: { label: '成功', className: 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' },
+  warn: { label: '警告', className: 'border border-amber-500/30 bg-amber-500/10 text-amber-200' },
+  error: { label: '错误', className: 'border border-rose-500/30 bg-rose-500/10 text-rose-200' },
+}
+
 const SUMMARY_FIELDS: Array<{
   key: keyof PhotoSyncProgressState['summary']
   label: string
@@ -45,6 +52,20 @@ const SUMMARY_FIELDS: Array<{
   { key: 'updated', label: '更新' },
   { key: 'conflicts', label: '冲突' },
 ]
+
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+
+function formatLogTimestamp(timestamp: number): string {
+  try {
+    return timeFormatter.format(timestamp)
+  } catch {
+    return '--:--:--'
+  }
+}
 
 type PhotoSyncProgressPanelProps = {
   progress: PhotoSyncProgressState
@@ -94,6 +115,7 @@ export function PhotoSyncProgressPanel({ progress }: PhotoSyncProgressPanelProps
   }))
 
   const { lastAction } = progress
+  const recentLogs = progress.logs.slice(-8).reverse()
 
   return (
     <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-6">
@@ -146,6 +168,63 @@ export function PhotoSyncProgressPanel({ progress }: PhotoSyncProgressPanelProps
           </div>
         ))}
       </div>
+
+      {recentLogs.length > 0 ? (
+        <div className="border-border/20 bg-fill/10 mt-6 overflow-hidden rounded-lg border p-4">
+          <BorderOverlay />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-text text-sm font-semibold">构建日志</p>
+            <span className="text-text-tertiary text-xs">最新 {recentLogs.length} 条</span>
+          </div>
+          <div className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1">
+            {recentLogs.map((log) => {
+              const levelConfig = LOG_LEVEL_CONFIG[log.level]
+              const details = (log.details ?? null) as Record<string, unknown> | null
+              const photoId = details && typeof details['photoId'] === 'string' ? (details['photoId'] as string) : null
+              const resultType =
+                details && typeof details['resultType'] === 'string' ? (details['resultType'] as string) : null
+              const error = details && typeof details['error'] === 'string' ? (details['error'] as string) : null
+              const hasExisting =
+                details && typeof details['hasExistingManifest'] === 'boolean'
+                  ? (details['hasExistingManifest'] as boolean)
+                  : null
+              const hasLivePhotoMap =
+                details && typeof details['hasLivePhotoMap'] === 'boolean'
+                  ? (details['hasLivePhotoMap'] as boolean)
+                  : null
+
+              const detailSegments: string[] = []
+              if (photoId) detailSegments.push(`ID ${photoId}`)
+              if (resultType) detailSegments.push(`结果 ${resultType}`)
+              if (typeof hasExisting === 'boolean') {
+                detailSegments.push(hasExisting ? '包含历史 manifest' : '无历史 manifest')
+              }
+              if (typeof hasLivePhotoMap === 'boolean') {
+                detailSegments.push(hasLivePhotoMap ? '包含 Live Photo' : '无 Live Photo')
+              }
+              if (error) detailSegments.push(`错误 ${error}`)
+
+              return (
+                <div
+                  key={log.id}
+                  className="bg-background-secondary/40 text-text flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-xs"
+                >
+                  <span className="text-text-tertiary tabular-nums">{formatLogTimestamp(log.timestamp)}</span>
+                  <span className={`${levelConfig.className} rounded-full px-2 py-0.5 text-[11px] font-medium`}>
+                    {levelConfig.label}
+                  </span>
+                  <span className="text-text">{log.message}</span>
+                  {log.storageKey ? <code className="text-text-secondary">{log.storageKey}</code> : null}
+                  {log.stage ? <span className="text-text-tertiary">{STAGE_CONFIG[log.stage].label}</span> : null}
+                  {detailSegments.length > 0 ? (
+                    <span className="text-text-tertiary">{detailSegments.join(' · ')}</span>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {lastAction ? (
         <div className="border-border/20 bg-fill/10 mt-6 overflow-hidden rounded-lg border p-4">

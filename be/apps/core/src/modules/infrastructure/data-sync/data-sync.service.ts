@@ -14,6 +14,7 @@ import type {
   ConflictPayload,
   DataSyncAction,
   DataSyncConflict,
+  DataSyncLogLevel,
   DataSyncOptions,
   DataSyncProgressEmitter,
   DataSyncProgressStage,
@@ -368,6 +369,10 @@ export class DataSyncService {
 
       const result = await this.safeProcessStorageObject(storageObject, builder, {
         livePhotoMap,
+        progress: {
+          emitter: onProgress,
+          stage: 'missing-in-db',
+        },
       })
 
       if (!result?.item) {
@@ -944,6 +949,33 @@ export class DataSyncService {
     })
   }
 
+  private async emitLog(
+    emitter: DataSyncProgressEmitter | undefined,
+    payload: {
+      level: DataSyncLogLevel
+      message: string
+      stage?: DataSyncProgressStage | null
+      storageKey?: string
+      details?: Record<string, unknown> | null
+    },
+  ): Promise<void> {
+    if (!emitter) {
+      return
+    }
+
+    await emitter({
+      type: 'log',
+      payload: {
+        level: payload.level,
+        message: payload.message,
+        stage: payload.stage ?? null,
+        storageKey: payload.storageKey,
+        details: payload.details ?? null,
+        timestamp: new Date().toISOString(),
+      },
+    })
+  }
+
   private async emitComplete(emitter: DataSyncProgressEmitter | undefined, result: DataSyncResult): Promise<void> {
     if (!emitter) {
       return
@@ -1035,10 +1067,29 @@ export class DataSyncService {
     options: {
       existing?: PhotoManifestItem | null
       livePhotoMap?: Map<string, StorageObject>
+      progress?: {
+        emitter?: DataSyncProgressEmitter
+        stage?: DataSyncProgressStage | null
+      }
     },
   ) {
+    const progressContext = options.progress
+    const stage = progressContext?.stage ?? null
+    const emitter = progressContext?.emitter
+
+    await this.emitLog(emitter, {
+      level: 'info',
+      message: '开始生成 manifest',
+      stage,
+      storageKey: storageObject.key,
+      details: {
+        hasExistingManifest: Boolean(options.existing),
+        hasLivePhotoMap: Boolean(options.livePhotoMap),
+      },
+    })
+
     try {
-      return await this.photoBuilderService.processPhotoFromStorageObject(storageObject, {
+      const result = await this.photoBuilderService.processPhotoFromStorageObject(storageObject, {
         existingItem: options.existing ?? undefined,
         livePhotoMap: options.livePhotoMap,
         processorOptions: {
@@ -1047,7 +1098,42 @@ export class DataSyncService {
         },
         builder,
       })
+
+      if (result?.item) {
+        await this.emitLog(emitter, {
+          level: 'success',
+          message: '生成 manifest 成功',
+          stage,
+          storageKey: storageObject.key,
+          details: {
+            photoId: result.item.id,
+            resultType: result.type ?? null,
+          },
+        })
+      } else {
+        await this.emitLog(emitter, {
+          level: 'warn',
+          message: '生成 manifest 未返回照片数据',
+          stage,
+          storageKey: storageObject.key,
+          details: {
+            resultType: result?.type ?? null,
+          },
+        })
+      }
+
+      return result
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      await this.emitLog(emitter, {
+        level: 'error',
+        message: '生成 manifest 失败',
+        stage,
+        storageKey: storageObject.key,
+        details: {
+          error: message,
+        },
+      })
       this.logger.error('Failed to process storage object', err)
       return null
     }

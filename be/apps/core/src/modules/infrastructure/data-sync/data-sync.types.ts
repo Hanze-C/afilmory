@@ -89,6 +89,17 @@ export interface DataSyncStageTotals {
   'status-reconciliation': number
 }
 
+export type DataSyncLogLevel = 'info' | 'success' | 'warn' | 'error'
+
+export interface DataSyncLogPayload {
+  level: DataSyncLogLevel
+  message: string
+  timestamp: string
+  stage?: DataSyncProgressStage | null
+  storageKey?: string
+  details?: Record<string, unknown> | null
+}
+
 export type DataSyncProgressEvent =
   | {
       type: 'start'
@@ -127,6 +138,10 @@ export type DataSyncProgressEvent =
       payload: {
         message: string
       }
+    }
+  | {
+      type: 'log'
+      payload: DataSyncLogPayload
     }
 
 export type DataSyncProgressEmitter = (event: DataSyncProgressEvent) => Promise<void> | void

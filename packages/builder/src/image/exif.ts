@@ -14,6 +14,9 @@ import type { PickedExif } from '../types/photo.js'
 export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buffer): Promise<PickedExif | null> {
   const log = getGlobalLoggers().exif
 
+  await mkdir('/tmp/image_process', { recursive: true })
+  const tempImagePath = path.resolve('/tmp/image_process', `${crypto.randomUUID()}.jpg`)
+
   try {
     log.info('开始提取 EXIF 数据')
 
@@ -35,14 +38,9 @@ export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buff
       return null
     }
 
-    await mkdir('/tmp/image_process', { recursive: true })
-    const tempImagePath = path.resolve('/tmp/image_process', `${crypto.randomUUID()}.jpg`)
-
     await writeFile(tempImagePath, originalBuffer || imageBuffer)
     const exifData = await exiftool.read(tempImagePath)
     const result = handleExifData(exifData, metadata)
-
-    await unlink(tempImagePath).catch(noop)
 
     if (!exifData) {
       log.warn('EXIF 数据解析失败')
@@ -59,6 +57,8 @@ export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buff
   } catch (error) {
     log.error('提取 EXIF 数据失败:', error)
     return null
+  } finally {
+    await unlink(tempImagePath).catch(noop)
   }
 }
 
