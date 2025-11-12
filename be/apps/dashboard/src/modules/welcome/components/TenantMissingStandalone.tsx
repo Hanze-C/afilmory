@@ -1,8 +1,6 @@
 import { Button } from '@afilmory/ui'
 import { useMemo } from 'react'
 
-import { resolveBaseDomain } from '~/modules/auth/utils/domain'
-
 import { LinearBorderContainer } from './LinearBorderContainer'
 
 const getCurrentHostname = () => {
@@ -22,10 +20,8 @@ const buildRegistrationUrl = () => {
   }
 
   try {
-    const { protocol, hostname, port } = window.location
-    const baseDomain = resolveBaseDomain(hostname) || hostname
-    const normalizedPort = port ? `:${port}` : ''
-    return `${protocol}//${baseDomain}${normalizedPort}/platform/welcome`
+    const { protocol, host } = window.location
+    return `${protocol}//${host}/platform/welcome`
   } catch {
     return '/platform/welcome'
   }

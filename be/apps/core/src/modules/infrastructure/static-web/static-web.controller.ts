@@ -1,5 +1,6 @@
 import { ContextParam, Controller, Get, Param } from '@afilmory/framework'
 import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
+import { PLACEHOLDER_TENANT_SLUG, ROOT_TENANT_SLUG } from 'core/modules/platform/tenant/tenant.constants'
 import { getTenantContext, isPlaceholderTenantContext } from 'core/modules/platform/tenant/tenant.context'
 import type { Context } from 'hono'
 
@@ -8,6 +9,7 @@ import { STATIC_DASHBOARD_BASENAME, StaticDashboardService } from './static-dash
 import { StaticWebService } from './static-web.service'
 
 const TENANT_MISSING_ENTRY_PATH = `${STATIC_DASHBOARD_BASENAME}/tenant-missing.html`
+const RESTRICTED_STATIC_WEB_TENANT_SLUGS = new Set([ROOT_TENANT_SLUG, PLACEHOLDER_TENANT_SLUG])
 
 @Controller({ bypassGlobalPrefix: true })
 export class StaticWebController {
@@ -27,6 +29,9 @@ export class StaticWebController {
   @Get(`/explory`)
   @SkipTenantGuard()
   async getStaticWebIndex(@ContextParam() context: Context) {
+    if (this.shouldBlockReservedTenantStaticWebAccess()) {
+      return await this.renderTenantMissingPage()
+    }
     if (this.shouldRenderTenantMissingPage()) {
       return await this.renderTenantMissingPage()
     }
@@ -40,6 +45,9 @@ export class StaticWebController {
 
   @Get(`/photos/:photoId`)
   async getStaticPhotoPage(@ContextParam() context: Context, @Param('photoId') photoId: string) {
+    if (this.shouldBlockReservedTenantStaticWebAccess()) {
+      return await this.renderTenantMissingPage()
+    }
     if (this.shouldRenderTenantMissingPage()) {
       return await this.renderTenantMissingPage()
     }
@@ -54,12 +62,14 @@ export class StaticWebController {
   @Get(`${STATIC_DASHBOARD_BASENAME}`)
   @Get(`${STATIC_DASHBOARD_BASENAME}/*`)
   async getStaticDashboardIndexWithBasename(@ContextParam() context: Context) {
-    const isHtmlRoute = this.isHtmlRoute(context.req.path)
-    if (isHtmlRoute && this.shouldRenderTenantMissingPage()) {
+    const pathname = context.req.path
+    const isHtmlRoute = this.isHtmlRoute(pathname)
+    const allowTenantlessAccess = isHtmlRoute && this.shouldAllowTenantlessDashboardAccess(pathname)
+    if (isHtmlRoute && !allowTenantlessAccess && this.shouldRenderTenantMissingPage()) {
       return await this.renderTenantMissingPage()
     }
     const response = await this.serve(context, this.staticDashboardService, false)
-    if (isHtmlRoute && response.status === 404) {
+    if (isHtmlRoute && !allowTenantlessAccess && response.status === 404) {
       return await this.renderTenantMissingPage()
     }
     return response
@@ -143,6 +153,39 @@ export class StaticWebController {
     }
 
     return !lastSegment.includes('.')
+  }
+
+  private shouldAllowTenantlessDashboardAccess(pathname: string): boolean {
+    const normalized = this.normalizePathname(pathname)
+    const welcomePath = `${STATIC_DASHBOARD_BASENAME}/welcome`
+    return normalized === welcomePath
+  }
+
+  private normalizePathname(pathname: string): string {
+    if (!pathname) {
+      return '/'
+    }
+    const [rawPath] = pathname.split('?')
+    if (!rawPath) {
+      return '/'
+    }
+    const trimmed = rawPath.trim()
+    if (!trimmed) {
+      return '/'
+    }
+    if (trimmed.length > 1 && trimmed.endsWith('/')) {
+      return trimmed.replace(/\/+$/, '')
+    }
+    return trimmed
+  }
+
+  private shouldBlockReservedTenantStaticWebAccess(): boolean {
+    const tenantContext = getTenantContext()
+    const slug = tenantContext?.tenant.slug?.toLowerCase()
+    if (!slug) {
+      return false
+    }
+    return RESTRICTED_STATIC_WEB_TENANT_SLUGS.has(slug)
   }
 
   private shouldRenderTenantMissingPage(): boolean {
