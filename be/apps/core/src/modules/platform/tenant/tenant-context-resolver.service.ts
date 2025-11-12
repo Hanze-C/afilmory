@@ -11,6 +11,7 @@ import { injectable } from 'tsyringe'
 import { PLACEHOLDER_TENANT_SLUG, ROOT_TENANT_SLUG } from './tenant.constants'
 import { TenantService } from './tenant.service'
 import type { TenantAggregate, TenantContext } from './tenant.types'
+import { extractTenantSlugFromHost } from './tenant-host.utils'
 
 const HEADER_TENANT_ID = 'x-tenant-id'
 const HEADER_TENANT_SLUG = 'x-tenant-slug'
@@ -66,7 +67,7 @@ export class TenantContextResolver {
 
     const baseDomain = await this.getBaseDomain()
 
-    let derivedSlug = host ? this.extractSlugFromHost(host, baseDomain) : undefined
+    let derivedSlug = host ? (extractTenantSlugFromHost(host, baseDomain) ?? undefined) : undefined
     if (!derivedSlug && host && this.isBaseDomainHost(host, baseDomain)) {
       derivedSlug = ROOT_TENANT_SLUG
     }
@@ -230,34 +231,6 @@ export class TenantContextResolver {
   private normalizeSlug(value: string | null | undefined): string | undefined {
     const normalized = this.normalizeString(value)
     return normalized ? normalized.toLowerCase() : undefined
-  }
-
-  private extractSlugFromHost(host: string, baseDomain: string): string | undefined {
-    const hostname = host.split(':')[0]
-
-    if (!hostname) {
-      return undefined
-    }
-
-    if (hostname.endsWith('.localhost')) {
-      const parts = hostname.split('.localhost')[0]
-      return parts ? parts.trim().toLowerCase() : undefined
-    }
-
-    const normalizedBase = baseDomain.toLowerCase()
-    if (hostname === normalizedBase) {
-      return undefined
-    }
-
-    if (hostname.endsWith(`.${normalizedBase}`)) {
-      const candidate = hostname.slice(0, hostname.length - normalizedBase.length - 1)
-      if (!candidate || candidate.includes('.')) {
-        return undefined
-      }
-      return candidate.toLowerCase()
-    }
-
-    return undefined
   }
 
   private shouldFallbackToPlaceholder(tenantId?: string, slug?: string): boolean {

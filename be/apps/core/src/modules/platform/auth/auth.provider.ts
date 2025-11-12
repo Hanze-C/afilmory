@@ -13,7 +13,9 @@ import { SystemSettingService } from 'core/modules/configuration/system-setting/
 import type { Context } from 'hono'
 import { injectable } from 'tsyringe'
 
+import { PLACEHOLDER_TENANT_SLUG } from '../tenant/tenant.constants'
 import { TenantService } from '../tenant/tenant.service'
+import { extractTenantSlugFromHost } from '../tenant/tenant-host.utils'
 import type { AuthModuleOptions, SocialProviderOptions, SocialProvidersConfig } from './auth.config'
 import { AuthConfig } from './auth.config'
 
@@ -320,7 +322,11 @@ export class AuthProvider implements OnModuleInit {
     const endpoint = this.resolveRequestEndpoint()
     const fallbackHost = options.baseDomain.trim().toLowerCase()
     const requestedHost = (endpoint.host ?? fallbackHost).trim().toLowerCase()
-    const tenantSlug = this.resolveTenantSlugFromContext()
+    const tenantSlugFromContext = this.resolveTenantSlugFromContext()
+    const tenantSlug =
+      tenantSlugFromContext && tenantSlugFromContext !== PLACEHOLDER_TENANT_SLUG
+        ? tenantSlugFromContext
+        : (extractTenantSlugFromHost(requestedHost, options.baseDomain) ?? tenantSlugFromContext)
     const host = this.applyTenantSlugToHost(requestedHost || fallbackHost, fallbackHost, tenantSlug)
     const protocol = this.determineProtocol(host, endpoint.protocol)
     const slugKey = tenantSlug ?? 'global'
