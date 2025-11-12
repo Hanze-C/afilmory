@@ -11,6 +11,7 @@ import { SystemSettingService } from 'core/modules/configuration/system-setting/
 import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
 
+import { PLACEHOLDER_TENANT_SLUG } from '../tenant/tenant.constants'
 import { getTenantContext, isPlaceholderTenantContext } from '../tenant/tenant.context'
 import { TenantService } from '../tenant/tenant.service'
 import type { SocialProvidersConfig } from './auth.config'
@@ -124,9 +125,13 @@ export class AuthController {
       if (tenantId) {
         try {
           const aggregate = await this.tenantService.getById(tenantId)
+          const isPlaceholder = aggregate.tenant.slug === PLACEHOLDER_TENANT_SLUG
+          const existingRequestedSlug = tenantContext?.requestedSlug ?? null
+          const derivedRequestedSlug = existingRequestedSlug ?? (isPlaceholder ? null : (aggregate.tenant.slug ?? null))
           tenantContext = {
             tenant: aggregate.tenant,
-            isPlaceholder: false,
+            isPlaceholder,
+            requestedSlug: derivedRequestedSlug,
           }
         } catch {
           // ignore; fallback to placeholder context if resolution fails
@@ -143,7 +148,7 @@ export class AuthController {
       session: authContext.session,
       tenant: {
         id: tenantContext.tenant.id,
-        slug: tenantContext.tenant.slug ?? null,
+        slug: tenantContext.requestedSlug ?? tenantContext.tenant.slug ?? null,
         isPlaceholder: isPlaceholderTenantContext(tenantContext),
       },
     }
@@ -385,8 +390,9 @@ export class AuthController {
     const tenantContext = getTenantContext()
     if (tenantContext?.tenant?.id) {
       headers.set('x-tenant-id', tenantContext.tenant.id)
-      if (tenantContext.tenant.slug) {
-        headers.set('x-tenant-slug', tenantContext.tenant.slug)
+      const effectiveSlug = tenantContext.requestedSlug ?? tenantContext.tenant.slug
+      if (effectiveSlug) {
+        headers.set('x-tenant-slug', effectiveSlug)
       }
     }
     return headers

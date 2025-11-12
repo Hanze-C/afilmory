@@ -187,7 +187,10 @@ export class TenantContextResolver {
 
   private applyTenantHeaders(context: Context, tenantContext: TenantContext): void {
     context.header(HEADER_TENANT_ID, tenantContext.tenant.id)
-    context.header(HEADER_TENANT_SLUG, tenantContext.tenant.slug)
+    const effectiveSlug = tenantContext.requestedSlug ?? tenantContext.tenant.slug
+    if (effectiveSlug) {
+      context.header(HEADER_TENANT_SLUG, effectiveSlug)
+    }
   }
 
   private async getBaseDomain(): Promise<string> {
