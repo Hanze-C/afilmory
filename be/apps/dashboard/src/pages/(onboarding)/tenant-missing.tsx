@@ -1,15 +1,10 @@
-import { Button } from '@afilmory/ui'
+import { Button, LinearBorderContainer } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
 
-import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
-
 function getCurrentHostname() {
-  if (typeof window === 'undefined') {
-    return null
-  }
   try {
     return window.location.hostname
   } catch {

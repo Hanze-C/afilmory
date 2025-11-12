@@ -293,11 +293,12 @@ export class AuthRegistrationService {
 
       const initialSettings = this.normalizeSettings(settings)
       if (initialSettings.length > 0 && tenantId) {
+        const scopedTenantId = tenantId
         await this.settingService.setMany(
           initialSettings.map((entry) => ({
             ...entry,
             options: {
-              tenantId,
+              tenantId: scopedTenantId,
               isSensitive: false,
             },
           })),
@@ -334,6 +335,9 @@ export class AuthRegistrationService {
     const sessionUserId = (sessionUser as { id?: string } | null)?.id
     if (!sessionUserId) {
       throw new BizException(ErrorCode.AUTH_UNAUTHORIZED, { message: '当前登录状态无效，请重新登录。' })
+    }
+    if (!sessionUser) {
+      throw new BizException(ErrorCode.AUTH_UNAUTHORIZED, { message: '无法获取当前用户信息，请重新登录。' })
     }
 
     const db = this.dbAccessor.get()

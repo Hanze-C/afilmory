@@ -8,7 +8,7 @@ import type {
   UiGroupNode,
   UiSchema,
   UiSectionNode,
-} from '../ui-schema/ui-schema.type'
+} from '../../ui/ui-schema/ui-schema.type'
 import type { DEFAULT_SETTING_DEFINITIONS } from './setting.constant'
 
 export type SettingDefinition<Schema extends z.ZodTypeAny = z.ZodTypeAny> = {

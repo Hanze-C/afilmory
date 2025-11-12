@@ -1,4 +1,4 @@
-import { ScrollArea } from '@afilmory/ui'
+import { LinearBorderContainer, ScrollArea } from '@afilmory/ui'
 import { useStore } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import type { FC, KeyboardEvent } from 'react'
@@ -13,7 +13,6 @@ import { useRegistrationForm } from '~/modules/auth/hooks/useRegistrationForm'
 import { getTenantSlugFromHost } from '~/modules/auth/utils/domain'
 import type { SchemaFormValue, UiSchema } from '~/modules/schema-form/types'
 import { getWelcomeSiteSchema } from '~/modules/welcome/api'
-import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
 import { DEFAULT_SITE_SETTINGS_VALUES, SITE_SETTINGS_KEYS, siteSettingsSchema } from '~/modules/welcome/siteSchema'
 import {
   coerceSiteFieldValue,

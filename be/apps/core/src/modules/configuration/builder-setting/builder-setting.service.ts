@@ -43,7 +43,7 @@ export class BuilderSettingService {
     const tenant = requireTenantContext()
     const config = await this.builderConfigService.getConfigForTenant(tenant.tenant.id)
     return {
-      system: config.system,
+      system: this.normalizeSystemSettings(config.system),
     }
   }
 
@@ -74,6 +74,33 @@ export class BuilderSettingService {
         system.observability.performance.worker.workerConcurrency,
       'system.observability.performance.worker.useClusterMode': system.observability.performance.worker.useClusterMode,
       'system.observability.performance.worker.timeout': system.observability.performance.worker.timeout,
+    }
+  }
+
+  private normalizeSystemSettings(system: BuilderConfig['system']): BuilderSystemSettingsDto {
+    const supportedFormats =
+      system.processing.supportedFormats instanceof Set
+        ? Array.from(system.processing.supportedFormats)
+        : system.processing.supportedFormats
+
+    return {
+      processing: {
+        ...system.processing,
+        digestSuffixLength: system.processing.digestSuffixLength ?? 0,
+        supportedFormats,
+      },
+      observability: {
+        ...system.observability,
+        logging: {
+          ...system.observability.logging,
+        },
+        performance: {
+          ...system.observability.performance,
+          worker: {
+            ...system.observability.performance.worker,
+          },
+        },
+      },
     }
   }
 }

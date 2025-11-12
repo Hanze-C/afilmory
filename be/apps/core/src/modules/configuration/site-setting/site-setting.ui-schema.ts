@@ -1,4 +1,4 @@
-import type { UiNode, UiSchema } from '../ui-schema/ui-schema.type'
+import type { UiNode, UiSchema } from '../../ui/ui-schema/ui-schema.type'
 import type { SiteSettingKey } from './site-setting.type'
 
 export const SITE_SETTING_UI_SCHEMA_VERSION = '1.0.0'

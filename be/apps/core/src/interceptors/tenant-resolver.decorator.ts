@@ -1,4 +1,4 @@
-import type { TenantResolutionOptions } from '../modules/tenant/tenant-context-resolver.service'
+import type { TenantResolutionOptions } from '../modules/platform/tenant/tenant-context-resolver.service'
 
 export const TENANT_RESOLUTION_OPTIONS = Symbol('core:tenantResolutionOptions')
 

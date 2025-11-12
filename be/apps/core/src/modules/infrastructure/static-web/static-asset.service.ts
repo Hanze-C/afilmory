@@ -196,7 +196,7 @@ export abstract class StaticAssetService {
   private extractRelativePath(fullPath: string): string {
     const index = fullPath.indexOf(this.routeSegment)
     if (index === -1) {
-      return ''
+      return this.stripLeadingSlashes(fullPath)
     }
 
     const sliceStart = index + this.routeSegment.length

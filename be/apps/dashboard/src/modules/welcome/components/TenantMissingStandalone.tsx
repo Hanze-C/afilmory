@@ -1,7 +1,6 @@
-import { Button } from '@afilmory/ui'
+import { Button, LinearBorderContainer } from '@afilmory/ui'
 import { useMemo } from 'react'
 
-import { LinearBorderContainer } from './LinearBorderContainer'
 import { buildHomeUrl, buildRegistrationUrl, getCurrentHostname } from './tenant-utils'
 
 export const TenantMissingStandalone = () => {

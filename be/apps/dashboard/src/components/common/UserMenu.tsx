@@ -9,6 +9,7 @@ import {
 import { clsxm } from '@afilmory/utils'
 import { ChevronDown, LogOut, Settings, User as UserIcon } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router'
 
 import { usePageRedirect } from '~/hooks/usePageRedirect'
 import type { BetterAuthUser } from '~/modules/auth/types'
@@ -89,11 +90,11 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem icon={<UserIcon className="size-4" />}>
-          <a href="/settings/account">Account Settings</a>
+          <Link to="/settings/account">Account Settings</Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem icon={<Settings className="size-4" />}>
-          <a href="/settings/site">Preferences</a>
+          <Link to="/settings/site">Preferences</Link>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

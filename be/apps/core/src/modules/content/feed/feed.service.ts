@@ -120,7 +120,6 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
         url: siteConfig.author.url,
         avatar: siteConfig.author.avatar ?? null,
       },
-      feed: siteConfig.feed,
     }
 
     const xml = generateRSSFeed(manifest.data, feedConfig)

@@ -1,6 +1,6 @@
+import type { UiSchema } from '../../ui/ui-schema/ui-schema.type'
 import type { SettingEntryInput } from '../setting/setting.service'
 import type { SettingKeyType } from '../setting/setting.type'
-import type { UiSchema } from '../ui-schema/ui-schema.type'
 
 export const SITE_SETTING_KEYS = [
   'site.name',

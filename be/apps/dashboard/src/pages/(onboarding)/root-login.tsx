@@ -1,4 +1,4 @@
-import { Button, Input, Label } from '@afilmory/ui'
+import { Button, Input, Label, LinearBorderContainer } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
@@ -6,7 +6,6 @@ import { Link } from 'react-router'
 
 import { useLogin } from '~/modules/auth/hooks/useLogin'
 import { buildRootTenantUrl, getTenantSlugFromHost } from '~/modules/auth/utils/domain'
-import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
 
 export function Component() {
   const [email, setEmail] = useState('')

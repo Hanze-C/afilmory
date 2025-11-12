@@ -1,8 +1,8 @@
 import { injectable } from 'tsyringe'
 
+import type { UiNode } from '../../ui/ui-schema/ui-schema.type'
 import type { SettingEntryInput } from '../setting/setting.service'
 import { SettingService } from '../setting/setting.service'
-import type { UiNode } from '../ui-schema/ui-schema.type'
 import type { SiteSettingEntryInput, SiteSettingKey, SiteSettingUiSchemaResponse } from './site-setting.type'
 import { ONBOARDING_SITE_SETTING_KEYS, SITE_SETTING_KEYS } from './site-setting.type'
 import { SITE_SETTING_UI_SCHEMA, SITE_SETTING_UI_SCHEMA_KEYS } from './site-setting.ui-schema'

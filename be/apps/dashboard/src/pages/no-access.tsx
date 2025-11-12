@@ -1,4 +1,4 @@
-import { Button } from '@afilmory/ui'
+import { Button, LinearBorderContainer } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { m } from 'motion/react'
@@ -11,7 +11,6 @@ import { useSetAuthUser } from '~/atoms/auth'
 import { ROUTE_PATHS } from '~/constants/routes'
 import { AUTH_SESSION_QUERY_KEY } from '~/modules/auth/api/session'
 import { signOutBySource } from '~/modules/auth/auth-client'
-import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
 
 export const Component: FC = () => {
   const location = useLocation()
