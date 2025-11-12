@@ -1,6 +1,7 @@
 import { ContextParam, Controller, Get, Param } from '@afilmory/framework'
+import { isTenantSlugReserved } from '@afilmory/utils'
 import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
-import { PLACEHOLDER_TENANT_SLUG, ROOT_TENANT_SLUG } from 'core/modules/platform/tenant/tenant.constants'
+import { ROOT_TENANT_SLUG } from 'core/modules/platform/tenant/tenant.constants'
 import { getTenantContext, isPlaceholderTenantContext } from 'core/modules/platform/tenant/tenant.context'
 import type { Context } from 'hono'
 
@@ -9,7 +10,7 @@ import { STATIC_DASHBOARD_BASENAME, StaticDashboardService } from './static-dash
 import { StaticWebService } from './static-web.service'
 
 const TENANT_MISSING_ENTRY_PATH = `${STATIC_DASHBOARD_BASENAME}/tenant-missing.html`
-const RESTRICTED_STATIC_WEB_TENANT_SLUGS = new Set([ROOT_TENANT_SLUG, PLACEHOLDER_TENANT_SLUG])
+const TENANT_RESTRICTED_ENTRY_PATH = `${STATIC_DASHBOARD_BASENAME}/tenant-restricted.html`
 
 @Controller({ bypassGlobalPrefix: true })
 export class StaticWebController {
@@ -29,8 +30,8 @@ export class StaticWebController {
   @Get(`/explory`)
   @SkipTenantGuard()
   async getStaticWebIndex(@ContextParam() context: Context) {
-    if (this.shouldBlockReservedTenantStaticWebAccess()) {
-      return await this.renderTenantMissingPage()
+    if (this.isReservedTenant()) {
+      return await this.renderTenantRestrictedPage()
     }
     if (this.shouldRenderTenantMissingPage()) {
       return await this.renderTenantMissingPage()
@@ -45,8 +46,8 @@ export class StaticWebController {
 
   @Get(`/photos/:photoId`)
   async getStaticPhotoPage(@ContextParam() context: Context, @Param('photoId') photoId: string) {
-    if (this.shouldBlockReservedTenantStaticWebAccess()) {
-      return await this.renderTenantMissingPage()
+    if (this.isReservedTenant()) {
+      return await this.renderTenantRestrictedPage()
     }
     if (this.shouldRenderTenantMissingPage()) {
       return await this.renderTenantMissingPage()
@@ -64,11 +65,19 @@ export class StaticWebController {
   async getStaticDashboardIndexWithBasename(@ContextParam() context: Context) {
     const pathname = context.req.path
     const isHtmlRoute = this.isHtmlRoute(pathname)
+    const normalizedPath = this.normalizePathname(pathname)
     const allowTenantlessAccess = isHtmlRoute && this.shouldAllowTenantlessDashboardAccess(pathname)
+    const isRestrictedEntry = normalizedPath === TENANT_RESTRICTED_ENTRY_PATH
+    if (isHtmlRoute && this.isReservedTenant() && !isRestrictedEntry) {
+      return await this.renderTenantRestrictedPage()
+    }
     if (isHtmlRoute && !allowTenantlessAccess && this.shouldRenderTenantMissingPage()) {
       return await this.renderTenantMissingPage()
     }
     const response = await this.serve(context, this.staticDashboardService, false)
+    if (isHtmlRoute && this.isReservedTenant() && response.status === 404) {
+      return await this.renderTenantRestrictedPage()
+    }
     if (isHtmlRoute && !allowTenantlessAccess && response.status === 404) {
       return await this.renderTenantMissingPage()
     }
@@ -179,13 +188,16 @@ export class StaticWebController {
     return trimmed
   }
 
-  private shouldBlockReservedTenantStaticWebAccess(): boolean {
+  private isReservedTenant(): boolean {
     const tenantContext = getTenantContext()
     const slug = tenantContext?.tenant.slug?.toLowerCase()
     if (!slug) {
       return false
     }
-    return RESTRICTED_STATIC_WEB_TENANT_SLUGS.has(slug)
+    if (slug === ROOT_TENANT_SLUG) {
+      return false
+    }
+    return isTenantSlugReserved(slug)
   }
 
   private shouldRenderTenantMissingPage(): boolean {
@@ -200,6 +212,15 @@ export class StaticWebController {
     }
 
     return new Response('Workspace unavailable', { status: 404 })
+  }
+
+  private async renderTenantRestrictedPage(): Promise<Response> {
+    const response = await this.staticDashboardService.handleRequest(TENANT_RESTRICTED_ENTRY_PATH, false)
+    if (response) {
+      return this.cloneResponseWithStatus(response, 403)
+    }
+
+    return new Response('Workspace access restricted', { status: 403 })
   }
 
   private cloneResponseWithStatus(response: Response, status: number): Response {
