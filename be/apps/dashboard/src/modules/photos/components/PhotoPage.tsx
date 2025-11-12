@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -24,14 +25,13 @@ import type {
   PhotoSyncResolution,
   PhotoSyncResult,
 } from '../types'
-import { PhotoLibraryActionBar } from './library/PhotoLibraryActionBar'
 import { PhotoLibraryGrid } from './library/PhotoLibraryGrid'
-import { PhotoSyncActions } from './sync/PhotoSyncActions'
+import { PhotoPageActions } from './PhotoPageActions'
 import { PhotoSyncConflictsPanel } from './sync/PhotoSyncConflictsPanel'
 import { PhotoSyncProgressPanel } from './sync/PhotoSyncProgressPanel'
 import { PhotoSyncResultPanel } from './sync/PhotoSyncResultPanel'
 
-type PhotoPageTab = 'sync' | 'library' | 'storage'
+export type PhotoPageTab = 'sync' | 'library' | 'storage'
 
 const BATCH_RESOLVING_ID = '__batch__'
 
@@ -207,31 +207,59 @@ export function PhotoPage() {
     )
   }, [])
 
-  const handleDeleteAssets = async (ids: string[]) => {
-    if (ids.length === 0) return
-    try {
-      await deleteMutation.mutateAsync(ids)
-      toast.success(`已删除 ${ids.length} 个资源`)
-      setSelectedIds((prev) => prev.filter((item) => !ids.includes(item)))
-      void listQuery.refetch()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '删除失败，请稍后重试。'
-      toast.error('删除失败', { description: message })
-    }
-  }
+  const handleDeleteAssets = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return
+      try {
+        await deleteMutation.mutateAsync(ids)
+        toast.success(`已删除 ${ids.length} 个资源`)
+        setSelectedIds((prev) => prev.filter((item) => !ids.includes(item)))
+        void listQuery.refetch()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '删除失败，请稍后重试。'
+        toast.error('删除失败', { description: message })
+      }
+    },
+    [deleteMutation, listQuery, setSelectedIds],
+  )
 
-  const handleUploadAssets = async (files: FileList) => {
-    const fileArray = Array.from(files)
-    if (fileArray.length === 0) return
-    try {
-      await uploadMutation.mutateAsync(fileArray)
-      toast.success(`成功上传 ${fileArray.length} 张图片`)
+  const handleUploadAssets = useCallback(
+    async (files: FileList) => {
+      const fileArray = Array.from(files)
+      if (fileArray.length === 0) return
+      try {
+        await uploadMutation.mutateAsync(fileArray)
+        toast.success(`成功上传 ${fileArray.length} 张图片`)
+        void listQuery.refetch()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '上传失败，请稍后重试。'
+        toast.error('上传失败', { description: message })
+      }
+    },
+    [listQuery, uploadMutation],
+  )
+
+  const handleSyncCompleted = useCallback(
+    (data: PhotoSyncResult, context: { dryRun: boolean }) => {
+      setResult(data)
+      setLastWasDryRun(context.dryRun)
+      setSyncProgress(null)
+      void summaryQuery.refetch()
       void listQuery.refetch()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '上传失败，请稍后重试。'
-      toast.error('上传失败', { description: message })
-    }
-  }
+    },
+    [listQuery, summaryQuery],
+  )
+
+  const handleDeleteSelected = useCallback(() => {
+    void handleDeleteAssets(selectedIds)
+  }, [handleDeleteAssets, selectedIds])
+
+  const handleDeleteSingle = useCallback(
+    (asset: PhotoAssetListItem) => {
+      void handleDeleteAssets([asset.id])
+    },
+    [handleDeleteAssets],
+  )
 
   const handleResolveConflict = useCallback(
     async (conflict: PhotoSyncConflict, strategy: PhotoSyncResolution) => {
@@ -325,10 +353,6 @@ export function PhotoPage() {
     }
   }
 
-  const handleDeleteSingle = (asset: PhotoAssetListItem) => {
-    void handleDeleteAssets([asset.id])
-  }
-
   const handleTabChange = (tab: PhotoPageTab) => {
     setActiveTab(tab)
     const next = new URLSearchParams(searchParams.toString())
@@ -347,36 +371,84 @@ export function PhotoPage() {
   const showConflictsPanel =
     conflictsQuery.isLoading || conflictsQuery.isFetching || (conflictsQuery.data?.length ?? 0) > 0
 
+  let tabContent: ReactNode | null = null
+
+  switch (activeTab) {
+    case 'storage': {
+      tabContent = <StorageProvidersManager />
+      break
+    }
+    case 'sync': {
+      let progressPanel: ReactNode | null = null
+      if (syncProgress) {
+        progressPanel = <PhotoSyncProgressPanel progress={syncProgress} />
+      }
+
+      let conflictsPanel: ReactNode | null = null
+      if (showConflictsPanel) {
+        conflictsPanel = (
+          <PhotoSyncConflictsPanel
+            conflicts={conflictsQuery.data}
+            isLoading={conflictsQuery.isLoading || conflictsQuery.isFetching}
+            resolvingId={resolvingConflictId}
+            isBatchResolving={resolvingConflictId === BATCH_RESOLVING_ID}
+            onResolve={handleResolveConflict}
+            onResolveBatch={handleResolveConflictsBatch}
+            onRequestStorageUrl={getPhotoStorageUrl}
+          />
+        )
+      }
+
+      tabContent = (
+        <>
+          {progressPanel}
+          <div className="space-y-6">
+            {conflictsPanel}
+            <PhotoSyncResultPanel
+              result={result}
+              lastWasDryRun={lastWasDryRun}
+              baselineSummary={summaryQuery.data}
+              isSummaryLoading={summaryQuery.isLoading}
+              onRequestStorageUrl={getPhotoStorageUrl}
+            />
+          </div>
+        </>
+      )
+      break
+    }
+    case 'library': {
+      tabContent = (
+        <PhotoLibraryGrid
+          assets={listQuery.data}
+          isLoading={isListLoading}
+          selectedIds={selectedSet}
+          onToggleSelect={handleToggleSelect}
+          onOpenAsset={handleOpenAsset}
+          onDeleteAsset={handleDeleteSingle}
+          isDeleting={deleteMutation.isPending}
+        />
+      )
+      break
+    }
+    default: {
+      tabContent = null
+    }
+  }
+
   return (
     <MainPageLayout title="照片库" description="在此同步和管理服务器中的照片资产。">
-      {activeTab !== 'storage' ? (
-        <MainPageLayout.Actions>
-          {activeTab === 'sync' ? (
-            <PhotoSyncActions
-              onCompleted={(data, context) => {
-                setResult(data)
-                setLastWasDryRun(context.dryRun)
-                setSyncProgress(null)
-                void summaryQuery.refetch()
-                void listQuery.refetch()
-              }}
-              onProgress={handleProgressEvent}
-              onError={handleSyncError}
-            />
-          ) : (
-            <PhotoLibraryActionBar
-              selectionCount={selectedIds.length}
-              isUploading={uploadMutation.isPending}
-              isDeleting={deleteMutation.isPending}
-              onUpload={handleUploadAssets}
-              onDeleteSelected={() => {
-                void handleDeleteAssets(selectedIds)
-              }}
-              onClearSelection={handleClearSelection}
-            />
-          )}
-        </MainPageLayout.Actions>
-      ) : null}
+      <PhotoPageActions
+        activeTab={activeTab}
+        selectionCount={selectedIds.length}
+        isUploading={uploadMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        onUpload={handleUploadAssets}
+        onDeleteSelected={handleDeleteSelected}
+        onClearSelection={handleClearSelection}
+        onSyncCompleted={handleSyncCompleted}
+        onSyncProgress={handleProgressEvent}
+        onSyncError={handleSyncError}
+      />
 
       <div className="space-y-6">
         <PageTabs
@@ -389,46 +461,7 @@ export function PhotoPage() {
           ]}
         />
 
-        {activeTab === 'storage' ? (
-          <StorageProvidersManager />
-        ) : (
-          <>
-            {activeTab === 'sync' && syncProgress ? <PhotoSyncProgressPanel progress={syncProgress} /> : null}
-
-            {activeTab === 'sync' ? (
-              <div className="space-y-6">
-                {showConflictsPanel ? (
-                  <PhotoSyncConflictsPanel
-                    conflicts={conflictsQuery.data}
-                    isLoading={conflictsQuery.isLoading || conflictsQuery.isFetching}
-                    resolvingId={resolvingConflictId}
-                    isBatchResolving={resolvingConflictId === BATCH_RESOLVING_ID}
-                    onResolve={handleResolveConflict}
-                    onResolveBatch={handleResolveConflictsBatch}
-                    onRequestStorageUrl={getPhotoStorageUrl}
-                  />
-                ) : null}
-                <PhotoSyncResultPanel
-                  result={result}
-                  lastWasDryRun={lastWasDryRun}
-                  baselineSummary={summaryQuery.data}
-                  isSummaryLoading={summaryQuery.isLoading}
-                  onRequestStorageUrl={getPhotoStorageUrl}
-                />
-              </div>
-            ) : (
-              <PhotoLibraryGrid
-                assets={listQuery.data}
-                isLoading={isListLoading}
-                selectedIds={selectedSet}
-                onToggleSelect={handleToggleSelect}
-                onOpenAsset={handleOpenAsset}
-                onDeleteAsset={handleDeleteSingle}
-                isDeleting={deleteMutation.isPending}
-              />
-            )}
-          </>
-        )}
+        {tabContent}
       </div>
     </MainPageLayout>
   )

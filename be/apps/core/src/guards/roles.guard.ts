@@ -37,10 +37,9 @@ export class RolesGuard implements CanActivate {
     const userMask = roleBitWithInheritance(roleNameToBit(userRoleName))
     const hasRole = (requiredMask & userMask) !== 0
     if (!hasRole) {
-      this.log.warn(
-        `Denied access: user ${(authContext.user as { id?: string }).id ?? 'unknown'} role=${userRoleName ?? 'n/a'} lacks permission mask=${requiredMask} on ${method} ${path}`,
-      )
-      throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+      const message = `Insufficient permissions for user ${(authContext.user as { id?: string }).id ?? 'unknown'} role=${userRoleName ?? 'n/a'} lacks permission mask=${requiredMask} on ${method} ${path}`
+      this.log.warn(message)
+      throw new BizException(ErrorCode.AUTH_FORBIDDEN, { message })
     }
 
     return true

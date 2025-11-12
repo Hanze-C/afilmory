@@ -12,7 +12,7 @@ const STORAGE_SETTING_KEYS = ['builder.storage.providers', 'builder.storage.acti
 type StorageSettingKey = (typeof STORAGE_SETTING_KEYS)[number]
 
 @Controller('storage/settings')
-@Roles('superadmin')
+@Roles('admin')
 export class StorageSettingController {
   constructor(private readonly storageSettingService: StorageSettingService) {}
 
@@ -76,7 +76,7 @@ export class StorageSettingController {
 
   private ensureKeyAllowed(key: string) {
     if (!key.startsWith('builder.storage.')) {
-      throw new BizException(ErrorCode.AUTH_FORBIDDEN, { message: 'Only storage settings are available' })
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: 'Only storage settings are available' })
     }
   }
 }

@@ -15,6 +15,7 @@ const DEFAULT_ASSET_LINK_RELS = new Set([
   'preload',
   'prefetch',
   'icon',
+
   'shortcut icon',
   'apple-touch-icon',
   'manifest',
@@ -196,7 +197,7 @@ export abstract class StaticAssetService {
   private extractRelativePath(fullPath: string): string {
     const index = fullPath.indexOf(this.routeSegment)
     if (index === -1) {
-      return this.stripLeadingSlashes(fullPath)
+      return ''
     }
 
     const sliceStart = index + this.routeSegment.length
