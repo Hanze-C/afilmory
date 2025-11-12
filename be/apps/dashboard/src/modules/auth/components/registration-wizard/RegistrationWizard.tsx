@@ -10,6 +10,7 @@ import { useAuthUserValue } from '~/atoms/auth'
 import { useRegisterTenant } from '~/modules/auth/hooks/useRegisterTenant'
 import type { TenantRegistrationFormState, TenantSiteFieldKey } from '~/modules/auth/hooks/useRegistrationForm'
 import { useRegistrationForm } from '~/modules/auth/hooks/useRegistrationForm'
+import { getTenantSlugFromHost } from '~/modules/auth/utils/domain'
 import type { SchemaFormValue, UiSchema } from '~/modules/schema-form/types'
 import { getWelcomeSiteSchema } from '~/modules/welcome/api'
 import { LinearBorderContainer } from '~/modules/welcome/components/LinearBorderContainer'
@@ -41,6 +42,7 @@ export const RegistrationWizard: FC = () => {
   const [maxVisitedIndex, setMaxVisitedIndex] = useState(0)
   const contentRef = useRef<HTMLElement | null>(null)
   const slugManuallyEditedRef = useRef(false)
+  const [lockedTenantSlug, setLockedTenantSlug] = useState<string | null>(null)
   const siteDefaultsAppliedRef = useRef(false)
 
   const siteSchemaQuery = useQuery({
@@ -57,6 +59,25 @@ export const RegistrationWizard: FC = () => {
       return nextIndex
     })
   }, [])
+
+  useEffect(() => {
+    try {
+      const { hostname } = window.location
+      const slug = getTenantSlugFromHost(hostname)
+      if (!slug) {
+        return
+      }
+      setLockedTenantSlug((prev) => (prev === slug ? prev : slug))
+      slugManuallyEditedRef.current = true
+      const currentValue = form.getFieldValue('tenantSlug')
+      if (currentValue !== slug) {
+        form.setFieldValue('tenantSlug', () => slug)
+        void form.validateField('tenantSlug', 'change')
+      }
+    } catch {
+      // Ignore hostname parsing failures; user can still enter slug manually.
+    }
+  }, [form])
 
   useEffect(() => {
     const data = siteSchemaQuery.data as
@@ -365,6 +386,7 @@ export const RegistrationWizard: FC = () => {
           <WorkspaceStep
             form={form}
             slugManuallyEditedRef={slugManuallyEditedRef}
+            lockedTenantSlug={lockedTenantSlug}
             isSubmitting={isLoading}
             onFieldInteraction={onFieldInteraction}
           />

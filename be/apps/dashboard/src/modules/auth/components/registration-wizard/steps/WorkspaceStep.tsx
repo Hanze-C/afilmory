@@ -9,6 +9,7 @@ import { firstErrorMessage } from '../utils'
 type WorkspaceStepProps = {
   form: ReturnType<typeof useRegistrationForm>
   slugManuallyEditedRef: MutableRefObject<boolean>
+  lockedTenantSlug?: string | null
   isSubmitting: boolean
   onFieldInteraction: () => void
 }
@@ -16,6 +17,7 @@ type WorkspaceStepProps = {
 export const WorkspaceStep: FC<WorkspaceStepProps> = ({
   form,
   slugManuallyEditedRef,
+  lockedTenantSlug,
   isSubmitting,
   onFieldInteraction,
 }) => (
@@ -63,6 +65,11 @@ export const WorkspaceStep: FC<WorkspaceStepProps> = ({
       <form.Field name="tenantSlug">
         {(field) => {
           const error = firstErrorMessage(field.state.meta.errors)
+          const isSlugLocked = Boolean(lockedTenantSlug)
+          const helperText = isSlugLocked
+            ? 'Workspace slug follows the current subdomain and cannot be changed in this flow.'
+            : 'Lowercase letters, numbers, and hyphen are allowed. We&apos;ll ensure the slug is unique.'
+
           return (
             <div className="space-y-2">
               <Label htmlFor={field.name}>Workspace slug</Label>
@@ -70,19 +77,21 @@ export const WorkspaceStep: FC<WorkspaceStepProps> = ({
                 id={field.name}
                 value={field.state.value}
                 onChange={(event) => {
+                  if (isSlugLocked) {
+                    return
+                  }
                   onFieldInteraction()
                   slugManuallyEditedRef.current = true
                   field.handleChange(event.currentTarget.value)
                 }}
                 onBlur={field.handleBlur}
                 placeholder="acme"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isSlugLocked}
+                readOnly={isSlugLocked}
                 error={Boolean(error)}
                 autoComplete="off"
               />
-              <p className="text-text-tertiary text-xs">
-                Lowercase letters, numbers, and hyphen are allowed. We&apos;ll ensure the slug is unique.
-              </p>
+              <p className="text-text-tertiary text-xs">{helperText}</p>
               <FormError>{error}</FormError>
             </div>
           )
