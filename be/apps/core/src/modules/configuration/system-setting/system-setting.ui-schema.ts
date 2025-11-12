@@ -2,7 +2,7 @@ import type { UiNode, UiSchema } from 'core/modules/ui/ui-schema/ui-schema.type'
 
 import type { SystemSettingField } from './system-setting.constants'
 
-export const SYSTEM_SETTING_UI_SCHEMA_VERSION = '1.2.0'
+export const SYSTEM_SETTING_UI_SCHEMA_VERSION = '1.3.0'
 
 export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
   version: SYSTEM_SETTING_UI_SCHEMA_VERSION,
@@ -74,7 +74,7 @@ export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
           type: 'field',
           id: 'oauth-gateway-url',
           title: 'OAuth 网关地址',
-          description: '统一的 OAuth 回调入口，例如 https://auth.afilmory.art。留空则直接回调到租户域名。',
+          description: '所有第三方登录统一走该回调入口（例如 https://auth.afilmory.art）。留空则回退到租户域名。',
           helperText: '必须包含 http/https 协议，结尾无需斜杠。',
           key: 'oauthGatewayUrl',
           component: {
@@ -113,17 +113,6 @@ export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
                 autoComplete: 'off',
               },
             },
-            {
-              type: 'field',
-              id: 'oauth-google-redirect-uri',
-              title: 'Redirect URI',
-              description: 'OAuth 回调路径，域名会自动使用当前租户如 slug.主域名。',
-              key: 'oauthGoogleRedirectUri',
-              component: {
-                type: 'text',
-                placeholder: '/api/auth/callback/google',
-              },
-            },
           ],
         },
         {
@@ -155,17 +144,6 @@ export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
                 placeholder: '****************',
                 revealable: true,
                 autoComplete: 'off',
-              },
-            },
-            {
-              type: 'field',
-              id: 'oauth-github-redirect-uri',
-              title: 'Redirect URI',
-              description: 'GitHub 回调路径，域名会自动使用租户的 subdomain。',
-              key: 'oauthGithubRedirectUri',
-              component: {
-                type: 'text',
-                placeholder: '/api/auth/callback/github',
               },
             },
           ],

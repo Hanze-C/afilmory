@@ -10,10 +10,8 @@ export interface SystemSettings {
   oauthGatewayUrl: string | null
   oauthGoogleClientId: string | null
   oauthGoogleClientSecret: string | null
-  oauthGoogleRedirectUri: string | null
   oauthGithubClientId: string | null
   oauthGithubClientSecret: string | null
-  oauthGithubRedirectUri: string | null
 }
 
 export type SystemSettingValueMap = {

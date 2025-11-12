@@ -4,7 +4,6 @@ import { injectable } from 'tsyringe'
 export interface SocialProviderOptions {
   clientId: string
   clientSecret: string
-  redirectPath?: string | null
 }
 
 export interface SocialProvidersConfig {

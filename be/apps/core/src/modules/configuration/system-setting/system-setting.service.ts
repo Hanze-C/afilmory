@@ -71,14 +71,6 @@ export class SystemSettingService {
       SYSTEM_SETTING_DEFINITIONS.oauthGoogleClientSecret.schema,
       SYSTEM_SETTING_DEFINITIONS.oauthGoogleClientSecret.defaultValue,
     )
-    const oauthGoogleRedirectUri = this.normalizeRedirectPath(
-      this.parseSetting(
-        rawValues[SYSTEM_SETTING_DEFINITIONS.oauthGoogleRedirectUri.key],
-        SYSTEM_SETTING_DEFINITIONS.oauthGoogleRedirectUri.schema,
-        SYSTEM_SETTING_DEFINITIONS.oauthGoogleRedirectUri.defaultValue,
-      ),
-    )
-
     const oauthGithubClientId = this.parseSetting(
       rawValues[SYSTEM_SETTING_DEFINITIONS.oauthGithubClientId.key],
       SYSTEM_SETTING_DEFINITIONS.oauthGithubClientId.schema,
@@ -89,14 +81,6 @@ export class SystemSettingService {
       SYSTEM_SETTING_DEFINITIONS.oauthGithubClientSecret.schema,
       SYSTEM_SETTING_DEFINITIONS.oauthGithubClientSecret.defaultValue,
     )
-    const oauthGithubRedirectUri = this.normalizeRedirectPath(
-      this.parseSetting(
-        rawValues[SYSTEM_SETTING_DEFINITIONS.oauthGithubRedirectUri.key],
-        SYSTEM_SETTING_DEFINITIONS.oauthGithubRedirectUri.schema,
-        SYSTEM_SETTING_DEFINITIONS.oauthGithubRedirectUri.defaultValue,
-      ),
-    )
-
     return {
       allowRegistration,
       maxRegistrableUsers,
@@ -105,10 +89,8 @@ export class SystemSettingService {
       oauthGatewayUrl,
       oauthGoogleClientId,
       oauthGoogleClientSecret,
-      oauthGoogleRedirectUri,
       oauthGithubClientId,
       oauthGithubClientSecret,
-      oauthGithubRedirectUri,
     }
   }
 
@@ -195,13 +177,6 @@ export class SystemSettingService {
       }
     }
 
-    if (patch.oauthGoogleRedirectUri !== undefined) {
-      const sanitized = this.normalizeRedirectPath(patch.oauthGoogleRedirectUri)
-      if (sanitized !== current.oauthGoogleRedirectUri) {
-        enqueueUpdate('oauthGoogleRedirectUri', sanitized)
-      }
-    }
-
     if (patch.oauthGithubClientId !== undefined) {
       const sanitized = this.normalizeNullableString(patch.oauthGithubClientId)
       if (sanitized !== current.oauthGithubClientId) {
@@ -213,13 +188,6 @@ export class SystemSettingService {
       const sanitized = this.normalizeNullableString(patch.oauthGithubClientSecret)
       if (sanitized !== current.oauthGithubClientSecret) {
         enqueueUpdate('oauthGithubClientSecret', sanitized)
-      }
-    }
-
-    if (patch.oauthGithubRedirectUri !== undefined) {
-      const sanitized = this.normalizeRedirectPath(patch.oauthGithubRedirectUri)
-      if (sanitized !== current.oauthGithubRedirectUri) {
-        enqueueUpdate('oauthGithubRedirectUri', sanitized)
       }
     }
 
@@ -291,7 +259,6 @@ export class SystemSettingService {
       providers.google = {
         clientId: settings.oauthGoogleClientId,
         clientSecret: settings.oauthGoogleClientSecret,
-        redirectPath: settings.oauthGoogleRedirectUri,
       }
     }
 
@@ -299,7 +266,6 @@ export class SystemSettingService {
       providers.github = {
         clientId: settings.oauthGithubClientId,
         clientSecret: settings.oauthGithubClientSecret,
-        redirectPath: settings.oauthGithubRedirectUri,
       }
     }
 
@@ -335,36 +301,6 @@ export class SystemSettingService {
     } catch {
       return null
     }
-  }
-
-  private normalizeRedirectPath(value: string | null | undefined): string | null {
-    if (value === undefined || value === null) {
-      return null
-    }
-
-    const trimmed = value.trim()
-    if (trimmed.length === 0) {
-      return null
-    }
-
-    const ensureLeadingSlash = (input: string): string | null => {
-      if (!input.startsWith('/')) {
-        return null
-      }
-      return input
-    }
-
-    try {
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        const url = new URL(trimmed)
-        const pathWithQuery = `${url.pathname}${url.search ?? ''}`
-        return ensureLeadingSlash(pathWithQuery) ?? null
-      }
-    } catch {
-      // fall through to path handling
-    }
-
-    return ensureLeadingSlash(trimmed)
   }
 
   private buildStats(settings: SystemSettings, totalUsers: number): SystemSettingStats {

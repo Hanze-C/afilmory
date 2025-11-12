@@ -58,12 +58,6 @@ export const SYSTEM_SETTING_DEFINITIONS = {
     defaultValue: null as string | null,
     isSensitive: true,
   },
-  oauthGoogleRedirectUri: {
-    key: 'system.auth.oauth.google.redirectUri',
-    schema: nullableUrl,
-    defaultValue: null as string | null,
-    isSensitive: false,
-  },
   oauthGithubClientId: {
     key: 'system.auth.oauth.github.clientId',
     schema: nullableNonEmptyString,
@@ -75,12 +69,6 @@ export const SYSTEM_SETTING_DEFINITIONS = {
     schema: nullableNonEmptyString,
     defaultValue: null as string | null,
     isSensitive: true,
-  },
-  oauthGithubRedirectUri: {
-    key: 'system.auth.oauth.github.redirectUri',
-    schema: nullableUrl,
-    defaultValue: null as string | null,
-    isSensitive: false,
   },
 } as const
 

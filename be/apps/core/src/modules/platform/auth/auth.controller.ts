@@ -43,13 +43,13 @@ function resolveSocialProviderMetadata(id: string): { name: string; icon: string
 function buildProviderResponse(socialProviders: SocialProvidersConfig) {
   return Object.entries(socialProviders)
     .filter(([, config]) => Boolean(config))
-    .map(([id, config]) => {
+    .map(([id]) => {
       const metadata = resolveSocialProviderMetadata(id)
       return {
         id,
         name: metadata.name,
         icon: metadata.icon,
-        callbackPath: config?.redirectPath ?? null,
+        callbackPath: `/api/auth/callback/${id}`,
       }
     })
 }
@@ -120,7 +120,7 @@ export class AuthController {
     }
 
     if (!tenantContext || isPlaceholderTenantContext(tenantContext)) {
-      const {tenantId} = (authContext.user as { tenantId?: string | null })
+      const { tenantId } = authContext.user as { tenantId?: string | null }
       if (tenantId) {
         try {
           const aggregate = await this.tenantService.getById(tenantId)

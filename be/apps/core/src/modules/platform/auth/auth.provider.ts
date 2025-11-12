@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { authAccounts, authSessions, authUsers, authVerifications, generateId } from '@afilmory/db'
 import type { OnModuleInit } from '@afilmory/framework'
 import { createLogger, HttpContext } from '@afilmory/framework'
@@ -21,7 +23,6 @@ const logger = createLogger('Auth')
 
 @injectable()
 export class AuthProvider implements OnModuleInit {
-  private moduleOptionsPromise?: Promise<AuthModuleOptions>
   private instances = new Map<string, Promise<BetterAuthInstance>>()
   private placeholderTenantId: string | null = null
 
@@ -33,7 +34,7 @@ export class AuthProvider implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.getAuth()
+    await this.config.getOptions()
   }
 
   private resolveTenantIdFromContext(): string | null {
@@ -69,13 +70,6 @@ export class AuthProvider implements OnModuleInit {
       .replaceAll(/^-|-$/g, '')
 
     return sanitizedSlug ? `better-auth-${sanitizedSlug}` : 'better-auth'
-  }
-
-  private async getModuleOptions(): Promise<AuthModuleOptions> {
-    if (!this.moduleOptionsPromise) {
-      this.moduleOptionsPromise = this.config.getOptions()
-    }
-    return this.moduleOptionsPromise
   }
 
   private async resolveFallbackTenantId(): Promise<string | null> {
@@ -152,7 +146,7 @@ export class AuthProvider implements OnModuleInit {
 
     return entries.reduce<Record<string, { clientId: string; clientSecret: string; redirectURI?: string }>>(
       (acc, [key, value]) => {
-        const redirectUri = this.buildRedirectUri(tenantSlug, key, value, oauthGatewayUrl)
+        const redirectUri = this.buildRedirectUri(tenantSlug, key, oauthGatewayUrl)
         acc[key] = {
           clientId: value.clientId,
           clientSecret: value.clientSecret,
@@ -167,13 +161,10 @@ export class AuthProvider implements OnModuleInit {
   private buildRedirectUri(
     tenantSlug: string | null,
     provider: keyof SocialProvidersConfig,
-    options: SocialProviderOptions,
     oauthGatewayUrl: string | null,
   ): string | null {
-    const basePath = options.redirectPath ?? `/api/auth/callback/${provider}`
-    if (!basePath.startsWith('/')) {
-      return null
-    }
+    const basePath = `/api/auth/callback/${provider}`
+
     if (oauthGatewayUrl) {
       return this.buildGatewayRedirectUri(oauthGatewayUrl, basePath, tenantSlug)
     }
@@ -193,8 +184,10 @@ export class AuthProvider implements OnModuleInit {
     return `${normalizedBase}${basePath}${query ? `?${query}` : ''}`
   }
 
-  private async createAuthForEndpoint(tenantSlug: string | null): Promise<BetterAuthInstance> {
-    const options = await this.getModuleOptions()
+  private async createAuthForEndpoint(
+    tenantSlug: string | null,
+    options: AuthModuleOptions,
+  ): Promise<BetterAuthInstance> {
     const db = this.drizzleProvider.getDb()
     const socialProviders = this.buildBetterAuthProvidersForHost(
       tenantSlug,
@@ -323,7 +316,7 @@ export class AuthProvider implements OnModuleInit {
   }
 
   async getAuth(): Promise<BetterAuthInstance> {
-    const options = await this.getModuleOptions()
+    const options = await this.config.getOptions()
     const endpoint = this.resolveRequestEndpoint()
     const fallbackHost = options.baseDomain.trim().toLowerCase()
     const requestedHost = (endpoint.host ?? fallbackHost).trim().toLowerCase()
@@ -331,10 +324,11 @@ export class AuthProvider implements OnModuleInit {
     const host = this.applyTenantSlugToHost(requestedHost || fallbackHost, fallbackHost, tenantSlug)
     const protocol = this.determineProtocol(host, endpoint.protocol)
     const slugKey = tenantSlug ?? 'global'
-    const cacheKey = `${protocol}://${host}::${slugKey}`
+    const optionSignature = this.computeOptionsSignature(options)
+    const cacheKey = `${protocol}://${host}::${slugKey}::${optionSignature}`
 
     if (!this.instances.has(cacheKey)) {
-      const instancePromise = this.createAuthForEndpoint(tenantSlug).then((instance) => {
+      const instancePromise = this.createAuthForEndpoint(tenantSlug, options).then((instance) => {
         logger.info(`Better Auth initialized for ${cacheKey}`)
         return instance
       })
@@ -342,6 +336,29 @@ export class AuthProvider implements OnModuleInit {
     }
 
     return await this.instances.get(cacheKey)!
+  }
+
+  private computeOptionsSignature(options: AuthModuleOptions): string {
+    const hash = createHash('sha256')
+    hash.update(options.baseDomain)
+    hash.update('|gateway=')
+    hash.update(options.oauthGatewayUrl ?? 'null')
+
+    const providerEntries = Object.entries(options.socialProviders)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([provider, config]) => {
+        const secretHash = config?.clientSecret
+          ? createHash('sha256').update(config.clientSecret).digest('hex')
+          : 'null'
+        return {
+          provider,
+          clientId: config?.clientId ?? '',
+          secretHash,
+        }
+      })
+
+    hash.update(JSON.stringify(providerEntries))
+    return hash.digest('hex')
   }
 
   async handler(context: Context): Promise<Response> {
