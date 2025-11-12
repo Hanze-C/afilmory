@@ -1,4 +1,5 @@
 import { coreApi } from '~/lib/api-client'
+import { camelCaseKeys } from '~/lib/case'
 
 import type { BetterAuthSession, BetterAuthUser } from '../types'
 
@@ -17,6 +18,5 @@ export type SessionResponse = {
 export const AUTH_SESSION_QUERY_KEY = ['auth', 'session'] as const
 
 export async function fetchSession() {
-  const session = await coreApi<SessionResponse>('/auth/session', { method: 'GET' })
-  return session
+  return camelCaseKeys<SessionResponse>(await coreApi<SessionResponse>('/auth/session', { method: 'GET' }))
 }

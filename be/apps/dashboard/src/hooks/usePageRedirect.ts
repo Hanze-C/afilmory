@@ -170,10 +170,6 @@ export function usePageRedirect() {
       return
     }
 
-    if (typeof window === 'undefined') {
-      return
-    }
-
     const currentSlug = getTenantSlugFromHost(window.location.hostname)
     if (currentSlug && currentSlug === tenant.slug) {
       return
