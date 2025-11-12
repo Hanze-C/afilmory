@@ -74,6 +74,7 @@ export class TenantContextResolver {
       derivedSlug = ROOT_TENANT_SLUG
     }
 
+    const requestedSlug = derivedSlug ?? tenantSlugHeader ?? null
     if (!derivedSlug) {
       derivedSlug = tenantSlugHeader
     }
@@ -91,12 +92,16 @@ export class TenantContextResolver {
 
     if (!tenantContext && this.shouldFallbackToPlaceholder(tenantId, derivedSlug)) {
       const placeholder = await this.tenantService.ensurePlaceholderTenant()
-      tenantContext = this.asTenantContext(placeholder, true)
+      tenantContext = this.asTenantContext(placeholder, true, requestedSlug)
       this.log.verbose(
         `Applied placeholder tenant context for ${context.req.method} ${context.req.path} (host=${host ?? 'n/a'})`,
       )
     } else if (tenantContext) {
-      tenantContext = this.asTenantContext(tenantContext, tenantContext.tenant.slug === PLACEHOLDER_TENANT_SLUG)
+      tenantContext = this.asTenantContext(
+        tenantContext,
+        tenantContext.tenant.slug === PLACEHOLDER_TENANT_SLUG,
+        requestedSlug ?? tenantContext.tenant.slug ?? null,
+      )
     }
 
     if (!tenantContext) {
@@ -259,10 +264,15 @@ export class TenantContextResolver {
     return !(tenantId && tenantId.length > 0) && !(slug && slug.length > 0)
   }
 
-  private asTenantContext(source: TenantAggregate, isPlaceholder: boolean): TenantContext {
+  private asTenantContext(
+    source: TenantAggregate,
+    isPlaceholder: boolean,
+    requestedSlug: string | null,
+  ): TenantContext {
     return {
       tenant: source.tenant,
       isPlaceholder,
+      requestedSlug,
     }
   }
 }

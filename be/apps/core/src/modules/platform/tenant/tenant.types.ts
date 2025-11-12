@@ -9,6 +9,7 @@ export interface TenantAggregate {
 
 export interface TenantContext extends TenantAggregate {
   readonly isPlaceholder?: boolean
+  readonly requestedSlug?: string | null
 }
 
 export interface TenantResolutionInput {

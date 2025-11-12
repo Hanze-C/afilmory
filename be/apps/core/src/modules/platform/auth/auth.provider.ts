@@ -49,8 +49,8 @@ export class AuthProvider implements OnModuleInit {
 
   private resolveTenantSlugFromContext(): string | null {
     try {
-      const tenantContext = HttpContext.getValue('tenant') as { tenant?: { slug?: string | null } } | undefined
-      const slug = tenantContext?.tenant?.slug
+      const tenantContext = HttpContext.getValue('tenant')
+      const slug = tenantContext?.requestedSlug ?? tenantContext?.tenant?.slug
       return slug ? slug.toLowerCase() : null
     } catch {
       return null
@@ -362,6 +362,20 @@ export class AuthProvider implements OnModuleInit {
   }
 
   async handler(context: Context): Promise<Response> {
+    const requestPath = typeof context.req.path === 'string' ? context.req.path : new URL(context.req.url).pathname
+    if (requestPath.startsWith('/api/auth/error')) {
+      const error = context.req.query('error')
+      const errorDescription = context.req.query('error_description')
+      const provider = context.req.query('provider')
+      const debugParts = [
+        '[AuthProvider] OAuth callback error encountered.',
+        error ? `error=${error}` : null,
+        errorDescription ? `description=${errorDescription}` : null,
+        provider ? `provider=${provider}` : null,
+        `url=${context.req.url}`,
+      ].filter(Boolean)
+      logger.error(debugParts.join(' '))
+    }
     const auth = await this.getAuth()
     return auth.handler(context.req.raw)
   }
