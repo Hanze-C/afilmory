@@ -1,4 +1,5 @@
-import type { UiSchema } from '../ui-schema/ui-schema.type'
+import type { UiSchema } from 'core/modules/ui/ui-schema/ui-schema.type'
+
 import type { SystemSettingField } from './system-setting.constants'
 
 export interface SystemSettings {
@@ -6,6 +7,7 @@ export interface SystemSettings {
   maxRegistrableUsers: number | null
   localProviderEnabled: boolean
   baseDomain: string
+  oauthGatewayUrl: string | null
   oauthGoogleClientId: string | null
   oauthGoogleClientSecret: string | null
   oauthGoogleRedirectUri: string | null

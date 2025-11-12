@@ -19,6 +19,15 @@ const updateSuperAdminSettingsSchema = z
       .min(1)
       .regex(/^[a-z0-9.-]+$/i, { message: '无效的基础域名' })
       .optional(),
+    oauthGatewayUrl: z
+      .string()
+      .trim()
+      .url({ message: '必须是有效的 URL' })
+      .nullable()
+      .refine((value) => value === null || value.startsWith('http://') || value.startsWith('https://'), {
+        message: '仅支持 http 或 https 协议',
+      })
+      .optional(),
     oauthGoogleClientId: z.string().trim().min(1).nullable().optional(),
     oauthGoogleClientSecret: z.string().trim().min(1).nullable().optional(),
     oauthGoogleRedirectUri: redirectPathInputSchema.nullable().optional(),

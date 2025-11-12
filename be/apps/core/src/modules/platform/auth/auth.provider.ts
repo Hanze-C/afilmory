@@ -142,11 +142,9 @@ export class AuthProvider implements OnModuleInit {
   }
 
   private buildBetterAuthProvidersForHost(
-    host: string,
-    fallbackHost: string,
-    protocol: string,
     tenantSlug: string | null,
     providers: SocialProvidersConfig,
+    oauthGatewayUrl: string | null,
   ): Record<string, { clientId: string; clientSecret: string; redirectUri?: string }> {
     const entries: Array<[keyof SocialProvidersConfig, SocialProviderOptions]> = Object.entries(providers).filter(
       (entry): entry is [keyof SocialProvidersConfig, SocialProviderOptions] => Boolean(entry[1]),
@@ -154,7 +152,7 @@ export class AuthProvider implements OnModuleInit {
 
     return entries.reduce<Record<string, { clientId: string; clientSecret: string; redirectURI?: string }>>(
       (acc, [key, value]) => {
-        const redirectUri = this.buildRedirectUri(protocol, host, fallbackHost, tenantSlug, key, value)
+        const redirectUri = this.buildRedirectUri(tenantSlug, key, value, oauthGatewayUrl)
         acc[key] = {
           clientId: value.clientId,
           clientSecret: value.clientSecret,
@@ -167,55 +165,41 @@ export class AuthProvider implements OnModuleInit {
   }
 
   private buildRedirectUri(
-    protocol: string,
-    host: string,
-    fallbackHost: string,
     tenantSlug: string | null,
     provider: keyof SocialProvidersConfig,
     options: SocialProviderOptions,
+    oauthGatewayUrl: string | null,
   ): string | null {
     const basePath = options.redirectPath ?? `/api/auth/callback/${provider}`
     if (!basePath.startsWith('/')) {
       return null
     }
-    const redirectHost = this.resolveRedirectHost(host, fallbackHost, tenantSlug)
-    return `${protocol}://${redirectHost}${basePath}`
+    if (oauthGatewayUrl) {
+      return this.buildGatewayRedirectUri(oauthGatewayUrl, basePath, tenantSlug)
+    }
+    logger.error(
+      ['[AuthProvider] OAuth 网关地址未配置，无法为第三方登录生成回调 URL。', `provider=${String(provider)}`].join(' '),
+    )
+    return null
   }
 
-  private resolveRedirectHost(host: string, fallbackHost: string, tenantSlug: string | null): string {
-    const normalizedSlug = tenantSlug?.trim().toLowerCase()
-    if (!normalizedSlug) {
-      return host
+  private buildGatewayRedirectUri(gatewayBaseUrl: string, basePath: string, tenantSlug: string | null): string {
+    const normalizedBase = gatewayBaseUrl.replace(/\/+$/, '')
+    const searchParams = new URLSearchParams()
+    if (tenantSlug) {
+      searchParams.set('tenantSlug', tenantSlug)
     }
-
-    const [hostName, hostPort] = host.split(':') as [string, string?]
-    if (!hostName.toLowerCase().startsWith(`${normalizedSlug}.`)) {
-      return host
-    }
-
-    const [fallbackNameRaw, fallbackPort] = fallbackHost.split(':') as [string, string?]
-    const fallbackName = fallbackNameRaw?.trim()
-    if (!fallbackName) {
-      return host
-    }
-
-    const portSegment = hostPort ?? fallbackPort ?? ''
-    return portSegment ? `${fallbackName}:${portSegment}` : fallbackName
+    const query = searchParams.toString()
+    return `${normalizedBase}${basePath}${query ? `?${query}` : ''}`
   }
 
-  private async createAuthForEndpoint(
-    host: string,
-    protocol: string,
-    tenantSlug: string | null,
-  ): Promise<BetterAuthInstance> {
+  private async createAuthForEndpoint(tenantSlug: string | null): Promise<BetterAuthInstance> {
     const options = await this.getModuleOptions()
     const db = this.drizzleProvider.getDb()
     const socialProviders = this.buildBetterAuthProvidersForHost(
-      host,
-      options.baseDomain,
-      protocol,
       tenantSlug,
       options.socialProviders,
+      options.oauthGatewayUrl,
     )
     const cookiePrefix = this.buildCookiePrefix(tenantSlug)
 
@@ -350,7 +334,7 @@ export class AuthProvider implements OnModuleInit {
     const cacheKey = `${protocol}://${host}::${slugKey}`
 
     if (!this.instances.has(cacheKey)) {
-      const instancePromise = this.createAuthForEndpoint(host, protocol, tenantSlug).then((instance) => {
+      const instancePromise = this.createAuthForEndpoint(tenantSlug).then((instance) => {
         logger.info(`Better Auth initialized for ${cacheKey}`)
         return instance
       })

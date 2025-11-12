@@ -17,6 +17,7 @@ export interface AuthModuleOptions {
   useDrizzle: boolean
   socialProviders: SocialProvidersConfig
   baseDomain: string
+  oauthGatewayUrl: string | null
 }
 
 @injectable()
@@ -25,13 +26,14 @@ export class AuthConfig {
 
   async getOptions(): Promise<AuthModuleOptions> {
     const prefix = '/auth'
-    const { socialProviders, baseDomain } = await this.systemSettings.getAuthModuleConfig()
+    const { socialProviders, baseDomain, oauthGatewayUrl } = await this.systemSettings.getAuthModuleConfig()
 
     return {
       prefix,
       useDrizzle: true,
       socialProviders,
       baseDomain,
+      oauthGatewayUrl,
     }
   }
 }

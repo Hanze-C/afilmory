@@ -53,6 +53,14 @@ export class SystemSettingService {
 
     const baseDomain = baseDomainRaw.trim().toLowerCase()
 
+    const oauthGatewayUrl = this.normalizeGatewayUrl(
+      this.parseSetting(
+        rawValues[SYSTEM_SETTING_DEFINITIONS.oauthGatewayUrl.key],
+        SYSTEM_SETTING_DEFINITIONS.oauthGatewayUrl.schema,
+        SYSTEM_SETTING_DEFINITIONS.oauthGatewayUrl.defaultValue,
+      ),
+    )
+
     const oauthGoogleClientId = this.parseSetting(
       rawValues[SYSTEM_SETTING_DEFINITIONS.oauthGoogleClientId.key],
       SYSTEM_SETTING_DEFINITIONS.oauthGoogleClientId.schema,
@@ -94,6 +102,7 @@ export class SystemSettingService {
       maxRegistrableUsers,
       localProviderEnabled,
       baseDomain,
+      oauthGatewayUrl,
       oauthGoogleClientId,
       oauthGoogleClientSecret,
       oauthGoogleRedirectUri,
@@ -163,6 +172,12 @@ export class SystemSettingService {
         enqueueUpdate('baseDomain', SYSTEM_SETTING_DEFINITIONS.baseDomain.defaultValue)
       } else if (sanitized !== current.baseDomain) {
         enqueueUpdate('baseDomain', sanitized)
+      }
+    }
+    if (patch.oauthGatewayUrl !== undefined) {
+      const sanitized = this.normalizeGatewayUrl(patch.oauthGatewayUrl)
+      if (sanitized !== current.oauthGatewayUrl) {
+        enqueueUpdate('oauthGatewayUrl', sanitized)
       }
     }
 
@@ -247,11 +262,16 @@ export class SystemSettingService {
     }
   }
 
-  async getAuthModuleConfig(): Promise<{ baseDomain: string; socialProviders: SocialProvidersConfig }> {
+  async getAuthModuleConfig(): Promise<{
+    baseDomain: string
+    socialProviders: SocialProvidersConfig
+    oauthGatewayUrl: string | null
+  }> {
     const settings = await this.getSettings()
     return {
       baseDomain: settings.baseDomain,
       socialProviders: this.buildSocialProviders(settings),
+      oauthGatewayUrl: settings.oauthGatewayUrl,
     }
   }
 
@@ -292,6 +312,29 @@ export class SystemSettingService {
     }
     const trimmed = value.trim()
     return trimmed.length > 0 ? trimmed : null
+  }
+
+  private normalizeGatewayUrl(value: string | null | undefined): string | null {
+    if (value === undefined || value === null) {
+      return null
+    }
+
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      return null
+    }
+
+    try {
+      const url = new URL(trimmed)
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return null
+      }
+
+      const normalizedPath = url.pathname === '/' ? '' : url.pathname.replace(/\/+$/, '')
+      return `${url.origin}${normalizedPath}`
+    } catch {
+      return null
+    }
   }
 
   private normalizeRedirectPath(value: string | null | undefined): string | null {

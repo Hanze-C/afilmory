@@ -4,6 +4,10 @@ import { z } from 'zod'
 const nonEmptyString = z.string().trim().min(1)
 const nullableNonEmptyString = nonEmptyString.nullable()
 const nullableUrl = z.string().trim().url({ message: '必须是有效的 URL' }).nullable()
+const nullableHttpUrl = nullableUrl.refine(
+  (value) => value === null || value.startsWith('http://') || value.startsWith('https://'),
+  { message: '只支持 http 或 https 协议' },
+)
 
 export const SYSTEM_SETTING_DEFINITIONS = {
   allowRegistration: {
@@ -34,6 +38,12 @@ export const SYSTEM_SETTING_DEFINITIONS = {
         message: '域名只能包含字母、数字、连字符和点',
       }),
     defaultValue: DEFAULT_BASE_DOMAIN,
+    isSensitive: false,
+  },
+  oauthGatewayUrl: {
+    key: 'system.auth.oauth.gatewayUrl',
+    schema: nullableHttpUrl,
+    defaultValue: null as string | null,
     isSensitive: false,
   },
   oauthGoogleClientId: {

@@ -1,7 +1,8 @@
-import type { UiNode, UiSchema } from '../ui-schema/ui-schema.type'
+import type { UiNode, UiSchema } from 'core/modules/ui/ui-schema/ui-schema.type'
+
 import type { SystemSettingField } from './system-setting.constants'
 
-export const SYSTEM_SETTING_UI_SCHEMA_VERSION = '1.1.0'
+export const SYSTEM_SETTING_UI_SCHEMA_VERSION = '1.2.0'
 
 export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
   version: SYSTEM_SETTING_UI_SCHEMA_VERSION,
@@ -69,6 +70,18 @@ export const SYSTEM_SETTING_UI_SCHEMA: UiSchema<SystemSettingField> = {
       description: '统一配置所有租户可用的第三方登录渠道。',
       icon: 'shield-check',
       children: [
+        {
+          type: 'field',
+          id: 'oauth-gateway-url',
+          title: 'OAuth 网关地址',
+          description: '统一的 OAuth 回调入口，例如 https://auth.afilmory.art。留空则直接回调到租户域名。',
+          helperText: '必须包含 http/https 协议，结尾无需斜杠。',
+          key: 'oauthGatewayUrl',
+          component: {
+            type: 'text',
+            placeholder: 'https://auth.afilmory.art',
+          },
+        },
         {
           type: 'group',
           id: 'oauth-google',
