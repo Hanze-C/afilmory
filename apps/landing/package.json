@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@floating-ui/react-dom": "2.1.6",
-    "@tanstack/query-async-storage-persister": "5.90.9",
-    "@tanstack/react-query": "5.90.7",
-    "@tanstack/react-query-persist-client": "5.90.9",
+    "@tanstack/query-async-storage-persister": "5.90.10",
+    "@tanstack/react-query": "5.90.8",
+    "@tanstack/react-query-persist-client": "5.90.10",
     "@types/js-cookie": "3.0.6",
     "axios": "1.13.2",
     "clsx": "2.1.1",
@@ -54,9 +54,9 @@
     "@tailwindcss/postcss": "4.1.17",
     "@tailwindcss/typography": "0.5.19",
     "@tanstack/react-query-devtools": "5.90.2",
-    "@types/node": "24.10.0",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.3",
+    "@types/react-dom": "19.2.3",
     "autoprefixer": "10.4.22",
     "code-inspector-plugin": "1.2.10",
     "cross-env": "10.1.0",
@@ -75,23 +75,6 @@
     "tailwindcss-animate": "1.0.7",
     "tailwindcss-safe-area": "1.1.0",
     "typescript": "5.9.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "array-includes": "npm:@nolyfill/array-includes@latest",
-      "array.prototype.findlastindex": "npm:@nolyfill/array.prototype.findlastindex@latest",
-      "array.prototype.flat": "npm:@nolyfill/array.prototype.flat@latest",
-      "array.prototype.flatmap": "npm:@nolyfill/array.prototype.flatmap@latest",
-      "array.prototype.tosorted": "npm:@nolyfill/array.prototype.tosorted@latest",
-      "has": "npm:@nolyfill/has@latest",
-      "object.assign": "npm:@nolyfill/object.assign@latest",
-      "object.entries": "npm:@nolyfill/object.entries@latest",
-      "object.fromentries": "npm:@nolyfill/object.fromentries@latest",
-      "object.groupby": "npm:@nolyfill/object.groupby@latest",
-      "object.hasown": "npm:@nolyfill/object.hasown@latest",
-      "object.values": "npm:@nolyfill/object.values@latest",
-      "string.prototype.matchall": "npm:@nolyfill/string.prototype.matchall@latest"
-    }
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged"
