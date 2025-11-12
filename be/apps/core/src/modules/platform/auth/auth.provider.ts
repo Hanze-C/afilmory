@@ -143,7 +143,9 @@ export class AuthProvider implements OnModuleInit {
 
   private buildBetterAuthProvidersForHost(
     host: string,
+    fallbackHost: string,
     protocol: string,
+    tenantSlug: string | null,
     providers: SocialProvidersConfig,
   ): Record<string, { clientId: string; clientSecret: string; redirectUri?: string }> {
     const entries: Array<[keyof SocialProvidersConfig, SocialProviderOptions]> = Object.entries(providers).filter(
@@ -152,7 +154,7 @@ export class AuthProvider implements OnModuleInit {
 
     return entries.reduce<Record<string, { clientId: string; clientSecret: string; redirectURI?: string }>>(
       (acc, [key, value]) => {
-        const redirectUri = this.buildRedirectUri(protocol, host, key, value)
+        const redirectUri = this.buildRedirectUri(protocol, host, fallbackHost, tenantSlug, key, value)
         acc[key] = {
           clientId: value.clientId,
           clientSecret: value.clientSecret,
@@ -167,6 +169,8 @@ export class AuthProvider implements OnModuleInit {
   private buildRedirectUri(
     protocol: string,
     host: string,
+    fallbackHost: string,
+    tenantSlug: string | null,
     provider: keyof SocialProvidersConfig,
     options: SocialProviderOptions,
   ): string | null {
@@ -174,7 +178,29 @@ export class AuthProvider implements OnModuleInit {
     if (!basePath.startsWith('/')) {
       return null
     }
-    return `${protocol}://${host}${basePath}`
+    const redirectHost = this.resolveRedirectHost(host, fallbackHost, tenantSlug)
+    return `${protocol}://${redirectHost}${basePath}`
+  }
+
+  private resolveRedirectHost(host: string, fallbackHost: string, tenantSlug: string | null): string {
+    const normalizedSlug = tenantSlug?.trim().toLowerCase()
+    if (!normalizedSlug) {
+      return host
+    }
+
+    const [hostName, hostPort] = host.split(':') as [string, string?]
+    if (!hostName.toLowerCase().startsWith(`${normalizedSlug}.`)) {
+      return host
+    }
+
+    const [fallbackNameRaw, fallbackPort] = fallbackHost.split(':') as [string, string?]
+    const fallbackName = fallbackNameRaw?.trim()
+    if (!fallbackName) {
+      return host
+    }
+
+    const portSegment = hostPort ?? fallbackPort ?? ''
+    return portSegment ? `${fallbackName}:${portSegment}` : fallbackName
   }
 
   private async createAuthForEndpoint(
@@ -184,7 +210,13 @@ export class AuthProvider implements OnModuleInit {
   ): Promise<BetterAuthInstance> {
     const options = await this.getModuleOptions()
     const db = this.drizzleProvider.getDb()
-    const socialProviders = this.buildBetterAuthProvidersForHost(host, protocol, options.socialProviders)
+    const socialProviders = this.buildBetterAuthProvidersForHost(
+      host,
+      options.baseDomain,
+      protocol,
+      tenantSlug,
+      options.socialProviders,
+    )
     const cookiePrefix = this.buildCookiePrefix(tenantSlug)
 
     return betterAuth({
