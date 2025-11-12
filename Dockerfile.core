@@ -29,7 +29,12 @@ FROM node:lts-alpine AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-RUN apk add --no-cache perl
+# Runtime deps for image processing:
+# - perl: required by exiftool-vendored on Linux
+# - perl-image-exiftool: provides the exiftool binary (optional but useful)
+# - vips: runtime library for sharp
+# - libheif: enable HEIF/HEIC support in libvips when available
+RUN apk add --no-cache perl perl-image-exiftool vips libheif
 COPY --from=builder /workspace/be/apps/core/dist ./dist
 COPY --from=builder /workspace/be/packages/db/migrations ./migrations
 COPY --from=builder /workspace/be/apps/core/docker-entrypoint.sh ./docker-entrypoint.sh
