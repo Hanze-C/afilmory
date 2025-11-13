@@ -59,10 +59,6 @@ async function main() {
   在 builder.config.ts 中设置 performance.worker.useClusterMode = true 
   可启用多进程集群模式，发挥多核心优势。
 
-远程仓库：
-  如果启用了远程仓库 (repo.enable = true)，构建完成后会自动推送更新。
-  需要配置 repo.token 或设置 GIT_TOKEN 环境变量以提供推送权限。
-  如果没有提供 token，将跳过推送步骤。
 `)
     return
   }
@@ -105,15 +101,8 @@ async function main() {
     logger.main.info(`   集群模式：${config.system.observability.performance.worker.useClusterMode ? '启用' : '禁用'}`)
     logger.main.info('')
     if (!userConfig) {
-      logger.main.warn('未配置用户级设置（repo/storage）')
+      logger.main.warn('未配置用户级存储设置')
       return
-    }
-
-    logger.main.info('📦 远程仓库配置：')
-    logger.main.info(`   启用状态：${userConfig.repo.enable ? '启用' : '禁用'}`)
-    if (userConfig.repo.enable) {
-      logger.main.info(`   仓库地址：${userConfig.repo.url || '未设置'}`)
-      logger.main.info(`   推送权限：${userConfig.repo.token ? '已配置' : '未配置'}`)
     }
     return
   }

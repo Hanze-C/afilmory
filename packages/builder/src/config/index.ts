@@ -56,11 +56,6 @@ function applySystemOverrides(target: BuilderConfig['system'], overrides?: Build
 function ensureUserSettings(target: BuilderConfig): UserBuilderSettings {
   if (!target.user) {
     target.user = {
-      repo: {
-        enable: false,
-        url: '',
-        token: '',
-      },
       storage: null,
     }
   }
@@ -71,12 +66,6 @@ function applyUserOverrides(target: BuilderConfig, overrides?: BuilderConfigInpu
   if (!overrides) return
   const user = ensureUserSettings(target)
 
-  if (overrides.repo) {
-    user.repo = {
-      ...user.repo,
-      ...overrides.repo,
-    }
-  }
   if (overrides.storage !== undefined) {
     user.storage = overrides.storage as StorageConfig | null
   }
@@ -87,14 +76,6 @@ function normalizeBuilderConfig(defaults: BuilderConfig, input: BuilderConfigInp
 
   applySystemOverrides(next.system, input.system)
   applyUserOverrides(next, input.user)
-
-  if (input.repo) {
-    const user = ensureUserSettings(next)
-    user.repo = {
-      ...user.repo,
-      ...input.repo,
-    }
-  }
 
   if (input.storage !== undefined) {
     ensureUserSettings(next).storage = input.storage ?? null

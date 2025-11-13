@@ -10,30 +10,35 @@ import type { BuilderPlugin } from './types.js'
 const RUN_SHARED_ASSETS_DIR = 'assetsGitDir'
 
 export interface GitHubRepoSyncPluginOptions {
+  repo: {
+    enable: boolean
+    url: string
+    token?: string
+    branch?: string
+  }
   autoPush?: boolean
 }
 
-export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOptions = {}): BuilderPlugin {
+export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOptions): BuilderPlugin {
   const autoPush = options.autoPush ?? true
+  const repoConfig = options.repo
+
+  if (!repoConfig) {
+    throw new Error('githubRepoSyncPlugin 需要 repo 配置')
+  }
+
+  const branchName = repoConfig.branch?.trim() || 'main'
 
   return {
     name: 'afilmory:github-repo-sync',
     hooks: {
       beforeBuild: async (context) => {
-        const userConfig = context.config.user
-        if (!userConfig) {
-          context.logger.main.warn('⚠️ 未配置用户级设置，跳过远程仓库同步')
-          return
-        }
-
-        if (!userConfig.repo.enable) {
+        if (!repoConfig.enable) {
           return
         }
 
         const { logger } = context
-        const { repo } = userConfig
-
-        if (!repo.url) {
+        if (!repoConfig.url) {
           logger.main.warn('⚠️ 未配置远程仓库地址，跳过同步')
           return
         }
@@ -43,7 +48,7 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
 
         logger.main.info('🔄 同步远程仓库...')
 
-        const repoUrl = buildAuthenticatedRepoUrl(repo.url, repo.token)
+        const repoUrl = buildAuthenticatedRepoUrl(repoConfig.url, repoConfig.token)
 
         if (!existsSync(assetsGitDir)) {
           logger.main.info('📥 克隆远程仓库...')
@@ -67,17 +72,12 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
           }
         }
 
+        await ensureRepositoryBranch({ assetsGitDir, branchName, logger })
         await prepareRepositoryLayout({ assetsGitDir, logger })
         logger.main.success('✅ 远程仓库同步完成')
       },
       afterBuild: async (context) => {
-        const userConfig = context.config.user
-        if (!userConfig) {
-          context.logger.main.warn('⚠️ 未配置用户级设置，跳过推送')
-          return
-        }
-
-        if (!autoPush || !userConfig.repo.enable) {
+        if (!autoPush || !repoConfig.enable) {
           return
         }
 
@@ -97,7 +97,8 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
         await pushUpdatesToRemoteRepo({
           assetsGitDir,
           logger: context.logger,
-          repoConfig: userConfig.repo,
+          repoConfig,
+          branchName,
         })
       },
     },
@@ -152,9 +153,15 @@ interface PushRemoteOptions {
     url: string
     token?: string
   }
+  branchName: string
 }
 
-async function pushUpdatesToRemoteRepo({ assetsGitDir, logger, repoConfig }: PushRemoteOptions): Promise<void> {
+async function pushUpdatesToRemoteRepo({
+  assetsGitDir,
+  logger,
+  repoConfig,
+  branchName,
+}: PushRemoteOptions): Promise<void> {
   if (!repoConfig.url) {
     return
   }
@@ -194,7 +201,7 @@ async function pushUpdatesToRemoteRepo({ assetsGitDir, logger, repoConfig }: Pus
     cwd: assetsGitDir,
     stdio: 'inherit',
   })`git commit -m ${commitMessage}`
-  await $({ cwd: assetsGitDir, stdio: 'inherit' })`git push origin HEAD`
+  await $({ cwd: assetsGitDir, stdio: 'inherit' })`git push -u origin HEAD:${branchName}`
 
   logger.main.success('✅ 成功推送更新到远程仓库')
 }
@@ -214,6 +221,71 @@ async function ensureGitUserConfigured(assetsGitDir: string): Promise<void> {
   }
 }
 
+interface EnsureRepositoryBranchOptions {
+  assetsGitDir: string
+  branchName: string
+  logger: typeof import('../logger/index.js').logger
+}
+
+async function ensureRepositoryBranch({
+  assetsGitDir,
+  branchName,
+  logger,
+}: EnsureRepositoryBranchOptions): Promise<void> {
+  const currentBranch = await getCurrentBranch(assetsGitDir)
+
+  if (currentBranch === branchName) {
+    return
+  }
+
+  const hasLocalBranch = await branchExistsLocally(assetsGitDir, branchName)
+  if (hasLocalBranch) {
+    logger.main.info(`🔀 切换到分支 ${branchName}`)
+    await $({ cwd: assetsGitDir, stdio: 'inherit' })`git checkout ${branchName}`
+    return
+  }
+
+  if (await remoteBranchExists(assetsGitDir, branchName)) {
+    logger.main.info(`🔄 检出远程分支 ${branchName}`)
+    await $({ cwd: assetsGitDir, stdio: 'inherit' })`git checkout -b ${branchName} origin/${branchName}`
+    return
+  }
+
+  logger.main.info(`🌱 创建新分支 ${branchName}`)
+  await $({ cwd: assetsGitDir, stdio: 'inherit' })`git checkout -b ${branchName}`
+}
+
+async function getCurrentBranch(assetsGitDir: string): Promise<string | null> {
+  try {
+    const { stdout } = await $({ cwd: assetsGitDir, stdio: 'pipe' })`git rev-parse --abbrev-ref HEAD`
+    const branch = stdout.trim()
+    if (!branch || branch === 'HEAD') {
+      return null
+    }
+    return branch
+  } catch {
+    return null
+  }
+}
+
+async function branchExistsLocally(assetsGitDir: string, branchName: string): Promise<boolean> {
+  try {
+    await $({ cwd: assetsGitDir, stdio: 'pipe' })`git show-ref --verify --quiet refs/heads/${branchName}`
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function remoteBranchExists(assetsGitDir: string, branchName: string): Promise<boolean> {
+  try {
+    await $({ cwd: assetsGitDir, stdio: 'pipe' })`git rev-parse --verify origin/${branchName}`
+    return true
+  } catch {
+    return false
+  }
+}
+
 function buildAuthenticatedRepoUrl(url: string, token?: string): string {
   if (!token) return url
 
@@ -226,6 +298,6 @@ function buildAuthenticatedRepoUrl(url: string, token?: string): string {
 }
 
 export const plugin = githubRepoSyncPlugin
-export function createGitHubRepoSyncPlugin(options?: GitHubRepoSyncPluginOptions): BuilderPlugin {
+export function createGitHubRepoSyncPlugin(options: GitHubRepoSyncPluginOptions): BuilderPlugin {
   return githubRepoSyncPlugin(options)
 }

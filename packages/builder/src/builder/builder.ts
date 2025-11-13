@@ -658,10 +658,6 @@ export class AfilmoryBuilder {
       addReference(ref)
     }
 
-    if (this.getUserSettings().repo?.enable && !hasPluginWithName('afilmory:github-repo-sync')) {
-      addReference(() => import('@afilmory/builder/plugins/github-repo-sync.js'))
-    }
-
     return references
   }
 

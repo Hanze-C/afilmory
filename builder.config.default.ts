@@ -1,15 +1,10 @@
 import os from 'node:os'
 
-import { defineBuilderConfig } from '@afilmory/builder'
+import { defineBuilderConfig, githubRepoSyncPlugin } from '@afilmory/builder'
 
 import { env } from './env.js'
 
 export default defineBuilderConfig(() => ({
-  repo: {
-    enable: false,
-    url: process.env.BUILDER_REPO_URL ?? '',
-    token: env.GIT_TOKEN,
-  },
   storage: {
     // "provider": "local",
     // "basePath": "./apps/web/public/photos",
@@ -61,5 +56,14 @@ export default defineBuilderConfig(() => ({
     },
   },
   // plugins: [thumbnailStoragePlugin()],
-  plugins: [],
+  plugins: [
+    githubRepoSyncPlugin({
+      repo: {
+        enable: false,
+        url: process.env.BUILDER_REPO_URL ?? '',
+        token: env.GIT_TOKEN,
+        branch: process.env.BUILDER_REPO_BRANCH ?? 'main',
+      },
+    }),
+  ],
 }))

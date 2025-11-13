@@ -2,7 +2,7 @@
 title: Docker
 description: Guide to deploying Afilmory via Docker.
 createdAt: 2025-07-20T22:35:03+08:00
-lastModified: 2025-10-28T19:48:05+08:00
+lastModified: 2025-11-14T00:23:27+08:00
 ---
 
 # Docker Deployment
@@ -53,13 +53,9 @@ Before building your Docker image, you'll need to configure the following files:
 **`builder.config.ts`**
 
 ```ts
-import { defineBuilderConfig } from '@afilmory/builder'
+import { defineBuilderConfig, githubRepoSyncPlugin } from '@afilmory/builder'
 
 export default defineBuilderConfig(() => ({
-  repo: {
-    enable: false,
-    url: 'https://github.com/username/gallery-public',
-  },
   storage: {
     provider: 's3',
     bucket: 'your-photos-bucket',
@@ -67,6 +63,16 @@ export default defineBuilderConfig(() => ({
     prefix: 'photos/',
     customDomain: 'cdn.yourdomain.com',
   },
+  plugins: [
+    githubRepoSyncPlugin({
+      repo: {
+        enable: true,
+        url: 'https://github.com/username/gallery-public',
+        token: process.env.GIT_TOKEN,
+        branch: process.env.BUILDER_REPO_BRANCH ?? 'main',
+      },
+    }),
+  ],
   performance: {
     worker: {
       enabled: true,
@@ -75,6 +81,8 @@ export default defineBuilderConfig(() => ({
   },
 }))
 ```
+
+If you keep assets on a non-`main` branch, set `branch` accordingly; the plugin will also auto-create the specified branch when it doesn’t exist yet so first pushes succeed even for empty repositories.
 
 **`.env`**
 
