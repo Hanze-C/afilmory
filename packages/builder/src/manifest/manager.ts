@@ -2,11 +2,11 @@ import fs from 'node:fs/promises'
 import path, { basename } from 'node:path'
 
 import { workdir } from '@afilmory/builder/path.js'
-import type { _Object } from '@aws-sdk/client-s3'
 
 import { logger } from '../logger/index.js'
 import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.js'
 import type { PhotoManifestItem } from '../types/photo.js'
+import type { S3ObjectLike } from '../types/s3.js'
 import { migrateManifestFileIfNeeded } from './migrate.js'
 import { CURRENT_MANIFEST_VERSION } from './version.js'
 
@@ -45,7 +45,7 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
 }
 
 // 检查照片是否需要更新（基于最后修改时间）
-export function needsUpdate(existingItem: PhotoManifestItem | undefined, s3Object: _Object): boolean {
+export function needsUpdate(existingItem: PhotoManifestItem | undefined, s3Object: S3ObjectLike): boolean {
   if (!existingItem) return true
   if (!s3Object.LastModified) return true
 

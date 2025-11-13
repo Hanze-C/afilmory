@@ -78,6 +78,7 @@ export type S3Config = {
   endpoint?: string
   accessKeyId?: string
   secretAccessKey?: string
+  sessionToken?: string
   prefix?: string
   customDomain?: string
   excludeRegex?: string

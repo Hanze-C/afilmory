@@ -1,34 +1,78 @@
 import path from 'node:path'
 
-import type { _Object, S3Client } from '@aws-sdk/client-s3'
-import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3'
+import { XMLParser } from 'fast-xml-parser'
 
 import { backoffDelay, sleep } from '../../../../utils/src/backoff.js'
 import { Semaphore } from '../../../../utils/src/semaphore.js'
 import { SUPPORTED_FORMATS } from '../../constants/index.js'
 import { logger } from '../../logger/index.js'
-import { createS3Client } from '../../s3/client.js'
+import type { SimpleS3Client } from '../../s3/client.js'
+import { createS3Client, encodeS3Key } from '../../s3/client.js'
 import type { ProgressCallback, S3Config, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces'
 
 // 将 AWS S3 对象转换为通用存储对象
-function convertS3ObjectToStorageObject(s3Object: _Object): StorageObject {
-  return {
-    key: s3Object.Key || '',
-    size: s3Object.Size,
-    lastModified: s3Object.LastModified,
-    etag: s3Object.ETag,
-  }
-}
+const xmlParser = new XMLParser({ ignoreAttributes: false })
 
 export class S3StorageProvider implements StorageProvider {
   private config: S3Config
-  private s3Client: S3Client
+  private client: SimpleS3Client
   private limiter: Semaphore
 
   constructor(config: S3Config) {
     this.config = config
-    this.s3Client = createS3Client(config)
+    this.client = createS3Client(config)
     this.limiter = new Semaphore(this.config.downloadConcurrency ?? 16)
+  }
+
+  private buildObjectUrl(key?: string): string {
+    return this.client.buildObjectUrl(key)
+  }
+
+  private async readStreamWithIdleTimeout(
+    response: Response,
+    controller: AbortController,
+    idleTimeoutMs: number,
+  ): Promise<{ buffer: Buffer; firstByteAt: number | null }> {
+    if (!response.body) {
+      return { buffer: Buffer.alloc(0), firstByteAt: null }
+    }
+
+    const reader = response.body.getReader()
+    const chunks: Buffer[] = []
+    let idleTimer: NodeJS.Timeout | null = null
+    let firstByteAt: number | null = null
+
+    const resetIdle = () => {
+      if (idleTimer) clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => {
+        controller.abort()
+      }, idleTimeoutMs)
+    }
+
+    resetIdle()
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      if (value) {
+        if (!firstByteAt) {
+          firstByteAt = Date.now()
+        }
+        chunks.push(Buffer.from(value))
+      }
+      resetIdle()
+    }
+
+    if (idleTimer) {
+      clearTimeout(idleTimer)
+    }
+
+    return {
+      buffer: Buffer.concat(chunks),
+      firstByteAt,
+    }
   }
 
   async getFile(key: string): Promise<Buffer | null> {
@@ -36,78 +80,33 @@ export class S3StorageProvider implements StorageProvider {
       const maxAttempts = this.config.maxAttempts ?? 3
       const totalTimeoutMs = this.config.totalTimeoutMs ?? 60_000
       const idleTimeoutMs = this.config.idleTimeoutMs ?? 10_000
-      const requestTimeoutMs = this.config.requestTimeoutMs ?? 20_000
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const startTime = Date.now()
         const controller = new AbortController()
         const totalTimer = setTimeout(() => controller.abort(), totalTimeoutMs)
-        let idleTimer: NodeJS.Timeout | null = null
-        let firstByteAt: number | null = null
 
         try {
           logger.s3.info(`下载开始：${key} (attempt ${attempt}/${maxAttempts})`)
 
-          const command = new GetObjectCommand({
-            Bucket: this.config.bucket,
-            Key: key,
+          const response = await this.client.fetch(this.buildObjectUrl(key), {
+            method: 'GET',
+            signal: controller.signal,
           })
 
-          const response = await this.s3Client.send(command, {
-            abortSignal: controller.signal,
-            requestTimeout: requestTimeoutMs,
-          })
-
-          if (!response.Body) {
-            logger.s3.error(`S3 响应中没有 Body: ${key}`)
+          if (!response.ok || !response.body) {
+            const bodyText = await response.text().catch(() => '')
+            logger.s3.error(`S3 响应异常：${key} (status ${response.status}) ${bodyText}`)
             return null
           }
 
-          // 如果 Body 已经是 Buffer
-          if (response.Body instanceof Buffer) {
-            const duration = Date.now() - startTime
-            const sizeKB = Math.round(response.Body.length / 1024)
-            logger.s3.success(`下载完成：${key} (${sizeKB}KB, ${duration}ms, attempt ${attempt})`)
-            return response.Body
-          }
-
-          // 以流方式读取并监控首字节与空闲超时
-          const chunks: Uint8Array[] = []
-          const stream = response.Body as NodeJS.ReadableStream
-
-          const resetIdle = () => {
-            if (idleTimer) clearTimeout(idleTimer)
-            idleTimer = setTimeout(() => {
-              controller.abort()
-            }, idleTimeoutMs)
-          }
-
-          resetIdle()
-
-          const buffer: Buffer = await new Promise((resolve, reject) => {
-            stream.on('data', (chunk: Uint8Array) => {
-              if (!firstByteAt) firstByteAt = Date.now()
-              chunks.push(chunk)
-              resetIdle()
-            })
-
-            stream.on('end', () => {
-              if (idleTimer) clearTimeout(idleTimer)
-              const buf = Buffer.concat(chunks)
-              resolve(buf)
-            })
-
-            stream.on('error', (error) => {
-              if (idleTimer) clearTimeout(idleTimer)
-              reject(error)
-            })
-          })
+          const { buffer, firstByteAt } = await this.readStreamWithIdleTimeout(response, controller, idleTimeoutMs)
+          clearTimeout(totalTimer)
 
           const duration = Date.now() - startTime
           const ttfb = firstByteAt ? firstByteAt - startTime : duration
           const sizeKB = Math.round(buffer.length / 1024)
           logger.s3.success(`下载完成：${key} (${sizeKB}KB, ${duration}ms, TTFB ${ttfb}ms, attempt ${attempt})`)
-          clearTimeout(totalTimer)
           return buffer
         } catch (error) {
           const elapsed = Date.now() - startTime
@@ -130,41 +129,23 @@ export class S3StorageProvider implements StorageProvider {
   }
 
   async listImages(): Promise<StorageObject[]> {
-    const listCommand = new ListObjectsV2Command({
-      Bucket: this.config.bucket,
-      Prefix: this.config.prefix,
-      MaxKeys: this.config.maxFileLimit, // 最多获取 1000 张照片
-    })
-
-    const listResponse = await this.s3Client.send(listCommand)
-    const objects = listResponse.Contents || []
+    const objects = await this.listObjects()
     const excludeRegex = this.config.excludeRegex ? new RegExp(this.config.excludeRegex) : null
 
     // 过滤出图片文件并转换为通用格式
-    const imageObjects = objects
-      .filter((obj: _Object) => {
-        if (!obj.Key) return false
-        if (excludeRegex && excludeRegex.test(obj.Key)) return false
+    const imageObjects = objects.filter((obj) => {
+      if (!obj.key) return false
+      if (excludeRegex && excludeRegex.test(obj.key)) return false
 
-        const ext = path.extname(obj.Key).toLowerCase()
-        return SUPPORTED_FORMATS.has(ext)
-      })
-      .map((obj) => convertS3ObjectToStorageObject(obj))
+      const ext = path.extname(obj.key).toLowerCase()
+      return SUPPORTED_FORMATS.has(ext)
+    })
 
     return imageObjects
   }
 
   async listAllFiles(_progressCallback?: ProgressCallback): Promise<StorageObject[]> {
-    const listCommand = new ListObjectsV2Command({
-      Bucket: this.config.bucket,
-      Prefix: this.config.prefix,
-      MaxKeys: this.config.maxFileLimit,
-    })
-
-    const listResponse = await this.s3Client.send(listCommand)
-    const objects = listResponse.Contents || []
-
-    return objects.map((obj) => convertS3ObjectToStorageObject(obj))
+    return await this.listObjects()
   }
 
   generatePublicUrl(key: string): string {
@@ -177,14 +158,16 @@ export class S3StorageProvider implements StorageProvider {
     // 如果使用自定义端点，构建相应的 URL
     const { endpoint } = this.config
 
+    const region = this.config.region ?? 'us-east-1'
+
     if (!endpoint) {
       // 默认 AWS S3 端点
-      return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${key}`
+      return `https://${this.config.bucket}.s3.${region}.amazonaws.com/${key}`
     }
 
     // 检查是否是标准 AWS S3 端点
     if (endpoint.includes('amazonaws.com')) {
-      return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${key}`
+      return `https://${this.config.bucket}.s3.${region}.amazonaws.com/${key}`
     }
 
     const baseUrl = endpoint.replace(/\/$/, '') // 移除末尾的斜杠
@@ -251,31 +234,72 @@ export class S3StorageProvider implements StorageProvider {
     return livePhotoMap
   }
 
+  private async listObjects(): Promise<StorageObject[]> {
+    const url = new URL(this.buildObjectUrl())
+    url.search = ''
+    url.searchParams.set('list-type', '2')
+    if (this.config.prefix) {
+      url.searchParams.set('prefix', encodeS3Key(this.config.prefix))
+    }
+    if (this.config.maxFileLimit) {
+      url.searchParams.set('max-keys', String(this.config.maxFileLimit))
+    }
+
+    const response = await this.client.fetch(url.toString(), { method: 'GET' })
+    const text = await response.text()
+    if (!response.ok) {
+      throw new Error(`列出 S3 对象失败 (status ${response.status}): ${text}`)
+    }
+    const parsed = xmlParser.parse(text)
+    const contents = parsed?.ListBucketResult?.Contents ?? []
+    const items = Array.isArray(contents) ? contents : contents ? [contents] : []
+
+    return items
+      .map((item) => {
+        const key = item?.Key ?? ''
+        return {
+          key,
+          size: item?.Size !== undefined ? Number(item.Size) : undefined,
+          lastModified: item?.LastModified ? new Date(item.LastModified) : undefined,
+          etag: typeof item?.ETag === 'string' ? item.ETag.replaceAll('"', '') : undefined,
+        } satisfies StorageObject
+      })
+      .filter((item) => Boolean(item.key))
+  }
+
   async deleteFile(key: string): Promise<void> {
-    const command = new DeleteObjectCommand({
-      Bucket: this.config.bucket,
-      Key: key,
+    const response = await this.client.fetch(this.buildObjectUrl(key), {
+      method: 'DELETE',
     })
 
-    await this.s3Client.send(command)
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`删除 S3 对象失败：${key} (status ${response.status}) ${text}`)
+    }
   }
 
   async uploadFile(key: string, data: Buffer, options?: StorageUploadOptions): Promise<StorageObject> {
-    const command = new PutObjectCommand({
-      Bucket: this.config.bucket,
-      Key: key,
-      Body: data,
-      ContentType: options?.contentType,
+    const response = await this.client.fetch(this.buildObjectUrl(key), {
+      method: 'PUT',
+      body: data as unknown as BodyInit,
+      headers: {
+        'content-type': options?.contentType ?? 'application/octet-stream',
+        'content-length': data.byteLength.toString(),
+      },
     })
 
-    const response = await this.s3Client.send(command)
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`上传 S3 对象失败：${key} (status ${response.status}) ${text}`)
+    }
+
     const lastModified = new Date()
 
     return {
       key,
       size: data.byteLength,
       lastModified,
-      etag: response.ETag ?? undefined,
+      etag: response.headers.get('etag') ?? undefined,
     }
   }
 }

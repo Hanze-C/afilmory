@@ -4,6 +4,7 @@ import type {
   PhotoManifestItem,
   PhotoProcessingContext,
   PhotoProcessorOptions,
+  S3ObjectLike,
   StorageConfig,
   StorageObject,
 } from '@afilmory/builder'
@@ -19,7 +20,6 @@ import {
   createStorageKeyNormalizer,
   runWithPhotoExecutionContext,
 } from '@afilmory/builder/photo/index.js'
-import type { _Object } from '@aws-sdk/client-s3'
 import { logger as coreLogger } from 'core/helpers/logger.helper'
 import { injectable } from 'tsyringe'
 
@@ -126,7 +126,7 @@ export class PhotoBuilderService {
     }
   }
 
-  private toLegacyObject(object: StorageObject): _Object {
+  private toLegacyObject(object: StorageObject): S3ObjectLike {
     return {
       Key: object.key,
       Size: object.size,
@@ -135,12 +135,12 @@ export class PhotoBuilderService {
     }
   }
 
-  private toLegacyLivePhotoMap(livePhotoMap?: Map<string, StorageObject>): Map<string, _Object> {
+  private toLegacyLivePhotoMap(livePhotoMap?: Map<string, StorageObject>): Map<string, S3ObjectLike> {
     if (!livePhotoMap) {
       return new Map()
     }
 
-    const result = new Map<string, _Object>()
+    const result = new Map<string, S3ObjectLike>()
 
     for (const [key, value] of livePhotoMap) {
       result.set(key, this.toLegacyObject(value))

@@ -1,9 +1,8 @@
-import type { _Object } from '@aws-sdk/client-s3'
-
 import type { AfilmoryBuilder, BuilderOptions } from '../builder/builder.js'
 import { logger } from '../logger/index.js'
 import type { PluginRunState } from '../plugins/manager.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
+import type { S3ObjectLike } from '../types/s3.js'
 import { createStorageKeyNormalizer, runWithPhotoExecutionContext } from './execution-context.js'
 import type { PhotoProcessingContext } from './image-pipeline.js'
 import { processPhotoWithPipeline } from './image-pipeline.js'
@@ -17,12 +16,12 @@ export interface PhotoProcessorOptions {
 
 // 处理单张照片
 export async function processPhoto(
-  obj: _Object,
+  obj: S3ObjectLike,
   index: number,
   workerId: number,
   totalImages: number,
   existingManifestMap: Map<string, PhotoManifestItem>,
-  livePhotoMap: Map<string, _Object>,
+  livePhotoMap: Map<string, S3ObjectLike>,
   options: PhotoProcessorOptions,
   builder: AfilmoryBuilder,
   pluginRuntime: {

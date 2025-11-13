@@ -2,7 +2,6 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 
 import { compressUint8Array } from '@afilmory/utils'
-import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
 import type { BuilderOptions } from '../builder/builder.js'
@@ -15,6 +14,7 @@ import {
 import type { PluginRunState } from '../plugins/manager.js'
 import { THUMBNAIL_PLUGIN_DATA_KEY } from '../plugins/thumbnail-storage/shared.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
+import type { S3ObjectLike } from '../types/s3.js'
 import { shouldProcessPhoto } from './cache-manager.js'
 import { processExifData, processThumbnailAndBlurhash, processToneAnalysis } from './data-processors.js'
 import { getPhotoExecutionContext } from './execution-context.js'
@@ -32,9 +32,9 @@ export interface ProcessedImageData {
 
 export interface PhotoProcessingContext {
   photoKey: string
-  obj: _Object
+  obj: S3ObjectLike
   existingItem: PhotoManifestItem | undefined
-  livePhotoMap: Map<string, _Object>
+  livePhotoMap: Map<string, S3ObjectLike>
   options: PhotoProcessorOptions
   pluginData: Record<string, unknown>
 }

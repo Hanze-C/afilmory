@@ -342,11 +342,14 @@ export function PhotoSyncResultPanel({
                 type="button"
                 size="xs"
                 variant={selectedActionType === filter.type ? 'primary' : 'ghost'}
-                className="gap-1"
+                className="gap-1 group"
+                data-selected={selectedActionType === filter.type}
                 onClick={() => handleSelectActionType(filter.type)}
               >
                 <span>{filter.label}</span>
-                <span className="text-text-tertiary text-[11px]">{filter.count}</span>
+                <span className="text-text-tertiary text-[11px] group-data-[selected=true]:text-text">
+                  {filter.count}
+                </span>
               </Button>
             ))}
           </div>
