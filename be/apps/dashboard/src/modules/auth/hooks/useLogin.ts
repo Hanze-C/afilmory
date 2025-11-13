@@ -25,7 +25,7 @@ export function useLogin() {
   const loginMutation = useMutation({
     mutationFn: async (data: LoginRequest) => {
       if (data.requireRootDomain) {
-        const slug = typeof window !== 'undefined' ? getTenantSlugFromHost(window.location.hostname) : null
+        const slug = getTenantSlugFromHost(window.location.hostname)
         if (slug !== 'root') {
           const rootUrl = buildRootTenantUrl('/root-login')
           window.location.replace(rootUrl)
@@ -56,7 +56,7 @@ export function useLogin() {
       const isSuperAdmin = session.user.role === 'superadmin'
 
       if (tenant && !tenant.isPlaceholder && tenant.slug) {
-        const currentSlug = typeof window !== 'undefined' ? getTenantSlugFromHost(window.location.hostname) : null
+        const currentSlug = getTenantSlugFromHost(window.location.hostname)
         if (!isSuperAdmin && tenant.slug !== currentSlug) {
           try {
             const targetUrl = buildTenantUrl(tenant.slug, '/')

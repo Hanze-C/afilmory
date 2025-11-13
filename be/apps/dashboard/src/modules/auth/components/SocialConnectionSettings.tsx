@@ -46,11 +46,6 @@ export function SocialConnectionSettings() {
 
   const handleConnect = useCallback(
     async (providerId: string, providerName: string) => {
-      if (typeof window === 'undefined') {
-        toast.error('当前环境不支持 OAuth 绑定')
-        return
-      }
-
       const url = new URL(window.location.href)
       url.searchParams.set('auth-flow', 'link')
       url.searchParams.set('provider', providerId)

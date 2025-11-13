@@ -1,7 +1,4 @@
 export const getCurrentHostname = (): string | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
   try {
     return window.location.hostname
   } catch {
@@ -10,10 +7,6 @@ export const getCurrentHostname = (): string | null => {
 }
 
 export const buildRegistrationUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return '/platform/welcome'
-  }
-
   try {
     const { protocol, host } = window.location
     return `${protocol}//${host}/platform/welcome`
@@ -23,10 +16,6 @@ export const buildRegistrationUrl = (): string => {
 }
 
 export const buildHomeUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return '/'
-  }
-
   try {
     const { protocol, hostname, port } = window.location
     const normalizedPort = port ? `:${port}` : ''

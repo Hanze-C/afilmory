@@ -33,10 +33,8 @@ export const SocialAuthButtons = memo(function SocialAuthButtons({
     if (callbackURL) {
       return callbackURL
     }
-    if (typeof window !== 'undefined') {
-      return window.location.href
-    }
-    return
+
+    return window.location.href
   }, [callbackURL])
 
   const handleSocialClick = useCallback(

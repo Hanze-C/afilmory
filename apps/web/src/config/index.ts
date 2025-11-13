@@ -11,7 +11,7 @@ const defaultInjectConfig = {
 export const injectConfig = merge(defaultInjectConfig, __CONFIG__)
 
 const getInjectedSiteConfig = (): Partial<SiteConfig> | undefined => {
-  if (typeof window !== 'undefined' && window.__SITE_CONFIG__) {
+  if (window.__SITE_CONFIG__) {
     return window.__SITE_CONFIG__
   }
 

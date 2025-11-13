@@ -30,9 +30,8 @@ function App({ url }: { url?: string }) {
       setCurrentPath(path)
       setIsSidebarOpen(false) // 导航后关闭侧边栏
       // 在实际应用中，这里会更新浏览器历史记录
-      if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', path)
-      }
+
+      window.history.pushState({}, '', path)
     },
     [setCurrentPath, setIsSidebarOpen],
   )

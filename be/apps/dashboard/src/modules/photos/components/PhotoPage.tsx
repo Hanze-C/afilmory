@@ -44,7 +44,6 @@ const STAGE_ORDER: PhotoSyncProgressStage[] = [
 ]
 
 const MAX_SYNC_LOGS = 200
-const PHOTO_SYNC_RESULT_STORAGE_KEY = 'photo-sync:last-result'
 
 function createInitialStages(totals: PhotoSyncProgressState['totals']): PhotoSyncProgressState['stages'] {
   return STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
@@ -72,32 +71,6 @@ export function PhotoPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [resolvingConflictId, setResolvingConflictId] = useState<string | null>(null)
   const [syncProgress, setSyncProgress] = useState<PhotoSyncProgressState | null>(null)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const restoreStoredResult = () => {
-      try {
-        const cached = window.sessionStorage.getItem(PHOTO_SYNC_RESULT_STORAGE_KEY)
-        if (!cached) {
-          return
-        }
-
-        const parsed = JSON.parse(cached) as { result?: PhotoSyncResult; lastWasDryRun?: boolean | null }
-        if (parsed?.result) {
-          setResult(parsed.result)
-          setLastWasDryRun(parsed.lastWasDryRun ?? null)
-        }
-      } catch (error) {
-        console.error('Failed to restore cached photo sync result', error)
-        window.sessionStorage.removeItem(PHOTO_SYNC_RESULT_STORAGE_KEY)
-      }
-    }
-
-    restoreStoredResult()
-  }, [])
 
   useEffect(() => {
     setActiveTab(normalizedInitialTab)
@@ -303,16 +276,7 @@ export function PhotoPage() {
       setResult(data)
       setLastWasDryRun(context.dryRun)
       setSyncProgress(null)
-      if (typeof window !== 'undefined') {
-        try {
-          window.sessionStorage.setItem(
-            PHOTO_SYNC_RESULT_STORAGE_KEY,
-            JSON.stringify({ result: data, lastWasDryRun: context.dryRun }),
-          )
-        } catch (error) {
-          console.error('Failed to persist photo sync result snapshot', error)
-        }
-      }
+
       void summaryQuery.refetch()
       void listQuery.refetch()
     },

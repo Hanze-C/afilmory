@@ -65,10 +65,6 @@ export function buildTenantUrl(slug: string, path = '/'): string {
     throw new Error('Workspace slug is required to build tenant URL.')
   }
 
-  if (typeof window === 'undefined') {
-    throw new TypeError('Cannot build tenant URL outside the browser environment.')
-  }
-
   const { protocol, hostname, port } = window.location
   const baseDomain = resolveBaseDomain(hostname)
 

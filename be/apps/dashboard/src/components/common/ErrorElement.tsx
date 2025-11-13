@@ -19,21 +19,18 @@ export function ErrorElement() {
   }, [error])
 
   const reloadTriggeredRef = useRef(false)
-  const hasWindow = typeof window !== 'undefined'
   const shouldAttemptReload =
-    hasWindow &&
-    message.startsWith('Failed to fetch dynamically imported module') &&
-    window.sessionStorage.getItem('reload') !== '1'
+    message.startsWith('Failed to fetch dynamically imported module') && window.sessionStorage.getItem('reload') !== '1'
 
   useEffect(() => {
-    if (!shouldAttemptReload || reloadTriggeredRef.current || !hasWindow) {
+    if (!shouldAttemptReload || reloadTriggeredRef.current) {
       return
     }
 
     reloadTriggeredRef.current = true
     window.sessionStorage.setItem('reload', '1')
     window.location.reload()
-  }, [hasWindow, shouldAttemptReload])
+  }, [shouldAttemptReload])
 
   if (shouldAttemptReload) {
     return null

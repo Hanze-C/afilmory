@@ -118,11 +118,6 @@ export const usePhotoViewerTransitions = ({
     if (!isOpen || !currentPhoto) return
     if (entryTransition || isViewerContentVisible) return
 
-    if (typeof window === 'undefined') {
-      setIsViewerContentVisible(true)
-      return
-    }
-
     const triggerEl = resolveTriggerElement()
 
     if (!triggerEl) {
@@ -203,12 +198,6 @@ export const usePhotoViewerTransitions = ({
     }
 
     if (!wasOpenRef.current || !currentPhoto) {
-      wasOpenRef.current = false
-      restoreTriggerElementVisibility()
-      return
-    }
-
-    if (typeof window === 'undefined') {
       wasOpenRef.current = false
       restoreTriggerElementVisibility()
       return

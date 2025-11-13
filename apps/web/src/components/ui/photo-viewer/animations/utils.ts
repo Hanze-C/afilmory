@@ -15,7 +15,7 @@ const THUMBNAIL_PADDING = {
 } as const
 
 export const escapeAttributeValue = (value: string) => {
-  if (typeof window !== 'undefined' && window.CSS?.escape) {
+  if (window.CSS?.escape) {
     return window.CSS.escape(value)
   }
 
@@ -23,14 +23,13 @@ export const escapeAttributeValue = (value: string) => {
 }
 
 const getRootFontSize = () => {
-  if (typeof window === 'undefined') return 16
   const value = window.getComputedStyle(document.documentElement).fontSize
   const parsed = Number.parseFloat(value || '16')
   return Number.isNaN(parsed) ? 16 : parsed
 }
 
 export const getBorderRadius = (element: Element | null) => {
-  if (typeof window === 'undefined' || !element) return 0
+  if (!element) return 0
 
   const computedStyle = window.getComputedStyle(element)
   const radiusCandidates = [

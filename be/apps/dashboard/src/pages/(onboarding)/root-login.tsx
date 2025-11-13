@@ -14,9 +14,6 @@ export function Component() {
   const { login, isLoading, error, clearError } = useLogin()
 
   const tenantSlug = useMemo(() => {
-    if (typeof window === 'undefined') {
-      return null
-    }
     return getTenantSlugFromHost(window.location.hostname)
   }, [])
   const rootLoginHref = useMemo(() => {
@@ -30,10 +27,6 @@ export function Component() {
   useEffect(() => {
     if (tenantSlug === 'root') {
       setIsRedirecting(false)
-      return
-    }
-
-    if (typeof window === 'undefined') {
       return
     }
 
@@ -89,9 +82,7 @@ export function Component() {
                   variant="primary"
                   className="w-full"
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.location.href = rootLoginHref
-                    }
+                    window.location.href = rootLoginHref
                   }}
                 >
                   Go to root portal

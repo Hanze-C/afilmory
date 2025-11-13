@@ -12,9 +12,6 @@ export function Component() {
   const [password, setPassword] = useState('')
   const { login, isLoading, error, clearError } = useLogin()
   const tenantSlug = useMemo(() => {
-    if (typeof window === 'undefined') {
-      return null
-    }
     return getTenantSlugFromHost(window.location.hostname)
   }, [])
   const showEmailLogin = !tenantSlug

@@ -173,10 +173,6 @@ export function PhotoSyncConflictsPanel({
   }
 
   const confirmAction = (message: string, onConfirm: () => void | Promise<void>) => {
-    if (typeof window === 'undefined') {
-      return onConfirm()
-    }
-
     Prompt.prompt({
       title: '确认操作',
       description: message,

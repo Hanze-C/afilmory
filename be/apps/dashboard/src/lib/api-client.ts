@@ -17,7 +17,7 @@ export const coreApi = $fetch.create({
     setAccessDenied({
       active: true,
       status: 403,
-      path: typeof window !== 'undefined' ? window.location.pathname : current?.path,
+      path: window.location.pathname,
       scope: current?.scope ?? 'api',
       reason: detail,
       source: 'api',
