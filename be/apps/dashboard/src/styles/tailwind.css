@@ -252,3 +252,8 @@ body {
 
 @source inline('i-simple-icons-github');
 @source inline('i-simple-icons-google');
+
+.shape-squircle {
+  corner-shape: squircle;
+  border-radius: 12px;
+}

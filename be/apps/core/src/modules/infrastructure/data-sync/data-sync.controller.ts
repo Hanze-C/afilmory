@@ -3,6 +3,7 @@ import { Body, ContextParam, Controller, createLogger, Get, Param, Post } from '
 import { Roles } from 'core/guards/roles.decorator'
 import type { Context } from 'hono'
 
+import { runWithBuilderLogRelay } from './builder-log-relay'
 import type { ResolveConflictInput, RunDataSyncInput } from './data-sync.dto'
 import { ResolveConflictDto, RunDataSyncDto } from './data-sync.dto'
 import { DataSyncService } from './data-sync.service'
@@ -97,13 +98,15 @@ export class DataSyncController {
 
         ;(async () => {
           try {
-            await this.dataSyncService.runSync(
-              {
-                builderConfig: payload.builderConfig as BuilderConfig | undefined,
-                storageConfig: payload.storageConfig as StorageConfig | undefined,
-                dryRun: payload.dryRun ?? false,
-              },
-              progressHandler,
+            await runWithBuilderLogRelay(progressHandler, () =>
+              this.dataSyncService.runSync(
+                {
+                  builderConfig: payload.builderConfig as BuilderConfig | undefined,
+                  storageConfig: payload.storageConfig as StorageConfig | undefined,
+                  dryRun: payload.dryRun ?? false,
+                },
+                progressHandler,
+              ),
             )
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error'

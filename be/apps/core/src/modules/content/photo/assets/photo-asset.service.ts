@@ -814,7 +814,7 @@ export class PhotoAssetService {
       return null
     }
 
-    const normalized = trimmed.replaceAll('\\', '/').replaceAll(/^\/+|\/+$/, '')
+    const normalized = trimmed.replaceAll('\\', '/').replaceAll(/^\/+|\/+$/g, '')
     return normalized.length > 0 ? normalized : null
   }
 
@@ -824,7 +824,7 @@ export class PhotoAssetService {
       if (!segment) {
         continue
       }
-      filtered.push(segment.replaceAll(/^\/+|\/+$/, ''))
+      filtered.push(segment.replaceAll(/^\/+|\/+$/g, ''))
     }
 
     if (filtered.length === 0) {

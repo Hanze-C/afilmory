@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useMainPageLayout } from '~/components/layouts/MainPageLayout'
+import { getRequestErrorMessage } from '~/lib/errors'
 
 import { runPhotoSync } from '../../api'
 import type { PhotoSyncProgressEvent, PhotoSyncResult, RunPhotoSyncPayload } from '../../types'
@@ -54,7 +55,7 @@ export function PhotoSyncActions({ onCompleted, onProgress, onError }: PhotoSync
     onError: (error) => {
       const normalizedError = error instanceof Error ? error : new Error('照片同步失败，请稍后重试。')
 
-      const { message } = normalizedError
+      const message = getRequestErrorMessage(error, normalizedError.message)
       toast.error('同步失败', { description: message })
       onError?.(normalizedError)
     },

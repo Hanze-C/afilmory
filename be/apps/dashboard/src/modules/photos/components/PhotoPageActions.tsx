@@ -10,11 +10,13 @@ import { PhotoSyncActions } from './sync/PhotoSyncActions'
 type PhotoPageActionsProps = {
   activeTab: PhotoPageTab
   selectionCount: number
+  libraryTotalCount: number
   isUploading: boolean
   isDeleting: boolean
   onUpload: (files: FileList) => void | Promise<void>
   onDeleteSelected: () => void
   onClearSelection: () => void
+  onSelectAll: () => void
   onSyncCompleted: (result: PhotoSyncResult, context: { dryRun: boolean }) => void
   onSyncProgress: (event: PhotoSyncProgressEvent) => void
   onSyncError: (error: Error) => void
@@ -23,11 +25,13 @@ type PhotoPageActionsProps = {
 export function PhotoPageActions({
   activeTab,
   selectionCount,
+  libraryTotalCount,
   isUploading,
   isDeleting,
   onUpload,
   onDeleteSelected,
   onClearSelection,
+  onSelectAll,
   onSyncCompleted,
   onSyncProgress,
   onSyncError,
@@ -49,11 +53,13 @@ export function PhotoPageActions({
       actionContent = (
         <PhotoLibraryActionBar
           selectionCount={selectionCount}
+          totalCount={libraryTotalCount}
           isUploading={isUploading}
           isDeleting={isDeleting}
           onUpload={onUpload}
           onDeleteSelected={onDeleteSelected}
           onClearSelection={onClearSelection}
+          onSelectAll={onSelectAll}
         />
       )
       break

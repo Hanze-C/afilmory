@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { MainPageLayout } from '~/components/layouts/MainPageLayout'
 import { PageTabs } from '~/components/navigation/PageTabs'
+import { getRequestErrorMessage } from '~/lib/errors'
 import { StorageProvidersManager } from '~/modules/storage-providers'
 
 import { getPhotoStorageUrl } from '../api'
@@ -43,6 +44,7 @@ const STAGE_ORDER: PhotoSyncProgressStage[] = [
 ]
 
 const MAX_SYNC_LOGS = 200
+const PHOTO_SYNC_RESULT_STORAGE_KEY = 'photo-sync:last-result'
 
 function createInitialStages(totals: PhotoSyncProgressState['totals']): PhotoSyncProgressState['stages'] {
   return STAGE_ORDER.reduce<PhotoSyncProgressState['stages']>(
@@ -72,6 +74,32 @@ export function PhotoPage() {
   const [syncProgress, setSyncProgress] = useState<PhotoSyncProgressState | null>(null)
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const restoreStoredResult = () => {
+      try {
+        const cached = window.sessionStorage.getItem(PHOTO_SYNC_RESULT_STORAGE_KEY)
+        if (!cached) {
+          return
+        }
+
+        const parsed = JSON.parse(cached) as { result?: PhotoSyncResult; lastWasDryRun?: boolean | null }
+        if (parsed?.result) {
+          setResult(parsed.result)
+          setLastWasDryRun(parsed.lastWasDryRun ?? null)
+        }
+      } catch (error) {
+        console.error('Failed to restore cached photo sync result', error)
+        window.sessionStorage.removeItem(PHOTO_SYNC_RESULT_STORAGE_KEY)
+      }
+    }
+
+    restoreStoredResult()
+  }, [])
+
+  useEffect(() => {
     setActiveTab(normalizedInitialTab)
   }, [normalizedInitialTab])
 
@@ -86,6 +114,7 @@ export function PhotoPage() {
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const isListLoading = listQuery.isLoading || listQuery.isFetching
+  const libraryAssetCount = listQuery.data?.length ?? 0
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -115,7 +144,6 @@ export function PhotoPage() {
           lastAction: undefined,
           error: undefined,
         })
-        setResult(null)
         setLastWasDryRun(options.dryRun)
         return
       }
@@ -247,7 +275,7 @@ export function PhotoPage() {
         setSelectedIds((prev) => prev.filter((item) => !ids.includes(item)))
         void listQuery.refetch()
       } catch (error) {
-        const message = error instanceof Error ? error.message : '删除失败，请稍后重试。'
+        const message = getRequestErrorMessage(error, '删除失败，请稍后重试。')
         toast.error('删除失败', { description: message })
       }
     },
@@ -263,7 +291,7 @@ export function PhotoPage() {
         toast.success(`成功上传 ${fileArray.length} 张图片`)
         void listQuery.refetch()
       } catch (error) {
-        const message = error instanceof Error ? error.message : '上传失败，请稍后重试。'
+        const message = getRequestErrorMessage(error, '上传失败，请稍后重试。')
         toast.error('上传失败', { description: message })
       }
     },
@@ -275,6 +303,16 @@ export function PhotoPage() {
       setResult(data)
       setLastWasDryRun(context.dryRun)
       setSyncProgress(null)
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(
+            PHOTO_SYNC_RESULT_STORAGE_KEY,
+            JSON.stringify({ result: data, lastWasDryRun: context.dryRun }),
+          )
+        } catch (error) {
+          console.error('Failed to persist photo sync result snapshot', error)
+        }
+      }
       void summaryQuery.refetch()
       void listQuery.refetch()
     },
@@ -284,6 +322,14 @@ export function PhotoPage() {
   const handleDeleteSelected = useCallback(() => {
     void handleDeleteAssets(selectedIds)
   }, [handleDeleteAssets, selectedIds])
+
+  const handleSelectAll = useCallback(() => {
+    if (!listQuery.data || listQuery.data.length === 0) {
+      return
+    }
+
+    setSelectedIds(listQuery.data.map((asset) => asset.id))
+  }, [listQuery.data])
 
   const handleDeleteSingle = useCallback(
     (asset: PhotoAssetListItem) => {
@@ -312,7 +358,7 @@ export function PhotoPage() {
         void summaryQuery.refetch()
         void listQuery.refetch()
       } catch (error) {
-        const message = error instanceof Error ? error.message : '处理冲突失败，请稍后重试。'
+        const message = getRequestErrorMessage(error, '处理冲突失败，请稍后重试。')
         toast.error('处理冲突失败', { description: message })
       } finally {
         setResolvingConflictId(null)
@@ -341,7 +387,7 @@ export function PhotoPage() {
             })
             processed += 1
           } catch (error) {
-            errors.push(error instanceof Error ? error.message : String(error))
+            errors.push(getRequestErrorMessage(error, '处理冲突失败，请稍后重试。'))
           }
         }
       } finally {
@@ -379,7 +425,7 @@ export function PhotoPage() {
       const url = await getPhotoStorageUrl(asset.storageKey)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch (error) {
-      const message = error instanceof Error ? error.message : '无法获取原图链接'
+      const message = getRequestErrorMessage(error, '无法获取原图链接')
       toast.error('打开失败', { description: message })
     }
   }
@@ -471,11 +517,13 @@ export function PhotoPage() {
       <PhotoPageActions
         activeTab={activeTab}
         selectionCount={selectedIds.length}
+        libraryTotalCount={libraryAssetCount}
         isUploading={uploadMutation.isPending}
         isDeleting={deleteMutation.isPending}
         onUpload={handleUploadAssets}
         onDeleteSelected={handleDeleteSelected}
         onClearSelection={handleClearSelection}
+        onSelectAll={handleSelectAll}
         onSyncCompleted={handleSyncCompleted}
         onSyncProgress={handleProgressEvent}
         onSyncError={handleSyncError}

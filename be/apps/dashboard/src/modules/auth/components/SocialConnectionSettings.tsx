@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 
 import { LinearBorderPanel } from '~/components/common/GlassPanel'
+import { getRequestErrorMessage } from '~/lib/errors'
 
 import type { SocialAccountRecord } from '../api/socialAccounts'
 import {
@@ -32,10 +33,10 @@ export function SocialConnectionSettings() {
   const hasError = providersQuery.isError || accountsQuery.isError
   const errorMessage = useMemo(() => {
     if (providersQuery.isError && providersQuery.error) {
-      return providersQuery.error instanceof Error ? providersQuery.error.message : '无法加载可用的 OAuth Provider'
+      return getRequestErrorMessage(providersQuery.error, '无法加载可用的 OAuth Provider')
     }
     if (accountsQuery.isError && accountsQuery.error) {
-      return accountsQuery.error instanceof Error ? accountsQuery.error.message : '无法查询绑定状态'
+      return getRequestErrorMessage(accountsQuery.error, '无法查询绑定状态')
     }
     return null
   }, [accountsQuery.error, accountsQuery.isError, providersQuery.error, providersQuery.isError])
@@ -68,7 +69,7 @@ export function SocialConnectionSettings() {
         }
       } catch (error) {
         toast.error(`无法开启 ${providerName} 绑定`, {
-          description: error instanceof Error ? error.message : '请稍后再试',
+          description: getRequestErrorMessage(error, '请稍后再试'),
         })
       }
     },
@@ -82,7 +83,7 @@ export function SocialConnectionSettings() {
         toast.success(`已解除与 ${providerName} 的绑定`)
       } catch (error) {
         toast.error('解绑失败', {
-          description: error instanceof Error ? error.message : '请稍后再试',
+          description: getRequestErrorMessage(error, '请稍后再试'),
         })
       }
     },

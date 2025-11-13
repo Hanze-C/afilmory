@@ -22,7 +22,7 @@ export function PageTabs({ items, activeId, onSelect, className }: PageTabsProps
   const renderTabContent = (selected: boolean, label: ReactNode) => (
     <span
       className={clsxm(
-        'inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+        'inline-flex items-center shape-squircle px-3 py-1.5 text-xs font-medium transition-all',
         selected ? 'bg-accent/15 text-accent' : 'bg-fill/10 text-text-secondary hover:bg-fill/20 hover:text-text',
       )}
     >
@@ -59,7 +59,7 @@ export function PageTabs({ items, activeId, onSelect, className }: PageTabsProps
             type="button"
             onClick={handleClick}
             disabled={item.disabled}
-            className="focus-visible:outline-none"
+            className="focus-visible:outline-none shape-squircle"
           >
             {renderTabContent(selected, item.label)}
           </button>

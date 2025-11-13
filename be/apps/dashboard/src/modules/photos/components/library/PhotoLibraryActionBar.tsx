@@ -8,22 +8,29 @@ import { PhotoUploadConfirmModal } from './PhotoUploadConfirmModal'
 
 type PhotoLibraryActionBarProps = {
   selectionCount: number
+  totalCount: number
   isUploading: boolean
   isDeleting: boolean
   onUpload: (files: FileList) => void | Promise<void>
   onDeleteSelected: () => void
   onClearSelection: () => void
+  onSelectAll: () => void
 }
 
 export function PhotoLibraryActionBar({
   selectionCount,
+  totalCount,
   isUploading,
   isDeleting,
   onUpload,
   onDeleteSelected,
   onClearSelection,
+  onSelectAll,
 }: PhotoLibraryActionBarProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const hasSelection = selectionCount > 0
+  const hasAssets = totalCount > 0
+  const canSelectAll = hasAssets && selectionCount < totalCount
 
   const handleUploadClick = () => {
     fileInputRef.current?.click()
@@ -48,32 +55,39 @@ export function PhotoLibraryActionBar({
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        multiple
-        accept="image/*,.heic,.HEIC,.heif,.HEIF,.hif,.HIF,.mov,.MOV"
-        onChange={handleFileChange}
-      />
-      <Button
-        type="button"
-        variant="primary"
-        size="sm"
-        disabled={isUploading}
-        onClick={handleUploadClick}
-        className="flex items-center gap-1"
-      >
-        <DynamicIcon name="upload" className="h-3.5 w-3.5" />
-        上传文件
-      </Button>
+    <div className="flex w-full relative  flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          multiple
+          accept="image/*,.heic,.HEIC,.heif,.HEIF,.hif,.HIF,.mov,.MOV"
+          onChange={handleFileChange}
+        />
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          disabled={isUploading}
+          onClick={handleUploadClick}
+          className="flex items-center gap-1"
+        >
+          <DynamicIcon name="upload" className="h-3.5 w-3.5" />
+          上传文件
+        </Button>
+      </div>
 
-      {selectionCount > 0 ? (
-        <div className="flex items-center gap-2">
+      <div className="flex min-h-10 absolute right-0 translate-y-20 items-center justify-end gap-2">
+        <div
+          className={clsxm(
+            'flex items-center gap-2 transition-opacity duration-200',
+            hasSelection ? 'opacity-100' : 'pointer-events-none opacity-0',
+          )}
+        >
           <span
             className={clsxm(
-              'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+              'inline-flex items-center shape-squircle whitespace-nowrap px-2.5 py-1 text-xs font-medium',
               'bg-accent/10 text-accent',
             )}
           >
@@ -95,7 +109,18 @@ export function PhotoLibraryActionBar({
             清除选择
           </Button>
         </div>
-      ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!canSelectAll}
+          onClick={onSelectAll}
+          className="flex items-center gap-1 text-text-secondary hover:text-text"
+        >
+          <DynamicIcon name={canSelectAll ? 'square' : 'check-square'} className="h-3.5 w-3.5" />
+          {hasAssets ? (canSelectAll ? '全选' : '已全选') : '全选'}
+        </Button>
+      </div>
     </div>
   )
 }

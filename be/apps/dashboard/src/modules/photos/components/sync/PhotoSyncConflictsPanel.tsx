@@ -4,6 +4,8 @@ import { m } from 'motion/react'
 import { startTransition, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import { getRequestErrorMessage } from '~/lib/errors'
+
 import { getConflictTypeLabel, PHOTO_CONFLICT_TYPE_CONFIG } from '../../constants'
 import type { PhotoSyncConflict, PhotoSyncResolution, PhotoSyncSnapshot } from '../../types'
 import { BorderOverlay, MetadataSnapshot } from './PhotoSyncResultPanel'
@@ -117,7 +119,7 @@ export function PhotoSyncConflictsPanel({
       const url = await onRequestStorageUrl(storageKey)
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = getRequestErrorMessage(error, '无法打开存储对象')
       toast.error('无法打开存储对象', { description: message })
     }
   }

@@ -33,7 +33,7 @@ interface TuiState {
   logs: string[]
 }
 
-const MAX_LOG_LINES = 15
+const MAX_LOG_LINES = 40
 
 export class BuilderTUI {
   private readonly stream: NodeJS.WriteStream

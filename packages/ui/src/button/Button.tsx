@@ -11,6 +11,7 @@ const buttonVariants = tv({
   base: [
     'relative inline-flex items-center justify-center whitespace-nowrap rounded text-center font-medium transition-all duration-100 ease-in-out',
     'disabled:pointer-events-none',
+    'shape-squircle',
     focusRing,
   ],
   variants: {

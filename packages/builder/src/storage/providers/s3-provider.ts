@@ -13,6 +13,101 @@ import type { ProgressCallback, S3Config, StorageObject, StorageProvider, Storag
 // 将 AWS S3 对象转换为通用存储对象
 const xmlParser = new XMLParser({ ignoreAttributes: false })
 
+const MAX_ERROR_SNIPPET_LENGTH = 300
+
+const pickStringField = (source: Record<string, unknown>, keys: string[]): string | undefined => {
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value
+    }
+  }
+  return undefined
+}
+
+function formatS3ErrorBody(body?: string | null): string {
+  if (!body) {
+    return '响应为空'
+  }
+
+  const trimmed = body.trim()
+  if (!trimmed) {
+    return '响应为空'
+  }
+
+  const pickCodeAndMessage = (payload: Record<string, unknown>): string | null => {
+    if (!payload || typeof payload !== 'object') return null
+
+    const code = pickStringField(payload, ['Code', 'code', 'ErrorCode'])
+    const message = pickStringField(payload, ['Message', 'message', 'ErrorMessage'])
+    const requestId = pickStringField(payload, ['RequestId', 'requestId'])
+    const hostId = pickStringField(payload, ['HostId', 'hostId'])
+
+    if (code || message) {
+      const parts: string[] = []
+      if (code) parts.push(`[${code}]`)
+      if (message) parts.push(message)
+
+      const extraDetails: string[] = []
+      if (requestId) extraDetails.push(`RequestId=${requestId}`)
+      if (hostId) extraDetails.push(`HostId=${hostId}`)
+      if (extraDetails.length > 0) {
+        parts.push(`(${extraDetails.join(', ')})`)
+      }
+
+      return parts.join(' ')
+    }
+
+    return null
+  }
+
+  const tryJson = () => {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (parsed && typeof parsed === 'object') {
+        const direct = pickCodeAndMessage(parsed as Record<string, unknown>)
+        if (direct) return direct
+        if ('error' in parsed && typeof parsed.error === 'object' && parsed.error) {
+          const nested = pickCodeAndMessage(parsed.error as Record<string, unknown>)
+          if (nested) return nested
+        }
+      }
+    } catch {
+      // ignore JSON parse errors
+    }
+    return null
+  }
+
+  const tryXml = () => {
+    try {
+      const parsed = xmlParser.parse(trimmed)
+      if (parsed && typeof parsed === 'object') {
+        const errorNode =
+          (parsed.Error as Record<string, unknown> | undefined) ??
+          (parsed.ErrorResponse as Record<string, unknown> | undefined) ??
+          (parsed as Record<string, unknown>)
+
+        const formatted = pickCodeAndMessage(errorNode)
+        if (formatted) return formatted
+      }
+    } catch {
+      // ignore XML parse errors
+    }
+    return null
+  }
+
+  const formatted = tryJson() ?? tryXml()
+  if (formatted) {
+    return formatted
+  }
+
+  if (trimmed.length > MAX_ERROR_SNIPPET_LENGTH) {
+    return `${trimmed.slice(0, MAX_ERROR_SNIPPET_LENGTH)}…`
+  }
+
+  return trimmed
+}
+
 export class S3StorageProvider implements StorageProvider {
   private config: S3Config
   private client: SimpleS3Client
@@ -96,7 +191,7 @@ export class S3StorageProvider implements StorageProvider {
 
           if (!response.ok || !response.body) {
             const bodyText = await response.text().catch(() => '')
-            logger.s3.error(`S3 响应异常：${key} (status ${response.status}) ${bodyText}`)
+            logger.s3.error(`S3 响应异常：${key} (status ${response.status}) ${formatS3ErrorBody(bodyText)}`)
             return null
           }
 
@@ -248,7 +343,7 @@ export class S3StorageProvider implements StorageProvider {
     const response = await this.client.fetch(url.toString(), { method: 'GET' })
     const text = await response.text()
     if (!response.ok) {
-      throw new Error(`列出 S3 对象失败 (status ${response.status}): ${text}`)
+      throw new Error(`列出 S3 对象失败 (status ${response.status}): ${formatS3ErrorBody(text)}`)
     }
     const parsed = xmlParser.parse(text)
     const contents = parsed?.ListBucketResult?.Contents ?? []
@@ -274,7 +369,7 @@ export class S3StorageProvider implements StorageProvider {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '')
-      throw new Error(`删除 S3 对象失败：${key} (status ${response.status}) ${text}`)
+      throw new Error(`删除 S3 对象失败：${key} (status ${response.status}) ${formatS3ErrorBody(text)}`)
     }
   }
 
@@ -290,7 +385,7 @@ export class S3StorageProvider implements StorageProvider {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '')
-      throw new Error(`上传 S3 对象失败：${key} (status ${response.status}) ${text}`)
+      throw new Error(`上传 S3 对象失败：${key} (status ${response.status}) ${formatS3ErrorBody(text)}`)
     }
 
     const lastModified = new Date()
