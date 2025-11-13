@@ -1,7 +1,7 @@
 {
   "name": "@afilmory/builder",
   "type": "module",
-  "version": "0.1.3",
+  "version": "0.2.2",
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*"
@@ -30,15 +30,15 @@
   },
   "publishConfig": {
     "access": "public",
-    "main": "./dist/index.js",
+    "main": "./dist/index.mjs",
     "exports": {
       ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.js"
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
       },
       "./*": {
-        "types": "./dist/*.d.ts",
-        "import": "./dist/*.js"
+        "types": "./dist/*.d.mts",
+        "import": "./dist/*.mjs"
       }
     }
   }

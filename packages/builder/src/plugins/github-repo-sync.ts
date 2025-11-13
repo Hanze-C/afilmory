@@ -10,8 +10,8 @@ import type { BuilderPlugin } from './types.js'
 const RUN_SHARED_ASSETS_DIR = 'assetsGitDir'
 
 export interface GitHubRepoSyncPluginOptions {
+  enable?: boolean
   repo: {
-    enable: boolean
     url: string
     token?: string
     branch?: string
@@ -20,6 +20,7 @@ export interface GitHubRepoSyncPluginOptions {
 }
 
 export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOptions): BuilderPlugin {
+  const enable = options.enable ?? true
   const autoPush = options.autoPush ?? true
   const repoConfig = options.repo
 
@@ -33,7 +34,7 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
     name: 'afilmory:github-repo-sync',
     hooks: {
       beforeBuild: async (context) => {
-        if (!repoConfig.enable) {
+        if (!enable) {
           return
         }
 
@@ -77,7 +78,7 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
         logger.main.success('✅ 远程仓库同步完成')
       },
       afterBuild: async (context) => {
-        if (!autoPush || !repoConfig.enable) {
+        if (!autoPush || !enable) {
           return
         }
 
@@ -148,11 +149,7 @@ async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareReposito
 interface PushRemoteOptions {
   assetsGitDir: string
   logger: typeof import('../logger/index.js').logger
-  repoConfig: {
-    enable: boolean
-    url: string
-    token?: string
-  }
+  repoConfig: GitHubRepoSyncPluginOptions['repo']
   branchName: string
 }
 
