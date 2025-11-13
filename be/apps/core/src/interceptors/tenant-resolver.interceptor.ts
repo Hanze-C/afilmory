@@ -8,7 +8,6 @@ import { TENANT_RESOLUTION_OPTIONS } from './tenant-resolver.decorator'
 
 const DEFAULT_OPTIONS: Required<TenantResolutionOptions> = {
   throwOnMissing: true,
-  setResponseHeaders: true,
   skipInitializationCheck: false,
 }
 

@@ -131,7 +131,6 @@ export class CorsMiddleware implements HttpMiddleware, OnModuleInit, OnModuleDes
     }
 
     const tenantContext = await this.tenantContextResolver.resolve(context, {
-      setResponseHeaders: false,
       skipInitializationCheck: true,
     })
 

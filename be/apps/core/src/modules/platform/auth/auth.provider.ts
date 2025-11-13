@@ -329,9 +329,9 @@ export class AuthProvider implements OnModuleInit {
         : (extractTenantSlugFromHost(requestedHost, options.baseDomain) ?? tenantSlugFromContext)
     const host = this.applyTenantSlugToHost(requestedHost || fallbackHost, fallbackHost, tenantSlug)
     const protocol = this.determineProtocol(host, endpoint.protocol)
-    const slugKey = tenantSlug ?? 'global'
+
     const optionSignature = this.computeOptionsSignature(options)
-    const cacheKey = `${protocol}://${host}::${slugKey}::${optionSignature}`
+    const cacheKey = `${protocol}://${host}::${tenantSlug}::${optionSignature}`
 
     if (!this.instances.has(cacheKey)) {
       const instancePromise = this.createAuthForEndpoint(tenantSlug, options).then((instance) => {

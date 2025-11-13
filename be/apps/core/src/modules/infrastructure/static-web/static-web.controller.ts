@@ -1,5 +1,6 @@
 import { ContextParam, Controller, Get, Param } from '@afilmory/framework'
 import { isTenantSlugReserved } from '@afilmory/utils'
+import { AllowPlaceholderTenant } from 'core/decorators/allow-placeholder.decorator'
 import { SkipTenantGuard } from 'core/decorators/skip-tenant.decorator'
 import { ROOT_TENANT_SLUG } from 'core/modules/platform/tenant/tenant.constants'
 import { getTenantContext, isPlaceholderTenantContext } from 'core/modules/platform/tenant/tenant.context'
@@ -30,7 +31,7 @@ export class StaticWebController {
   @Get(`/explory`)
   @SkipTenantGuard()
   async getStaticWebIndex(@ContextParam() context: Context) {
-    if (this.isReservedTenant()) {
+    if (this.isReservedTenant({ root: true })) {
       return await this.renderTenantRestrictedPage()
     }
     if (this.shouldRenderTenantMissingPage()) {
@@ -46,7 +47,7 @@ export class StaticWebController {
 
   @Get(`/photos/:photoId`)
   async getStaticPhotoPage(@ContextParam() context: Context, @Param('photoId') photoId: string) {
-    if (this.isReservedTenant()) {
+    if (this.isReservedTenant({ root: true })) {
       return await this.renderTenantRestrictedPage()
     }
     if (this.shouldRenderTenantMissingPage()) {
@@ -60,31 +61,33 @@ export class StaticWebController {
   }
 
   @SkipTenantGuard()
+  @AllowPlaceholderTenant()
   @Get(`${STATIC_DASHBOARD_BASENAME}`)
   @Get(`${STATIC_DASHBOARD_BASENAME}/*`)
   async getStaticDashboardIndexWithBasename(@ContextParam() context: Context) {
     const pathname = context.req.path
     const isHtmlRoute = this.isHtmlRoute(pathname)
-    const normalizedPath = this.normalizePathname(pathname)
+
     const allowTenantlessAccess = isHtmlRoute && this.shouldAllowTenantlessDashboardAccess(pathname)
-    const isRestrictedEntry = normalizedPath === TENANT_RESTRICTED_ENTRY_PATH
-    if (isHtmlRoute && this.isReservedTenant() && !isRestrictedEntry) {
-      return await this.renderTenantRestrictedPage()
+
+    const isReservedTenant = this.isReservedTenant({ root: false })
+
+    if (isHtmlRoute) {
+      if (isReservedTenant) {
+        return await this.renderTenantRestrictedPage()
+      }
+      if (!allowTenantlessAccess && this.shouldRenderTenantMissingPage()) {
+        return await this.renderTenantMissingPage()
+      }
     }
-    if (isHtmlRoute && !allowTenantlessAccess && this.shouldRenderTenantMissingPage()) {
-      return await this.renderTenantMissingPage()
-    }
+
     const response = await this.serve(context, this.staticDashboardService, false)
-    if (isHtmlRoute && this.isReservedTenant() && response.status === 404) {
-      return await this.renderTenantRestrictedPage()
-    }
-    if (isHtmlRoute && !allowTenantlessAccess && response.status === 404) {
-      return await this.renderTenantMissingPage()
-    }
+
     return response
   }
 
   @SkipTenantGuard()
+  @AllowPlaceholderTenant()
   @Get('/*')
   async getAsset(@ContextParam() context: Context) {
     return await this.handleRequest(context, false)
@@ -188,16 +191,32 @@ export class StaticWebController {
     return trimmed
   }
 
-  private isReservedTenant(): boolean {
+  private isReservedTenant({ root = false }: { root?: boolean } = {}): boolean {
     const tenantContext = getTenantContext()
-    const slug = tenantContext?.tenant.slug?.toLowerCase()
-    if (!slug) {
+    if (!tenantContext) {
       return false
     }
-    if (slug === ROOT_TENANT_SLUG) {
+
+    const tenantSlug = tenantContext.tenant.slug?.toLowerCase() ?? null
+    if (tenantSlug === ROOT_TENANT_SLUG) {
+      return !!root
+    }
+
+    const requestedSlug = tenantContext.requestedSlug?.toLowerCase() ?? null
+
+    if (isPlaceholderTenantContext(tenantContext)) {
+      if (!requestedSlug) {
+        return false
+      }
+      const candidate = requestedSlug ?? tenantSlug
+      return isTenantSlugReserved(candidate)
+    }
+
+    if (!tenantSlug) {
       return false
     }
-    return isTenantSlugReserved(slug)
+
+    return isTenantSlugReserved(tenantSlug)
   }
 
   private shouldRenderTenantMissingPage(): boolean {

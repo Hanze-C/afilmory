@@ -134,11 +134,6 @@ export class AuthRegistrationService {
     headers: Headers,
     tenant: TenantRecord,
   ): Promise<RegisterTenantResult> {
-    headers.set('x-tenant-id', tenant.id)
-    if (tenant.slug) {
-      headers.set('x-tenant-slug', tenant.slug)
-    }
-
     const auth = await this.authProvider.getAuth()
     const response = await auth.api.signUpEmail({
       body: {

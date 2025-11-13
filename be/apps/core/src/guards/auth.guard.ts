@@ -86,10 +86,9 @@ export class AuthGuard implements CanActivate {
       const tenantId = await this.resolveTenantIdForSession(authSession, method, path)
 
       if (tenantId !== tenantContext.tenant.id) {
-        this.log.warn(
-          `Denied access: session tenant=${tenantId ?? 'n/a'} does not match context tenant=${tenantContext.tenant.id} for ${method} ${path}`,
-        )
-        throw new BizException(ErrorCode.AUTH_FORBIDDEN)
+        throw new BizException(ErrorCode.AUTH_FORBIDDEN, {
+          message: `Denied access: session tenant=${tenantId ?? 'n/a'} does not match context tenant=${tenantContext.tenant.id} for ${method} ${path}`,
+        })
       }
     }
 

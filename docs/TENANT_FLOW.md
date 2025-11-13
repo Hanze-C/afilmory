@@ -10,7 +10,7 @@ This document describes how tenant resolution, Better Auth instances, and dashbo
 2. `TenantContextResolver` inspects `x-forwarded-host`, `origin`, and `host` headers.
    - Extracts a slug via `tenant-host.utils.ts`.
    - Loads the tenant aggregate; if none exists, falls back to the placeholder tenant.
-   - Always stores the original `requestedSlug` (even when placeholder), echoes headers `x-tenant-id` and `x-tenant-slug` (effective slug).
+   - Always stores the original `requestedSlug` (even when placeholder) so downstream services know which workspace was requested.
 
 ## Auth Provider
 
@@ -76,4 +76,3 @@ This document describes how tenant resolution, Better Auth instances, and dashbo
 - Only a single `tenant.slug` crosses the API boundary; there are no ambiguous fields.
 - Placeholder detection is a boolean (`isPlaceholder`).
 - Better Auth instances survive OAuth handshakes regardless of tenant provisioning state.
-- Headers `x-tenant-id` / `x-tenant-slug` always mirror the effective slug, so backend services and the dashboard remain consistent.

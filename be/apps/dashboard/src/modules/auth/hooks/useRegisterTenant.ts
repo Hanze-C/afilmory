@@ -33,9 +33,17 @@ export function useRegisterTenant() {
 
       const response = await registerTenant(payload)
 
-      const headerSlug = response.headers.get('x-tenant-slug')?.trim().toLowerCase() ?? null
-      const submittedSlug = payload.tenant.slug?.trim().toLowerCase() ?? ''
-      const finalSlug = headerSlug && headerSlug.length > 0 ? headerSlug : submittedSlug
+      let finalSlug = payload.tenant.slug?.trim() ?? ''
+
+      try {
+        const data = (await response.clone().json()) as { tenant?: { slug?: string } } | null
+        const slugFromResponse = data?.tenant?.slug?.trim()
+        if (slugFromResponse) {
+          finalSlug = slugFromResponse
+        }
+      } catch {
+        // ignore parse errors; fall back to submitted slug
+      }
 
       if (!finalSlug) {
         throw new Error('Registration succeeded but the workspace slug could not be determined.')

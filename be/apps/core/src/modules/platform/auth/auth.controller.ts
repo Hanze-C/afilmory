@@ -1,3 +1,5 @@
+import { TextDecoder } from 'node:util'
+
 import { authUsers } from '@afilmory/db'
 import { Body, ContextParam, Controller, Get, HttpContext, Post } from '@afilmory/framework'
 import { freshSessionMiddleware } from 'better-auth/api'
@@ -14,6 +16,7 @@ import type { Context } from 'hono'
 import { PLACEHOLDER_TENANT_SLUG } from '../tenant/tenant.constants'
 import { getTenantContext, isPlaceholderTenantContext } from '../tenant/tenant.context'
 import { TenantService } from '../tenant/tenant.service'
+import type { TenantRecord } from '../tenant/tenant.types'
 import type { SocialProvidersConfig } from './auth.config'
 import { AuthProvider } from './auth.provider'
 import { AuthRegistrationService } from './auth-registration.service'
@@ -146,11 +149,7 @@ export class AuthController {
     return {
       user: authContext.user,
       session: authContext.session,
-      tenant: {
-        id: tenantContext.tenant.id,
-        slug: tenantContext.requestedSlug ?? tenantContext.tenant.slug ?? null,
-        isPlaceholder: isPlaceholderTenantContext(tenantContext),
-      },
+      tenant: tenantContext,
     }
   }
 
@@ -167,7 +166,7 @@ export class AuthController {
   @Roles(RoleBit.ADMIN)
   async getSocialAccounts(@ContextParam() context: Context) {
     const auth = await this.auth.getAuth()
-    const headers = this.buildTenantAwareHeaders(context)
+    const { headers } = context.req.raw
     const accounts = await auth.api.listUserAccounts({ headers })
     const { socialProviders } = await this.systemSettings.getAuthModuleConfig()
     const enabledProviders = new Set(Object.keys(socialProviders))
@@ -191,7 +190,7 @@ export class AuthController {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前未启用该 OAuth Provider' })
     }
 
-    const headers = this.buildTenantAwareHeaders(context)
+    const { headers } = context.req.raw
     const callbackURL = this.normalizeCallbackUrl(body?.callbackURL)
     const errorCallbackURL = this.normalizeCallbackUrl(body?.errorCallbackURL)
 
@@ -219,7 +218,7 @@ export class AuthController {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少 OAuth Provider 参数' })
     }
 
-    const headers = this.buildTenantAwareHeaders(context)
+    const { headers } = context.req.raw
     const auth = await this.auth.getAuth()
     const result = await auth.api.unlinkAccount({
       headers,
@@ -271,7 +270,7 @@ export class AuthController {
     }
 
     const auth = await this.auth.getAuth()
-    const headers = this.buildTenantAwareHeaders(context)
+    const { headers } = context.req.raw
     const response = await auth.api.signInEmail({
       body: {
         email,
@@ -291,7 +290,7 @@ export class AuthController {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '缺少 OAuth Provider 参数' })
     }
 
-    const headers = this.buildTenantAwareHeaders(context)
+    const { headers } = context.req.raw
     const tenantContext = getTenantContext()
 
     const auth = await this.auth.getAuth()
@@ -304,13 +303,6 @@ export class AuthController {
       headers,
       asResponse: true,
     })
-
-    if (tenantContext) {
-      context.header('x-tenant-id', tenantContext.tenant.id)
-      if (tenantContext.tenant.slug) {
-        context.header('x-tenant-slug', tenantContext.tenant.slug)
-      }
-    }
 
     return response
   }
@@ -334,7 +326,7 @@ export class AuthController {
       throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '当前操作不支持使用已登录账号' })
     }
 
-    const headers = this.buildTenantAwareHeaders(context)
+    const { headers } = context.req.raw
 
     const result = await this.registration.registerTenant(
       {
@@ -360,8 +352,7 @@ export class AuthController {
     )
 
     if (result.success && result.tenant) {
-      context.header('x-tenant-id', result.tenant.id)
-      context.header('x-tenant-slug', result.tenant.slug)
+      return await this.attachTenantMetadata(result.response, result.tenant)
     }
 
     return result.response
@@ -383,19 +374,6 @@ export class AuthController {
   @Post('/*')
   async passthroughPost(@ContextParam() context: Context) {
     return await this.auth.handler(context)
-  }
-
-  private buildTenantAwareHeaders(context: Context): Headers {
-    const headers = new Headers(context.req.raw.headers)
-    const tenantContext = getTenantContext()
-    if (tenantContext?.tenant?.id) {
-      headers.set('x-tenant-id', tenantContext.tenant.id)
-      const effectiveSlug = tenantContext.requestedSlug ?? tenantContext.tenant.slug
-      if (effectiveSlug) {
-        headers.set('x-tenant-slug', effectiveSlug)
-      }
-    }
-    return headers
   }
 
   private normalizeCallbackUrl(url?: string | null): string | undefined {
@@ -445,5 +423,57 @@ export class AuthController {
     }
     const date = new Date(value)
     return Number.isNaN(date.getTime()) ? value : date.toISOString()
+  }
+
+  private async attachTenantMetadata(source: Response, tenant: TenantRecord): Promise<Response> {
+    const headers = new Headers(source.headers)
+    headers.delete('content-length')
+
+    let payload: unknown = null
+    let isJson = false
+    let text: string | null = null
+
+    try {
+      const buffer = await source.arrayBuffer()
+      if (buffer.byteLength > 0) {
+        text = new TextDecoder().decode(buffer)
+      }
+    } catch {
+      text = null
+    }
+
+    if (text && text.length > 0) {
+      try {
+        payload = JSON.parse(text)
+        isJson = true
+      } catch {
+        payload = text
+      }
+    }
+
+    const tenantPayload = {
+      id: tenant.id,
+      slug: tenant.slug,
+      name: tenant.name,
+    }
+
+    const responseBody =
+      isJson && payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? {
+            ...(payload as Record<string, unknown>),
+            tenant: tenantPayload,
+          }
+        : {
+            tenant: tenantPayload,
+            data: payload,
+          }
+
+    headers.set('content-type', 'application/json; charset=utf-8')
+
+    return new Response(JSON.stringify(responseBody), {
+      status: source.status,
+      statusText: source.statusText,
+      headers,
+    })
   }
 }

@@ -93,7 +93,7 @@ export class RootAccountProvisioner {
       '',
       '============================================================',
       'Root dashboard access provisioned.',
-      `  Dashboard URL: ${urls.shift()}`,
+      `  Dashboard URL: ${urls.shift()}/root-login`,
       ...(urls.length > 0 ? urls.map((url) => `  Alternate URL: ${url}`) : []),
       `  Email: ${email}`,
       `  Username: ${username}`,

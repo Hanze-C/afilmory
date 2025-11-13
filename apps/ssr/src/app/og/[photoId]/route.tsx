@@ -6,15 +6,7 @@ const CORE_API_BASE =
   process.env.API_BASE_URL ??
   'http://localhost:3000'
 
-const FORWARDED_HEADER_KEYS = [
-  'cookie',
-  'authorization',
-  'x-tenant-id',
-  'x-tenant-slug',
-  'x-forwarded-host',
-  'x-forwarded-proto',
-  'host',
-]
+const FORWARDED_HEADER_KEYS = ['cookie', 'authorization', 'x-forwarded-host', 'x-forwarded-proto', 'host']
 
 function buildBackendUrl(photoId: string): string {
   const base = CORE_API_BASE.endsWith('/') ? CORE_API_BASE.slice(0, -1) : CORE_API_BASE

@@ -177,4 +177,20 @@ export type EagleConfig = {
   omitTagNamesInMetadata?: string[]
 }
 
-export type StorageConfig = S3Config | GitHubConfig | EagleConfig | LocalConfig
+/**
+ * Additional storage configuration surface that downstream projects can extend via
+ * module augmentation, e.g.
+ *
+ * declare module '@afilmory/builder/storage/interfaces.js' {
+ *   interface CustomStorageConfig {
+ *     provider: 'my-provider'
+ *     foo?: string
+ *   }
+ * }
+ */
+export interface CustomStorageConfig {
+  provider: string
+  [key: string]: unknown
+}
+
+export type StorageConfig = S3Config | GitHubConfig | EagleConfig | LocalConfig | CustomStorageConfig

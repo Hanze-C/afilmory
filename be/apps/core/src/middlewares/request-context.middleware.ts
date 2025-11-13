@@ -31,7 +31,6 @@ export class RequestContextMiddleware implements HttpMiddleware {
 
     try {
       const tenantContext = await this.tenantContextResolver.resolve(context, {
-        setResponseHeaders: false,
         throwOnMissing: false,
         skipInitializationCheck: true,
       })
