@@ -79,6 +79,11 @@ export function PhotoSyncResultPanel({
           tone: result.summary.conflicts > 0 ? ('warning' as const) : ('muted' as const),
         },
         {
+          label: '错误条目',
+          value: result.summary.errors,
+          tone: result.summary.errors > 0 ? ('warning' as const) : ('muted' as const),
+        },
+        {
           label: '跳过条目',
           value: result.summary.skipped,
           tone: 'muted' as const,
@@ -115,6 +120,7 @@ export function PhotoSyncResultPanel({
       update: 0,
       delete: 0,
       conflict: 0,
+      error: 0,
       noop: 0,
     }
 
@@ -385,7 +391,7 @@ export function PhotoSyncResultPanel({
                       delay: index * 0.03,
                     }}
                   >
-                    <div className="border-border/20 bg-fill/10 relative overflow-hidden rounded-lg">
+                    <div className="border-border/20 mt-4 bg-fill/10 relative overflow-hidden rounded-lg">
                       <BorderOverlay />
                       <div className="space-y-3 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">

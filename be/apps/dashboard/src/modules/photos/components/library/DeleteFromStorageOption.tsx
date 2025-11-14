@@ -8,7 +8,7 @@ type DeleteFromStorageOptionProps = {
 
 export function DeleteFromStorageOption({ defaultChecked = false, disabled, onChange }: DeleteFromStorageOptionProps) {
   return (
-    <label className="flex w-full items-start gap-3 rounded-xl border border-border/50 bg-background-secondary/40 px-3 py-2 text-left text-text">
+    <label className="flex w-full items-start gap-3 my-2 text-left text-text">
       <Checkbox
         size="md"
         defaultChecked={defaultChecked}

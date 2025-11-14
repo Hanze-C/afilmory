@@ -81,6 +81,38 @@ export function encodeS3Key(key: string): string {
     .join('/')
 }
 
+function canonicalizePath(pathname: string): string {
+  if (!pathname || pathname === '/') {
+    return '/'
+  }
+
+  const segments = pathname.split('/').map((segment) => encodeRfc3986(safeDecodeURIComponent(segment)))
+  let canonical = segments.join('/')
+
+  if (!canonical.startsWith('/')) {
+    canonical = `/${canonical}`
+  }
+
+  if (pathname.endsWith('/') && !canonical.endsWith('/')) {
+    canonical = `${canonical}/`
+  }
+
+  return canonical || '/'
+}
+
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+function encodeRfc3986(value: string): string {
+  // eslint-disable-next-line unicorn/prefer-code-point
+  return encodeURIComponent(value).replaceAll(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+}
+
 const EMPTY_HASH = crypto.createHash('sha256').update('').digest('hex')
 
 class SigV4Signer {
@@ -142,7 +174,7 @@ class SigV4Signer {
   }
 
   private buildCanonicalRequest(method: string, url: URL, headers: Headers, payloadHash: string): string {
-    const canonicalUri = encodeURI(url.pathname).replaceAll('%2F', '/')
+    const canonicalUri = canonicalizePath(url.pathname)
     const canonicalQuery = buildCanonicalQuery(url.searchParams)
     const canonicalHeaders = buildCanonicalHeaders(headers)
     const signedHeaders = this.getSignedHeaders(headers)

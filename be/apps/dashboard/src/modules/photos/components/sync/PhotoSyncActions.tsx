@@ -47,9 +47,9 @@ export function PhotoSyncActions({ onCompleted, onProgress, onError }: PhotoSync
     },
     onSuccess: (data, variables) => {
       onCompleted(data, { dryRun: variables.dryRun ?? false })
-      const { inserted, updated, conflicts } = data.summary
+      const { inserted, updated, conflicts, errors } = data.summary
       toast.success(variables.dryRun ? '同步预览完成' : '照片同步完成', {
-        description: `新增 ${inserted} · 更新 ${updated} · 冲突 ${conflicts}`,
+        description: `新增 ${inserted} · 更新 ${updated} · 冲突 ${conflicts} · 错误 ${errors}`,
       })
     },
     onError: (error) => {

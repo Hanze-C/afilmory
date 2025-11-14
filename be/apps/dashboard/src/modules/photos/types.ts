@@ -1,6 +1,6 @@
 import type { PhotoManifestItem } from '@afilmory/builder'
 
-export type PhotoSyncActionType = 'insert' | 'update' | 'delete' | 'conflict' | 'noop'
+export type PhotoSyncActionType = 'insert' | 'update' | 'delete' | 'conflict' | 'noop' | 'error'
 
 export type PhotoSyncResolution = 'prefer-storage' | 'prefer-database' | undefined
 
@@ -36,6 +36,7 @@ export interface PhotoSyncResultSummary {
   deleted: number
   conflicts: number
   skipped: number
+  errors: number
 }
 
 export interface PhotoSyncResult {

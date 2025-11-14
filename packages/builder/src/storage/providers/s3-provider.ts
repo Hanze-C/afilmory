@@ -192,6 +192,7 @@ export class S3StorageProvider implements StorageProvider {
           if (!response.ok || !response.body) {
             const bodyText = await response.text().catch(() => '')
             logger.s3.error(`S3 响应异常：${key} (status ${response.status}) ${formatS3ErrorBody(bodyText)}`)
+            logger.s3.error(bodyText)
             return null
           }
 

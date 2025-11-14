@@ -51,6 +51,7 @@ const SUMMARY_FIELDS: Array<{
   { key: 'inserted', label: '新增' },
   { key: 'updated', label: '更新' },
   { key: 'conflicts', label: '冲突' },
+  { key: 'errors', label: '错误' },
 ]
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
@@ -160,7 +161,7 @@ export function PhotoSyncProgressPanel({ progress }: PhotoSyncProgressPanelProps
         ))}
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {summaryItems.map((item) => (
           <div key={item.label} className="bg-background-secondary/60 border-border/20 rounded-lg border p-4">
             <p className="text-text-tertiary text-xs tracking-wide uppercase">{item.label}</p>

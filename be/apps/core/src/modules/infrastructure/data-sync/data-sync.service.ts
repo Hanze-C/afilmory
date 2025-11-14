@@ -322,6 +322,7 @@ export class DataSyncService {
       deleted: 0,
       conflicts: 0,
       skipped: 0,
+      errors: 0,
     }
   }
 
@@ -378,9 +379,9 @@ export class DataSyncService {
       })
 
       if (!result?.item) {
-        summary.conflicts += 1
+        summary.errors += 1
         const action: DataSyncAction = {
-          type: 'conflict',
+          type: 'error',
           storageKey: storageObject.key,
           photoId: null,
           applied: false,

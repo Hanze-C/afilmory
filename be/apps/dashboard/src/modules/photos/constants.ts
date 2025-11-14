@@ -27,5 +27,6 @@ export const PHOTO_ACTION_TYPE_CONFIG: Record<PhotoSyncAction['type'], { label: 
   update: { label: '更新', badgeClass: 'bg-sky-500/10 text-sky-400' },
   delete: { label: '删除', badgeClass: 'bg-rose-500/10 text-rose-400' },
   conflict: { label: '冲突', badgeClass: 'bg-amber-500/10 text-amber-400' },
+  error: { label: '错误', badgeClass: 'bg-rose-500/20 text-rose-200' },
   noop: { label: '跳过', badgeClass: 'bg-slate-500/10 text-slate-400' },
 }
