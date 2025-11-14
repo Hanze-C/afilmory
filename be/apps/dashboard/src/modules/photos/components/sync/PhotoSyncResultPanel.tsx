@@ -34,7 +34,7 @@ function SummaryCard({ label, value, tone }: SummaryCardProps) {
           : 'text-text'
 
   return (
-    <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-5">
+    <div className="relative overflow-hidden p-5 bg-background-tertiary">
       <BorderOverlay />
       <p className="text-text-tertiary text-xs tracking-wide uppercase">{label}</p>
       <p className={`mt-2 text-2xl font-semibold ${toneClass}`}>{value}</p>
@@ -204,7 +204,7 @@ export function PhotoSyncResultPanel({
     const conflictTypeLabel = action.type === 'conflict' ? getConflictTypeLabel(conflictPayload?.type) : null
 
     return (
-      <div className="border-border/20 bg-fill/10 relative overflow-hidden rounded-lg p-4">
+      <div className="relative overflow-hidden p-4">
         <BorderOverlay />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -267,7 +267,7 @@ export function PhotoSyncResultPanel({
 
   if (!result) {
     return (
-      <div className="bg-background-tertiary relative overflow-hidden rounded-lg p-6">
+      <div className="relative overflow-hidden p-6 bg-background-secondary">
         <BorderOverlay />
         <div className="space-y-4">
           <div className="space-y-2">
@@ -331,7 +331,7 @@ export function PhotoSyncResultPanel({
         ))}
       </div>
 
-      <div className="bg-background-tertiary relative overflow-hidden rounded-lg">
+      <div className="relative overflow-hidden bg-background-tertiary">
         <BorderOverlay />
         <div className="p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1,7 +1,7 @@
 import { Prompt } from '@afilmory/ui'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { MainPageLayout } from '~/components/layouts/MainPageLayout'
@@ -28,7 +28,7 @@ import type {
   PhotoSyncResult,
 } from '../types'
 import { DeleteFromStorageOption } from './library/DeleteFromStorageOption'
-import type {DeleteAssetOptions} from './library/PhotoLibraryGrid';
+import type { DeleteAssetOptions } from './library/PhotoLibraryGrid'
 import { PhotoLibraryGrid } from './library/PhotoLibraryGrid'
 import { PhotoPageActions } from './PhotoPageActions'
 import { PhotoSyncConflictsPanel } from './sync/PhotoSyncConflictsPanel'
@@ -36,6 +36,12 @@ import { PhotoSyncProgressPanel } from './sync/PhotoSyncProgressPanel'
 import { PhotoSyncResultPanel } from './sync/PhotoSyncResultPanel'
 
 export type PhotoPageTab = 'sync' | 'library' | 'storage'
+
+const TAB_ROUTE_MAP: Record<PhotoPageTab, string> = {
+  sync: '/photos/sync',
+  library: '/photos/library',
+  storage: '/photos/storage',
+}
 
 const BATCH_RESOLVING_ID = '__batch__'
 
@@ -64,11 +70,9 @@ function createInitialStages(totals: PhotoSyncProgressState['totals']): PhotoSyn
 }
 
 export function PhotoPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const initialTabParam = searchParams.get('tab')
-  const normalizedInitialTab: PhotoPageTab =
-    initialTabParam === 'library' || initialTabParam === 'storage' ? (initialTabParam as PhotoPageTab) : 'sync'
-  const [activeTab, setActiveTab] = useState<PhotoPageTab>(normalizedInitialTab)
+  const { tab } = useParams<{ tab?: string }>()
+  const activeTab: PhotoPageTab =
+    tab === 'library' || tab === 'storage' || tab === 'sync' ? (tab as PhotoPageTab) : 'sync'
   const [result, setResult] = useState<PhotoSyncResult | null>(null)
   const [lastWasDryRun, setLastWasDryRun] = useState<boolean | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -76,8 +80,10 @@ export function PhotoPage() {
   const [syncProgress, setSyncProgress] = useState<PhotoSyncProgressState | null>(null)
 
   useEffect(() => {
-    setActiveTab(normalizedInitialTab)
-  }, [normalizedInitialTab])
+    if (activeTab !== 'library' && selectedIds.length > 0) {
+      setSelectedIds([])
+    }
+  }, [activeTab, selectedIds.length])
 
   const summaryQuery = usePhotoAssetSummaryQuery()
   const listQuery = usePhotoAssetListQuery({ enabled: activeTab === 'library' })
@@ -421,21 +427,6 @@ export function PhotoPage() {
     }
   }
 
-  const handleTabChange = (tab: PhotoPageTab) => {
-    setActiveTab(tab)
-    const next = new URLSearchParams(searchParams.toString())
-    if (tab === 'sync') {
-      next.delete('tab')
-    } else {
-      next.set('tab', tab)
-    }
-    setSearchParams(next, { replace: true })
-
-    if (tab !== 'library') {
-      setSelectedIds([])
-    }
-  }
-
   const showConflictsPanel =
     conflictsQuery.isLoading || conflictsQuery.isFetching || (conflictsQuery.data?.length ?? 0) > 0
 
@@ -523,11 +514,10 @@ export function PhotoPage() {
       <div className="space-y-6">
         <PageTabs
           activeId={activeTab}
-          onSelect={(id) => handleTabChange(id as PhotoPageTab)}
           items={[
-            { id: 'sync', label: '同步结果' },
-            { id: 'library', label: '图库管理' },
-            { id: 'storage', label: '素材存储' },
+            { id: 'library', label: '图库管理', to: TAB_ROUTE_MAP.library, end: true },
+            { id: 'sync', label: '存储同步', to: TAB_ROUTE_MAP.sync, end: true },
+            { id: 'storage', label: '素材存储', to: TAB_ROUTE_MAP.storage, end: true },
           ]}
         />
 

@@ -1,11 +1,12 @@
 import { Button, Prompt } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
+import { toast } from 'sonner'
 
 import { LinearBorderPanel } from '~/components/common/GlassPanel'
 import { usePhotoAssetSummaryQuery } from '~/modules/photos/hooks'
 
-import { useTruncatePhotoAssetsMutation } from '../hooks'
+import { useDeleteTenantAccountMutation, useTruncatePhotoAssetsMutation } from '../hooks'
 
 const SUMMARY_PLACEHOLDER = {
   total: 0,
@@ -27,6 +28,7 @@ export function DataManagementPanel() {
   const summaryQuery = usePhotoAssetSummaryQuery()
   const summary = summaryQuery.data ?? SUMMARY_PLACEHOLDER
   const truncateMutation = useTruncatePhotoAssetsMutation()
+  const deleteTenantMutation = useDeleteTenantAccountMutation()
 
   const handleTruncate = () => {
     if (truncateMutation.isPending) {
@@ -43,9 +45,58 @@ export function DataManagementPanel() {
     })
   }
 
+  const handleDeleteAccount = () => {
+    if (deleteTenantMutation.isPending) {
+      return
+    }
+
+    const launchFinalConfirm = () => {
+      Prompt.input({
+        title: '最终确认：永久删除账户',
+        description: '请输入 DELETE 以确认。本操作会立即注销所有成员并删除不可恢复的数据。',
+        placeholder: 'DELETE',
+        variant: 'danger',
+        onConfirmText: '永久删除',
+        onCancelText: '返回',
+        onConfirm: async (value) => {
+          const normalized = value.trim().toUpperCase()
+          if (normalized !== 'DELETE') {
+            toast.error('确认失败', { description: '请输入 DELETE 以继续。' })
+            launchFinalConfirm()
+            return
+          }
+          if (deleteTenantMutation.isPending) {
+            return
+          }
+          await deleteTenantMutation.mutateAsync()
+        },
+      })
+    }
+
+    const confirmIrreversibleStep = () => {
+      Prompt.prompt({
+        title: '二次确认：删除整个账户',
+        description: '将彻底清除当前租户的照片、设置、同步记录以及所有成员权限，且无法撤销。',
+        variant: 'danger',
+        onConfirmText: '我已知晓风险',
+        onCancelText: '取消',
+        onConfirm: launchFinalConfirm,
+      })
+    }
+
+    Prompt.prompt({
+      title: '删除账户（步骤 1/3）',
+      description: '删除后会立即清空当前租户下的所有数据并登出所有成员。此过程包含 3 次确认以确保安全。',
+      variant: 'danger',
+      onConfirmText: '继续下一步',
+      onCancelText: '取消',
+      onConfirm: confirmIrreversibleStep,
+    })
+  }
+
   return (
     <div className="space-y-6">
-      <LinearBorderPanel className="rounded-3xl bg-background-secondary/40 p-6">
+      <LinearBorderPanel className="bg-background-secondary/40 p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-4">
             <span className="shape-squircle inline-flex items-center gap-2 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
@@ -60,10 +111,10 @@ export function DataManagementPanel() {
           </div>
           <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {SUMMARY_STATS.map((stat) => (
-              <div
+              <LinearBorderPanel
                 key={stat.id}
                 className={clsxm(
-                  'rounded-2xl border border-white/5 bg-background-tertiary/60 px-4 py-3 shadow-sm backdrop-blur',
+                  'bg-background-tertiary/60 px-4 py-3 shadow-sm backdrop-blur',
                   summaryQuery.isLoading && 'animate-pulse',
                 )}
               >
@@ -74,13 +125,13 @@ export function DataManagementPanel() {
                 <div className={clsxm('mt-2 text-2xl font-semibold', stat.accent)}>
                   {summaryQuery.isLoading ? '—' : numberFormatter.format(summary[stat.id])}
                 </div>
-              </div>
+              </LinearBorderPanel>
             ))}
           </div>
         </div>
       </LinearBorderPanel>
 
-      <LinearBorderPanel className="rounded-3xl bg-background-secondary/40 p-6">
+      <LinearBorderPanel className="bg-background-secondary/40 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-red">
@@ -107,6 +158,37 @@ export function DataManagementPanel() {
         </div>
         <p className="text-text-tertiary mt-4 text-xs">
           操作完成后请立即重新执行「照片同步」，以便使用存储中的原始文件重建数据库与 manifest。
+        </p>
+      </LinearBorderPanel>
+
+      <LinearBorderPanel className="bg-red-500/5 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-red">
+              <DynamicIcon name="radiation" className="h-4 w-4" />
+              <span className="text-sm font-semibold">账户清除（不可逆）</span>
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-text text-lg font-semibold">删除当前租户与所有数据</h4>
+              <p className="text-text-secondary text-sm">
+                此操作会在数据库中彻底删除当前租户、照片记录、同步日志、权限成员等所有信息。执行后将登出所有成员并无法恢复，
+                系统会强制进行三次确认以避免误操作。
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={handleDeleteAccount}
+            loadingText="正在销毁…"
+            isLoading={deleteTenantMutation.isPending}
+          >
+            永久删除账户
+          </Button>
+        </div>
+        <p className="text-text-tertiary mt-4 text-xs">
+          如需在未来重新使用本服务，需要重新注册新的租户并重新上传所有资产。该操作不会删除对象存储中的原始文件，但会移除与之关联的所有数据库记录。
         </p>
       </LinearBorderPanel>
     </div>

@@ -43,6 +43,7 @@ export function SocialConnectionSettings() {
 
   const linkingProvider = linkMutation.variables?.provider
   const unlinkingProvider = unlinkMutation.variables?.providerId
+  const linkedAccountsCount = accountsQuery.data?.length ?? 0
 
   const handleConnect = useCallback(
     async (providerId: string, providerName: string) => {
@@ -140,6 +141,7 @@ export function SocialConnectionSettings() {
             const linkedAccount = accountsByProvider.get(provider.id)
             const isLinking = linkMutation.isPending && linkingProvider === provider.id
             const isUnlinking = unlinkMutation.isPending && unlinkingProvider === provider.id
+            const isLastLinkedProvider = Boolean(linkedAccount) && linkedAccountsCount <= 1
 
             return (
               <div
@@ -161,19 +163,24 @@ export function SocialConnectionSettings() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-3 md:justify-end">
+                <div className="flex flex-col items-start gap-1 md:items-end">
                   {linkedAccount ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isUnlinking}
-                      isLoading={isUnlinking}
-                      loadingText="解绑中…"
-                      onClick={() => handleDisconnect(provider.id, provider.name, linkedAccount.accountId)}
-                    >
-                      解除绑定
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isUnlinking || isLastLinkedProvider}
+                        isLoading={isUnlinking}
+                        loadingText="解绑中…"
+                        onClick={() => handleDisconnect(provider.id, provider.name, linkedAccount.accountId)}
+                      >
+                        解除绑定
+                      </Button>
+                      {isLastLinkedProvider ? (
+                        <p className="text-text-tertiary text-xs">需要至少保留一个已绑定的登录方式。</p>
+                      ) : null}
+                    </>
                   ) : (
                     <Button
                       type="button"

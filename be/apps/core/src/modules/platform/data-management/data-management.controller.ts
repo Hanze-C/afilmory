@@ -1,4 +1,4 @@
-import { Controller, Post } from '@afilmory/framework'
+import { Controller, Delete, Post } from '@afilmory/framework'
 import { Roles } from 'core/guards/roles.decorator'
 
 import { DataManagementService } from './data-management.service'
@@ -11,5 +11,10 @@ export class DataManagementController {
   @Post('photo-assets/truncate')
   async truncatePhotoAssetRecords() {
     return await this.dataManagementService.clearPhotoAssetRecords()
+  }
+
+  @Delete('account')
+  async deleteTenantAccount() {
+    return await this.dataManagementService.deleteTenantAccount()
   }
 }

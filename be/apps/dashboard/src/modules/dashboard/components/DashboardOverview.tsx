@@ -1,3 +1,4 @@
+import { LinearDivider } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { m } from 'motion/react'
 
@@ -169,7 +170,7 @@ function ActivityList({ items }: { items: DashboardRecentActivityItem[] }) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...Spring.presets.snappy, delay: index * 0.04 }}
-            className="bg-fill/5 hover:bg-fill/10 group border-fill-tertiary rounded-lg border px-3.5 py-3 transition-colors duration-200"
+            className="group px-3.5 py-3 transition-colors duration-200"
           >
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
@@ -218,6 +219,8 @@ function ActivityList({ items }: { items: DashboardRecentActivityItem[] }) {
                 <span className="ml-1 truncate">{item.photoId}</span>
               </div>
             </div>
+
+            <LinearDivider className="mt-5 group-last:hidden" />
           </m.div>
         )
       })}
@@ -361,7 +364,9 @@ export function DashboardOverview() {
               })}
             </div>
 
-            <div className="text-text-secondary border-fill-tertiary bg-fill/5 mt-5 rounded-lg border px-3.5 py-2.5 text-xs leading-relaxed">
+            <LinearDivider className="mt-12" />
+
+            <div className="text-text-secondary mt-5 px-3.5 py-2.5 text-xs leading-relaxed">
               {statusTotal === 0
                 ? '暂无同步任务，添加照片后即可查看同步健康度。'
                 : syncCompletion !== null && syncCompletion >= 0.85

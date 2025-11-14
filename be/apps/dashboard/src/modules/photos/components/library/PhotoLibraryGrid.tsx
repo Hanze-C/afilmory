@@ -1,10 +1,13 @@
-import { Button, Prompt, Thumbhash } from '@afilmory/ui'
+import { Button, Modal, Prompt, Thumbhash } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
+
+import { stopPropagation } from '~/lib/dom'
 
 import type { PhotoAssetListItem } from '../../types'
 import { DeleteFromStorageOption } from './DeleteFromStorageOption'
 import { Masonry } from './Masonry'
+import { PhotoExifDetailsModal } from './PhotoExifDetailsModal'
 
 export type DeleteAssetOptions = {
   deleteFromStorage?: boolean
@@ -66,11 +69,18 @@ function PhotoGridItem({
       onConfirm: () => Promise.resolve(onDeleteAsset(asset, { deleteFromStorage })),
     })
   }
+  const handleViewExif = () => {
+    if (!manifest) return
+
+    Modal.present(PhotoExifDetailsModal, {
+      manifest,
+    })
+  }
 
   return (
     <div
       className={clsxm(
-        'relative group overflow-hidden rounded-xl border border-border/10 bg-background-secondary/40 shadow-sm transition-all duration-200',
+        'relative group overflow-hidden bg-background-secondary/40 transition-all duration-200',
         isSelected && 'ring-2 ring-accent/80',
       )}
     >
@@ -105,20 +115,22 @@ function PhotoGridItem({
         </div>
       )}
 
-      <div className="bg-background/5 absolute inset-0 flex flex-col justify-between opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100">
+      <div
+        role="button"
+        onClick={() => onToggleSelect(asset.id)}
+        className="bg-background/5 absolute inset-0 flex flex-col justify-between opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100"
+      >
         <div className="flex items-start justify-between p-3 text-xs text-white">
           <div className="max-w-[70%] truncate font-medium">{manifest?.title ?? manifest?.id ?? asset.photoId}</div>
-          <button
-            type="button"
+          <div
             className={clsxm(
               'inline-flex items-center rounded-full border border-white/30 bg-black/40 px-2 py-1 text-[10px] uppercase tracking-wide text-white transition-colors',
               isSelected ? 'bg-accent text-white' : 'hover:bg-white/10',
             )}
-            onClick={() => onToggleSelect(asset.id)}
           >
             <DynamicIcon name={isSelected ? 'check' : 'square'} className="mr-1 h-3 w-3" />
             <span>{isSelected ? '已选择' : '选择'}</span>
-          </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 p-3">
@@ -127,7 +139,7 @@ function PhotoGridItem({
             <span>{updatedAtLabel}</span>
             <span>{fileSizeLabel}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={stopPropagation} tabIndex={-1}>
             <Button
               type="button"
               variant="ghost"
@@ -142,7 +154,18 @@ function PhotoGridItem({
               type="button"
               variant="ghost"
               size="xs"
-              className="bg-rose-500/20 text-rose-50 hover:bg-rose-500/30"
+              className="bg-black/40 text-white hover:bg-black/60"
+              disabled={!manifest}
+              onClick={handleViewExif}
+            >
+              <DynamicIcon name="info" className="mr-1 h-3.5 w-3.5" />
+              <span>EXIF</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="bg-red/20 text-rose-50 hover:bg-red!"
               disabled={isDeleting}
               onClick={handleDelete}
             >

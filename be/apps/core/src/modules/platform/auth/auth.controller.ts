@@ -220,6 +220,17 @@ export class AuthController {
 
     const { headers } = context.req.raw
     const auth = await this.auth.getAuth()
+    const { socialProviders } = await this.systemSettings.getAuthModuleConfig()
+    const enabledProviders = new Set(Object.keys(socialProviders))
+    const allAccounts = await auth.api.listUserAccounts({ headers })
+    const linkedProviderAccounts = allAccounts.filter(
+      (account) => account.providerId !== 'credential' && enabledProviders.has(account.providerId),
+    )
+    const hasTargetAccount = linkedProviderAccounts.some((account) => account.providerId === providerId)
+    if (hasTargetAccount && linkedProviderAccounts.length <= 1) {
+      throw new BizException(ErrorCode.COMMON_BAD_REQUEST, { message: '至少需要保留一个已绑定的 OAuth Provider' })
+    }
+
     const result = await auth.api.unlinkAccount({
       headers,
       body: {

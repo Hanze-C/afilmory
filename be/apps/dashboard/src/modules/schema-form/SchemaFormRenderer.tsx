@@ -65,7 +65,7 @@ function SecretFieldInput<Key extends string>({
         onInput={(event) => onChange(fieldKey, event.currentTarget.value)}
         placeholder={component.placeholder ?? ''}
         autoComplete={component.autoComplete}
-        className="bg-background/60 flex-1"
+        className="border-fill-tertiary/50 bg-background flex-1 focus:border-accent/40"
       />
       {component.revealable ? (
         <Button
@@ -73,7 +73,7 @@ function SecretFieldInput<Key extends string>({
           onClick={() => setRevealed((prev) => !prev)}
           variant="ghost"
           size="sm"
-          className="border-accent/30 text-accent hover:bg-accent/10 border"
+          className="border-fill-tertiary/50 text-text-secondary hover:bg-fill/30 hover:text-text border"
         >
           {revealed ? '隐藏' : '显示'}
         </Button>
@@ -113,7 +113,7 @@ function FieldRenderer<Key extends string>({ field, value, onChange, renderSlot,
         onInput={(event) => onChange(field.key, event.currentTarget.value)}
         placeholder={component.placeholder ?? ''}
         rows={component.minRows ?? 3}
-        className="bg-background/60"
+        className="border-fill-tertiary/50 bg-background focus:border-accent/40"
       />
     )
   }
@@ -122,10 +122,10 @@ function FieldRenderer<Key extends string>({ field, value, onChange, renderSlot,
     const stringValue = typeof value === 'string' ? value : value == null ? '' : String(value)
     return (
       <Select value={stringValue} onValueChange={(nextValue) => onChange(field.key, nextValue)}>
-        <SelectTrigger>
+        <SelectTrigger className="border-fill-tertiary/50 bg-background focus:border-accent/40">
           <SelectValue placeholder={component.placeholder ?? '请选择'} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="border-fill-tertiary bg-background">
           {component.options?.map((option) => (
             <SelectItem key={option} value={option}>
               {option}
@@ -162,7 +162,7 @@ function FieldRenderer<Key extends string>({ field, value, onChange, renderSlot,
       onInput={(event) => onChange(field.key, event.currentTarget.value)}
       placeholder={component.placeholder ?? ''}
       autoComplete={component.autoComplete}
-      className="bg-background/60"
+      className="border-fill-tertiary/50 bg-background focus:border-accent/40"
     />
   )
 }
@@ -184,12 +184,12 @@ function renderGroup<Key extends string>(
   }
 
   return (
-    <div key={node.id} className="bg-accent/2 relative p-5 transition-all duration-200">
-      {/* Subtle gradient borders for nested groups */}
-      <div className="via-accent/15 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-      <div className="via-accent/15 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
-      <div className="via-accent/15 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
-      <div className="via-accent/15 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
+    <div key={node.id} className="bg-fill/5 relative rounded-lg p-5 transition-all duration-200">
+      {/* Subtle borders for nested groups */}
+      <div className="via-fill-tertiary/30 absolute top-0 right-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+      <div className="via-fill-tertiary/30 absolute top-0 right-0 bottom-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
+      <div className="via-fill-tertiary/30 absolute right-0 bottom-0 left-0 h-[0.5px] bg-linear-to-r from-transparent to-transparent" />
+      <div className="via-fill-tertiary/30 absolute top-0 bottom-0 left-0 w-[0.5px] bg-linear-to-b from-transparent to-transparent" />
 
       <div className="flex items-center gap-2">
         <SchemaIcon name={node.icon} className="text-accent" />
@@ -197,7 +197,7 @@ function renderGroup<Key extends string>(
       </div>
       <FieldDescription description={node.description} />
 
-      <div className="mt-4 space-y-4">{renderedChildren}</div>
+      <div className="mt-4 space-y-3">{renderedChildren}</div>
     </div>
   )
 }
@@ -220,7 +220,10 @@ function renderField<Key extends string>(
     const helper = helperText ? <FormHelperText>{helperText}</FormHelperText> : null
 
     return (
-      <div key={field.id} className="border-border bg-background/40 rounded-lg border p-4">
+      <div
+        key={field.id}
+        className="border-fill-tertiary/50 bg-background rounded-lg border p-4 transition-all duration-200"
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Label className="text-text text-sm font-medium">{field.title}</Label>
@@ -242,7 +245,7 @@ function renderField<Key extends string>(
   const showSensitiveHint = isSensitive && typeof value === 'string' && value.length === 0
 
   return (
-    <div key={field.id} className="border-border bg-background/30 space-y-2 rounded-lg border p-4">
+    <div key={field.id} className="space-y-2 py-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Label className="text-text text-sm font-medium">{field.title}</Label>
