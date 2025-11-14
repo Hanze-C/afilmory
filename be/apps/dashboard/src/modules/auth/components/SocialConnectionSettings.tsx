@@ -146,7 +146,7 @@ export function SocialConnectionSettings() {
             return (
               <div
                 key={provider.id}
-                className="border-text/10 bg-fill/30 hover:bg-fill/40 flex flex-col gap-4 rounded-2xl border p-4 transition-colors md:flex-row md:items-center md:justify-between"
+                className="flex bg-background-secondary rounded-md flex-col gap-4 p-4 transition-colors md:flex-row md:items-center md:justify-between"
               >
                 <div className="flex flex-1 items-center gap-4">
                   <div className="bg-fill-secondary/60 text-text flex size-12 items-center justify-center rounded-full">

@@ -2,7 +2,7 @@ import type { AfilmoryManifest, CameraInfo, LensInfo, PhotoManifestItem } from '
 import { CURRENT_PHOTO_MANIFEST_VERSION, photoAssets } from '@afilmory/db'
 import { DbAccessor } from 'core/database/database.provider'
 import { requireTenantContext } from 'core/modules/platform/tenant/tenant.context'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 @injectable()
@@ -18,7 +18,7 @@ export class ManifestService {
         manifest: photoAssets.manifest,
       })
       .from(photoAssets)
-      .where(and(eq(photoAssets.tenantId, tenant.tenant.id), eq(photoAssets.syncStatus, 'synced')))
+      .where(and(eq(photoAssets.tenantId, tenant.tenant.id), inArray(photoAssets.syncStatus, ['synced', 'conflict'])))
 
     if (records.length === 0) {
       return {

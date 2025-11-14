@@ -27,8 +27,8 @@ export class StaticWebController {
     return await this.serve(context, this.staticWebService, false)
   }
 
-  @Get(`/`)
-  @Get(`/explory`)
+  @Get('/')
+  @Get('/explory')
   @SkipTenantGuard()
   async getStaticWebIndex(@ContextParam() context: Context) {
     if (this.isReservedTenant({ root: true })) {
