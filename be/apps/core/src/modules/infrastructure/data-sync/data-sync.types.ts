@@ -55,6 +55,19 @@ export interface DataSyncResult {
   actions: DataSyncAction[]
 }
 
+export interface DataSyncRunRecord {
+  id: string
+  dryRun: boolean
+  summary: DataSyncResultSummary
+  actionsCount: number
+  startedAt: string
+  completedAt: string
+}
+
+export interface DataSyncStatus {
+  lastRun: DataSyncRunRecord | null
+}
+
 export interface DataSyncOptions {
   builderConfig?: BuilderConfig
   storageConfig?: StorageConfig

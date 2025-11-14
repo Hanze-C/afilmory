@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
-import { ChevronDown, LogOut, Settings, User as UserIcon } from 'lucide-react'
+import { LogOut, Settings, User as UserIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
@@ -64,11 +64,6 @@ export function UserMenu({ user }: UserMenuProps) {
             <div className="text-text text-sm leading-tight font-medium">{user.name || user.email}</div>
             <div className="text-text-tertiary text-[10px] leading-tight capitalize">{user.role}</div>
           </div>
-
-          {/* Chevron Icon */}
-          <ChevronDown
-            className={clsxm('text-text-tertiary size-3.5 transition-transform duration-200', isOpen && 'rotate-180')}
-          />
         </button>
       </DropdownMenuTrigger>
 

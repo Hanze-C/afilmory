@@ -1,3 +1,8 @@
+import { authUsers } from '@afilmory/db'
+import { DbAccessor } from 'core/database/database.provider'
+import { BizException, ErrorCode } from 'core/errors'
+import { requireTenantContext } from 'core/modules/platform/tenant/tenant.context'
+import { asc, eq, sql } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import type { UiNode } from '../../ui/ui-schema/ui-schema.type'
@@ -9,7 +14,10 @@ import { SITE_SETTING_UI_SCHEMA, SITE_SETTING_UI_SCHEMA_KEYS } from './site-sett
 
 @injectable()
 export class SiteSettingService {
-  constructor(private readonly settingService: SettingService) {}
+  constructor(
+    private readonly settingService: SettingService,
+    private readonly dbAccessor: DbAccessor,
+  ) {}
 
   async getUiSchema(): Promise<SiteSettingUiSchemaResponse> {
     const values = await this.settingService.getMany(SITE_SETTING_UI_SCHEMA_KEYS, {})
@@ -66,11 +74,12 @@ export class SiteSettingService {
     assignString(values['site.url'], (value) => (config.url = value))
     assignString(values['site.accentColor'], (value) => (config.accentColor = value))
 
-    assignString(values['site.author.name'], (value) => (config.author.name = value))
-    assignString(values['site.author.url'], (value) => (config.author.url = value))
-    assignString(values['site.author.avatar'], (value) => {
-      config.author.avatar = value
-    })
+    const resolvedAuthor = await this.resolveAuthorFromTenant(config.name)
+    if (resolvedAuthor) {
+      config.author = resolvedAuthor
+    } else if (!config.author.name) {
+      config.author.name = config.name
+    }
 
     const social = buildSocialConfig(values)
     if (social) {
@@ -95,6 +104,131 @@ export class SiteSettingService {
     }
 
     return config
+  }
+
+  async getAuthorProfile(): Promise<SiteAuthorProfile> {
+    const user = await this.findPrimaryAuthorUser()
+    if (!user) {
+      throw new BizException(ErrorCode.AUTH_FORBIDDEN, {
+        message: '当前租户缺少可更新的作者账号，请先创建管理员账号。',
+      })
+    }
+    return toSiteAuthorProfile(user)
+  }
+
+  async updateAuthorProfile(input: UpdateSiteAuthorInput): Promise<SiteAuthorProfile> {
+    const user = await this.findPrimaryAuthorUser()
+    if (!user) {
+      throw new BizException(ErrorCode.AUTH_FORBIDDEN, {
+        message: '当前租户缺少可更新的作者账号，请先创建管理员账号。',
+      })
+    }
+
+    const name = normalizeString(input.name)
+    if (!name) {
+      throw new BizException(ErrorCode.COMMON_VALIDATION, { message: '作者名称不能为空' })
+    }
+
+    const displayUsername = normalizeOptionalString(input.displayUsername)
+    const username = normalizeOptionalString(input.username)
+    const avatar = this.normalizeAvatarInput(input.avatar)
+
+    const now = new Date().toISOString()
+    const db = this.dbAccessor.get()
+
+    await db
+      .update(authUsers)
+      .set({
+        name,
+        displayUsername,
+        username,
+        image: avatar,
+        updatedAt: now,
+      })
+      .where(eq(authUsers.id, user.id))
+
+    return toSiteAuthorProfile({
+      ...user,
+      name,
+      displayUsername,
+      username,
+      image: avatar,
+      updatedAt: now,
+    })
+  }
+
+  private async resolveAuthorFromTenant(siteName: string): Promise<SiteConfigAuthor | null> {
+    const user = await this.findPrimaryAuthorUser()
+    if (!user) {
+      return null
+    }
+
+    const fallbackName = normalizeString(siteName) ?? siteName
+    const normalizedName =
+      normalizeString(user.displayUsername) ??
+      normalizeString(user.username) ??
+      normalizeString(user.name) ??
+      fallbackName
+
+    const author: SiteConfigAuthor = {
+      name: normalizedName,
+    }
+
+    const avatar = normalizeString(user.image)
+    if (avatar) {
+      author.avatar = avatar
+    }
+
+    return author
+  }
+
+  private async findPrimaryAuthorUser(): Promise<AuthorUserRecord | null> {
+    const tenant = requireTenantContext()
+    const db = this.dbAccessor.get()
+    const [user] = await db
+      .select({
+        id: authUsers.id,
+        name: authUsers.name,
+        email: authUsers.email,
+        displayUsername: authUsers.displayUsername,
+        username: authUsers.username,
+        image: authUsers.image,
+        role: authUsers.role,
+        createdAt: authUsers.createdAt,
+        updatedAt: authUsers.updatedAt,
+      })
+      .from(authUsers)
+      .where(eq(authUsers.tenantId, tenant.tenant.id))
+      .orderBy(
+        sql`case when ${authUsers.role} = 'admin' then 0 when ${authUsers.role} = 'superadmin' then 1 else 2 end`,
+        asc(authUsers.createdAt),
+      )
+      .limit(1)
+
+    return user ?? null
+  }
+
+  private normalizeAvatarInput(value: string | null | undefined): string | null {
+    const normalized = normalizeString(value)
+    if (!normalized) {
+      return null
+    }
+
+    if (normalized.startsWith('//')) {
+      return normalized
+    }
+
+    try {
+      const url = new URL(normalized)
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        throw new Error('Invalid protocol')
+      }
+      return url.toString()
+    } catch {
+      throw new BizException(ErrorCode.COMMON_VALIDATION, {
+        message: '头像链接必须是以 http(s) 或 // 开头的有效 URL',
+      })
+    }
   }
 
   private filterSchema(
@@ -130,9 +264,39 @@ export class SiteSettingService {
   }
 }
 
+interface SiteAuthorProfile {
+  id: string
+  email: string
+  name: string
+  username: string | null
+  displayUsername: string | null
+  avatar: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+interface UpdateSiteAuthorInput {
+  name: string
+  displayUsername?: string | null
+  username?: string | null
+  avatar?: string | null
+}
+
+type AuthorUserRecord = {
+  id: string
+  name: string
+  email: string
+  username: string | null
+  displayUsername: string | null
+  image: string | null
+  role: string
+  createdAt: string
+  updatedAt: string
+}
+
 interface SiteConfigAuthor {
   name: string
-  url: string
+  url?: string
   avatar?: string
 }
 
@@ -177,7 +341,6 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   accentColor: '#007bff',
   author: {
     name: '',
-    url: '',
   },
 }
 
@@ -197,6 +360,24 @@ function normalizeString(value: string | null | undefined): string | undefined {
   }
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+function normalizeOptionalString(value: string | null | undefined): string | null {
+  const normalized = normalizeString(value)
+  return normalized ?? null
+}
+
+function toSiteAuthorProfile(user: AuthorUserRecord): SiteAuthorProfile {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    username: user.username ?? null,
+    displayUsername: user.displayUsername ?? null,
+    avatar: user.image ?? null,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }
 }
 
 function parseJsonStringArray(value: string | null | undefined): string[] | undefined {

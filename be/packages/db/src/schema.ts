@@ -1,5 +1,5 @@
 import type { PhotoManifestItem } from '@afilmory/builder'
-import { bigint, boolean, index, jsonb, pgEnum, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core'
+import { bigint, boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core'
 
 import { generateId } from './snowflake'
 
@@ -41,6 +41,17 @@ export interface PhotoAssetConflictPayload {
 export interface PhotoAssetManifest {
   version: typeof CURRENT_PHOTO_MANIFEST_VERSION
   data: PhotoManifestItem
+}
+
+export interface PhotoSyncRunSummary {
+  storageObjects: number
+  databaseRecords: number
+  inserted: number
+  updated: number
+  deleted: number
+  conflicts: number
+  skipped: number
+  errors: number
 }
 
 export const tenants = pgTable(
@@ -254,6 +265,24 @@ export const photoAssets = pgTable(
   ],
 )
 
+export const photoSyncRuns = pgTable(
+  'photo_sync_run',
+  {
+    id: snowflakeId,
+    tenantId: text('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    dryRun: boolean('dry_run').notNull().default(false),
+    summary: jsonb('summary').$type<PhotoSyncRunSummary>().notNull(),
+    actionsCount: integer('actions_count').notNull().default(0),
+    startedAt: timestamp('started_at', { mode: 'string' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'string' }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
+  },
+  (t) => [index('idx_photo_sync_run_tenant').on(t.tenantId)],
+)
+
 export const dbSchema = {
   tenants,
   authUsers,
@@ -266,6 +295,7 @@ export const dbSchema = {
   systemSettings,
   reactions,
   photoAssets,
+  photoSyncRuns,
 }
 
 export type DBSchema = typeof dbSchema

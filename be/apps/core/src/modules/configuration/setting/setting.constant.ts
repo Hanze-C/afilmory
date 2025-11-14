@@ -8,26 +8,6 @@ import type { SettingDefinition, SettingMetadata } from './setting.type'
 
 const HEX_COLOR_REGEX = /^#(?:[0-9a-f]{3}){1,2}$/i
 
-function createOptionalUrlSchema(errorMessage: string) {
-  return z
-    .string()
-    .trim()
-    .superRefine((value, ctx) => {
-      if (value.length === 0) {
-        return
-      }
-
-      try {
-        new URL(value)
-      } catch {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: errorMessage,
-        })
-      }
-    })
-}
-
 function createJsonStringArraySchema(options: {
   allowEmpty?: boolean
   validator?: (value: unknown) => boolean
@@ -137,18 +117,6 @@ export const DEFAULT_SETTING_DEFINITIONS = {
           })
         }
       }),
-  },
-  'site.author.name': {
-    isSensitive: false,
-    schema: z.string().trim().min(1, 'Author name cannot be empty'),
-  },
-  'site.author.url': {
-    isSensitive: false,
-    schema: z.url('Author URL must be a valid URL'),
-  },
-  'site.author.avatar': {
-    isSensitive: false,
-    schema: createOptionalUrlSchema('Author avatar must be a valid URL'),
   },
   'site.social.twitter': {
     isSensitive: false,

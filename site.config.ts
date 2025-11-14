@@ -43,16 +43,15 @@ interface Social {
 }
 
 const defaultConfig: SiteConfig = {
-  name: "Innei's Afilmory",
-  title: "Innei's Afilmory",
-  description:
-    'Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.',
-  url: 'https://afilmory.innei.in',
+  name: 'New Afilmory',
+  title: 'New Afilmory',
+  description: 'A modern photo gallery website.',
+  url: 'https://afilmory.com',
   accentColor: '#007bff',
   author: {
-    name: 'Innei',
-    url: 'https://innei.in/',
-    avatar: 'https://cdn.jsdelivr.net/gh/Innei/static@master/avatar.png',
+    name: 'Afilmory',
+    url: 'https://afilmory.art/',
+    avatar: 'https://cdn.jsdelivr.net/gh/Afilmory/Afilmory@main/logo.jpg',
   },
 }
 export const siteConfig: SiteConfig = merge(defaultConfig, userConfig) as any

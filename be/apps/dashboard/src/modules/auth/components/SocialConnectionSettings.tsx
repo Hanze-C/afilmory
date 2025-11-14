@@ -88,12 +88,12 @@ export function SocialConnectionSettings() {
 
   if (isLoading) {
     return (
-      <LinearBorderPanel className="p-6">
-        <div className="space-y-6">
-          <SkeletonBlock className="h-5 w-2/5" />
-          <div className="space-y-4">
+      <LinearBorderPanel className="p-4 sm:p-6">
+        <div className="space-y-4 sm:space-y-6">
+          <SkeletonBlock className="h-4 sm:h-5 w-2/5" />
+          <div className="space-y-3 sm:space-y-4">
             {[1, 2, 3].map((key) => (
-              <SkeletonBlock key={key} className="h-20" />
+              <SkeletonBlock key={key} className="h-16 sm:h-20" />
             ))}
           </div>
         </div>
@@ -103,9 +103,9 @@ export function SocialConnectionSettings() {
 
   if (hasError && errorMessage) {
     return (
-      <LinearBorderPanel className="p-6">
-        <div className="text-red flex items-center gap-3 text-sm">
-          <i className="i-mingcute-close-circle-fill text-lg" />
+      <LinearBorderPanel className="p-4 sm:p-6">
+        <div className="text-red flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+          <i className="i-mingcute-close-circle-fill text-base sm:text-lg" />
           <span>{errorMessage}</span>
         </div>
       </LinearBorderPanel>
@@ -114,10 +114,10 @@ export function SocialConnectionSettings() {
 
   if (providers.length === 0) {
     return (
-      <LinearBorderPanel className="p-6">
-        <div className="flex flex-col gap-3">
-          <p className="text-base font-semibold">未配置可用的 OAuth Provider</p>
-          <p className="text-text-tertiary text-sm">
+      <LinearBorderPanel className="p-4 sm:p-6">
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <p className="text-sm sm:text-base font-semibold">未配置可用的 OAuth Provider</p>
+          <p className="text-text-tertiary text-xs sm:text-sm">
             超级管理员尚未在系统设置中启用任何第三方登录方式，当前租户无法执行 OAuth 绑定。
           </p>
         </div>
@@ -126,17 +126,17 @@ export function SocialConnectionSettings() {
   }
 
   return (
-    <LinearBorderPanel className="p-6">
-      <div className="space-y-6">
+    <LinearBorderPanel className="p-4 sm:p-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <p className="text-text-tertiary text-sm font-semibold tracking-wide uppercase">登录方式</p>
-          <h2 className="mt-1 text-2xl font-semibold">OAuth 账号绑定</h2>
-          <p className="text-text-tertiary mt-2 text-sm">
+          <p className="text-text-tertiary text-xs sm:text-sm font-semibold tracking-wide uppercase">登录方式</p>
+          <h2 className="mt-1 text-xl sm:text-2xl font-semibold">OAuth 账号绑定</h2>
+          <p className="text-text-tertiary mt-1.5 sm:mt-2 text-xs sm:text-sm">
             绑定后即可使用对应平台的账号快速登录后台，并同步基础资料。解除绑定不会删除原有后台账号。
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {providers.map((provider) => {
             const linkedAccount = accountsByProvider.get(provider.id)
             const isLinking = linkMutation.isPending && linkingProvider === provider.id
@@ -146,24 +146,26 @@ export function SocialConnectionSettings() {
             return (
               <div
                 key={provider.id}
-                className="flex bg-background-secondary rounded-md flex-col gap-4 p-4 transition-colors md:flex-row md:items-center md:justify-between"
+                className="flex bg-background-secondary rounded-md flex-col gap-3 sm:gap-4 p-3 sm:p-4 transition-colors md:flex-row md:items-center md:justify-between"
               >
-                <div className="flex flex-1 items-center gap-4">
-                  <div className="bg-fill-secondary/60 text-text flex size-12 items-center justify-center rounded-full">
-                    <i className={cx('text-2xl', provider.icon)} aria-hidden />
+                <div className="flex flex-1 items-center gap-3 sm:gap-4">
+                  <div className="bg-fill-secondary/60 text-text flex size-10 sm:size-12 items-center justify-center rounded-full shrink-0">
+                    <i className={cx('text-xl sm:text-2xl', provider.icon)} aria-hidden />
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-base leading-tight font-semibold">{provider.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm sm:text-base leading-tight font-semibold">{provider.name}</p>
                     {linkedAccount ? (
-                      <p className="text-text-tertiary mt-1 text-xs">
+                      <p className="text-text-tertiary mt-0.5 sm:mt-1 text-[11px] sm:text-xs">
                         已绑定 · {formatTimestamp(linkedAccount.createdAt)}
                       </p>
                     ) : (
-                      <p className="text-text-tertiary mt-1 text-xs">尚未绑定，点击下方按钮完成授权。</p>
+                      <p className="text-text-tertiary mt-0.5 sm:mt-1 text-[11px] sm:text-xs">
+                        尚未绑定，点击下方按钮完成授权。
+                      </p>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-start gap-1 md:items-end">
+                <div className="flex flex-col items-stretch sm:items-start gap-1.5 sm:gap-1 md:items-end w-full sm:w-auto">
                   {linkedAccount ? (
                     <>
                       <Button
@@ -174,11 +176,12 @@ export function SocialConnectionSettings() {
                         isLoading={isUnlinking}
                         loadingText="解绑中…"
                         onClick={() => handleDisconnect(provider.id, provider.name, linkedAccount.accountId)}
+                        className="w-full sm:w-auto"
                       >
                         解除绑定
                       </Button>
                       {isLastLinkedProvider ? (
-                        <p className="text-text-tertiary text-xs">需要至少保留一个已绑定的登录方式。</p>
+                        <p className="text-text-tertiary text-[11px] sm:text-xs">需要至少保留一个已绑定的登录方式。</p>
                       ) : null}
                     </>
                   ) : (
@@ -190,6 +193,7 @@ export function SocialConnectionSettings() {
                       isLoading={isLinking}
                       loadingText="跳转中…"
                       onClick={() => handleConnect(provider.id, provider.name)}
+                      className="w-full sm:w-auto"
                     >
                       绑定 {provider.name}
                     </Button>

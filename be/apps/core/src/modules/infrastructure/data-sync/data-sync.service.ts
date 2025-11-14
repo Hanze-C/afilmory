@@ -1,13 +1,13 @@
 import type { BuilderConfig, PhotoManifestItem, StorageConfig, StorageManager, StorageObject } from '@afilmory/builder'
 import type { PhotoAssetConflictPayload, PhotoAssetConflictSnapshot, PhotoAssetManifest } from '@afilmory/db'
-import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets } from '@afilmory/db'
+import { CURRENT_PHOTO_MANIFEST_VERSION, DATABASE_ONLY_PROVIDER, photoAssets, photoSyncRuns } from '@afilmory/db'
 import { createLogger, EventEmitterService } from '@afilmory/framework'
 import { DbAccessor } from 'core/database/database.provider'
 import { BizException, ErrorCode } from 'core/errors'
 import { PhotoBuilderService } from 'core/modules/content/photo/builder/photo-builder.service'
 import { PhotoStorageService } from 'core/modules/content/photo/storage/photo-storage.service'
 import { requireTenantContext } from 'core/modules/platform/tenant/tenant.context'
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { injectable } from 'tsyringe'
 
 import type {
@@ -20,7 +20,9 @@ import type {
   DataSyncProgressStage,
   DataSyncResult,
   DataSyncResultSummary,
+  DataSyncRunRecord,
   DataSyncStageTotals,
+  DataSyncStatus,
   ResolveConflictOptions,
   SyncObjectSnapshot,
 } from './data-sync.types'
@@ -44,6 +46,8 @@ type StatusReconciliationEntry = {
   record: PhotoAssetRecord
   storageSnapshot: SyncObjectSnapshot
 }
+
+type PhotoSyncRunRow = typeof photoSyncRuns.$inferSelect
 
 interface SyncPreparation {
   tenantId: string
@@ -78,6 +82,7 @@ export class DataSyncService {
 
   async runSync(options: DataSyncOptions, onProgress?: DataSyncProgressEmitter): Promise<DataSyncResult> {
     const tenant = requireTenantContext()
+    const runStartedAt = new Date()
     const { builderConfig, storageConfig } = await this.resolveBuilderConfigForTenant(tenant.tenant.id, options)
     const context = await this.prepareSyncContext(tenant.tenant.id, builderConfig, storageConfig)
     const summary = this.createSummary(context)
@@ -170,7 +175,31 @@ export class DataSyncService {
       }
     }
 
+    await this.recordSyncRun(tenant.tenant.id, {
+      dryRun: options.dryRun,
+      summary: { ...summary },
+      actionsCount: actions.length,
+      startedAt: runStartedAt,
+      completedAt: new Date(),
+    })
+
     return result
+  }
+
+  async getStatus(): Promise<DataSyncStatus> {
+    const tenant = requireTenantContext()
+    const db = this.dbAccessor.get()
+
+    const [record] = await db
+      .select()
+      .from(photoSyncRuns)
+      .where(eq(photoSyncRuns.tenantId, tenant.tenant.id))
+      .orderBy(desc(photoSyncRuns.completedAt))
+      .limit(1)
+
+    return {
+      lastRun: record ? this.mapSyncRunRecord(record) : null,
+    }
   }
 
   async listConflicts(): Promise<DataSyncConflict[]> {
@@ -223,6 +252,40 @@ export class DataSyncService {
       await this.emitManifestChanged(tenant.tenant.id)
     }
     return action
+  }
+
+  private async recordSyncRun(
+    tenantId: string,
+    payload: {
+      dryRun: boolean
+      summary: DataSyncResultSummary
+      actionsCount: number
+      startedAt: Date
+      completedAt: Date
+    },
+  ): Promise<void> {
+    const db = this.dbAccessor.get()
+    const record: typeof photoSyncRuns.$inferInsert = {
+      tenantId,
+      dryRun: payload.dryRun,
+      summary: payload.summary,
+      actionsCount: payload.actionsCount,
+      startedAt: payload.startedAt.toISOString(),
+      completedAt: payload.completedAt.toISOString(),
+    }
+
+    await db.insert(photoSyncRuns).values(record)
+  }
+
+  private mapSyncRunRecord(record: PhotoSyncRunRow): DataSyncRunRecord {
+    return {
+      id: record.id,
+      dryRun: record.dryRun,
+      summary: record.summary,
+      actionsCount: record.actionsCount,
+      startedAt: record.startedAt,
+      completedAt: record.completedAt,
+    }
   }
 
   private async prepareSyncContext(

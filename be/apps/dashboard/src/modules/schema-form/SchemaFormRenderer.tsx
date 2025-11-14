@@ -220,10 +220,7 @@ function renderField<Key extends string>(
     const helper = helperText ? <FormHelperText>{helperText}</FormHelperText> : null
 
     return (
-      <div
-        key={field.id}
-        className="border-fill-tertiary/50 bg-background rounded-lg border p-4 transition-all duration-200"
-      >
+      <div key={field.id}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Label className="text-text text-sm font-medium">{field.title}</Label>

@@ -172,9 +172,9 @@ function ActivityList({ items }: { items: DashboardRecentActivityItem[] }) {
             transition={{ ...Spring.presets.snappy, delay: index * 0.04 }}
             className="group px-3.5 py-3 transition-colors duration-200"
           >
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="bg-fill/10 relative h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+            <div className="flex flex-col gap-2 sm:gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <div className="bg-fill/10 relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-lg">
                   {item.previewUrl ? (
                     <img src={item.previewUrl} alt={item.title} className="size-full object-cover" loading="lazy" />
                   ) : (
@@ -183,9 +183,9 @@ function ActivityList({ items }: { items: DashboardRecentActivityItem[] }) {
                     </div>
                   )}
                 </div>
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="text-text truncate text-sm font-semibold">{item.title}</div>
-                  <div className="text-text-tertiary text-xs leading-relaxed">
+                <div className="min-w-0 flex-1 space-y-1 sm:space-y-1.5">
+                  <div className="text-text truncate text-xs sm:text-sm font-semibold">{item.title}</div>
+                  <div className="text-text-tertiary text-[11px] sm:text-xs leading-relaxed">
                     <span>上传于 {formatRelativeTime(item.createdAt)}</span>
                     {takenAtText ? (
                       <>
@@ -284,33 +284,36 @@ export function DashboardOverview() {
 
   return (
     <MainPageLayout title="Dashboard" description="掌握图库运行状态与最近同步活动">
-      <div className="space-y-5">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="space-y-4 sm:space-y-5">
+        <div className="grid gap-3 sm:gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
           {isLoading
             ? Array.from({ length: 4 }, (_, i) => `skeleton-${i}`).map((key) => <StatSkeleton key={key} />)
             : statCards.map((card, index) => (
-                <LinearBorderPanel key={card.key} className="bg-background-tertiary/60 relative overflow-hidden p-5">
+                <LinearBorderPanel
+                  key={card.key}
+                  className="bg-background-tertiary/60 relative overflow-hidden p-4 sm:p-5"
+                >
                   <m.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ ...Spring.presets.smooth, delay: index * 0.05 }}
-                    className="space-y-2.5"
+                    className="space-y-2 sm:space-y-2.5"
                   >
-                    <span className="text-text-secondary text-xs font-medium tracking-wide uppercase">
+                    <span className="text-text-secondary text-[10px] sm:text-xs font-medium tracking-wide uppercase">
                       {card.label}
                     </span>
-                    <div className="text-text text-2xl font-semibold">{card.value}</div>
-                    <div className="text-text-tertiary text-xs leading-relaxed">{card.helper}</div>
+                    <div className="text-text text-xl sm:text-2xl font-semibold">{card.value}</div>
+                    <div className="text-text-tertiary text-[11px] sm:text-xs leading-relaxed">{card.helper}</div>
                   </m.div>
                 </LinearBorderPanel>
               ))}
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <LinearBorderPanel className="bg-background-tertiary/60 relative overflow-hidden px-5 py-5">
-            <div className="space-y-1.5">
-              <h2 className="text-text text-base font-semibold">最近活动</h2>
-              <p className="text-text-tertiary text-sm leading-relaxed">
+        <div className="grid gap-4 sm:gap-5 grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <LinearBorderPanel className="bg-background-tertiary/60 relative overflow-hidden px-4 sm:px-5 py-4 sm:py-5">
+            <div className="space-y-1 sm:space-y-1.5">
+              <h2 className="text-text text-sm sm:text-base font-semibold">最近活动</h2>
+              <p className="text-text-tertiary text-xs sm:text-sm leading-relaxed">
                 {data?.recentActivity?.length
                   ? `展示最近 ${data.recentActivity.length} 次上传和同步记录`
                   : '还没有任何上传，快来添加第一张照片吧～'}
@@ -330,10 +333,12 @@ export function DashboardOverview() {
             )}
           </LinearBorderPanel>
 
-          <LinearBorderPanel className="bg-background-tertiary/60 relative overflow-hidden px-5 py-5">
-            <div className="space-y-1.5">
-              <h2 className="text-text text-base font-semibold">同步概览</h2>
-              <p className="text-text-tertiary text-sm leading-relaxed">了解当前同步状态，及时处理异常项。</p>
+          <LinearBorderPanel className="bg-background-tertiary/60 relative overflow-hidden px-4 sm:px-5 py-4 sm:py-5">
+            <div className="space-y-1 sm:space-y-1.5">
+              <h2 className="text-text text-sm sm:text-base font-semibold">同步概览</h2>
+              <p className="text-text-tertiary text-xs sm:text-sm leading-relaxed">
+                了解当前同步状态，及时处理异常项。
+              </p>
             </div>
 
             <div className="mt-5 space-y-4">

@@ -9,6 +9,7 @@ import type {
   PhotoSyncProgressEvent,
   PhotoSyncResolution,
   PhotoSyncResult,
+  PhotoSyncStatus,
   RunPhotoSyncPayload,
 } from './types'
 
@@ -206,4 +207,9 @@ export async function getPhotoStorageUrl(storageKey: string): Promise<string> {
   const data = camelCaseKeys<{ url: string }>(result)
 
   return data.url
+}
+
+export async function getPhotoSyncStatus(): Promise<PhotoSyncStatus> {
+  const status = await coreApi<PhotoSyncStatus>('/data-sync/status')
+  return camelCaseKeys<PhotoSyncStatus>(status)
 }

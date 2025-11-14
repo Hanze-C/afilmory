@@ -12,7 +12,7 @@ export function Component() {
       {/* Main Content Area */}
       <main className="bg-background flex-1 overflow-hidden">
         <ScrollArea rootClassName="h-full" viewportClassName="h-full">
-          <div className="mx-auto max-w-7xl px-6 py-6">
+          <div className="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-6">
             <Outlet />
           </div>
         </ScrollArea>

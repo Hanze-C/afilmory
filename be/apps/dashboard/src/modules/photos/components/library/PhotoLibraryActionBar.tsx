@@ -55,8 +55,8 @@ export function PhotoLibraryActionBar({
   }
 
   return (
-    <div className="flex w-full relative  flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
+    <div className="flex w-full relative flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2 sm:gap-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -71,14 +71,15 @@ export function PhotoLibraryActionBar({
           size="sm"
           disabled={isUploading}
           onClick={handleUploadClick}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 text-xs sm:text-sm"
         >
           <DynamicIcon name="upload" className="h-3.5 w-3.5" />
-          上传文件
+          <span className="hidden sm:inline">上传文件</span>
+          <span className="sm:hidden">上传</span>
         </Button>
       </div>
 
-      <div className="flex min-h-10 absolute right-0 translate-y-20 items-center justify-end gap-2">
+      <div className="flex min-h-10 absolute right-0 translate-y-25 lg:translate-y-16 items-center justify-end gap-1.5 sm:gap-2 lg:flex-wrap w-full flex-nowrap">
         <div
           className={clsxm(
             'flex items-center gap-2 transition-opacity duration-200',

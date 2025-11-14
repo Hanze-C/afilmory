@@ -89,60 +89,11 @@ export const SITE_SETTING_UI_SCHEMA: UiSchema<SiteSettingKey> = {
     },
     {
       type: 'section',
-      id: 'site-author-social',
-      title: '作者与社交',
-      description: '展示在站点关于信息与页脚的联系人和社交账号。',
-      icon: 'user-round',
+      id: 'site-social',
+      title: '社交与订阅',
+      description: '配置展示在站点页脚与关于区域的社交账号与订阅入口。',
+      icon: 'share-2',
       children: [
-        {
-          type: 'group',
-          id: 'site-author-group',
-          title: '作者信息',
-          icon: 'id-card',
-          children: [
-            {
-              type: 'field',
-              id: 'site-author-name',
-              title: '作者名称',
-              key: 'site.author.name',
-              required: true,
-              component: {
-                type: 'text',
-                placeholder: '请输入作者名称',
-                autoComplete: 'name',
-              },
-              icon: 'user-circle',
-            },
-            {
-              type: 'field',
-              id: 'site-author-url',
-              title: '作者主页链接',
-              key: 'site.author.url',
-              required: true,
-              component: {
-                type: 'text',
-                inputType: 'url',
-                placeholder: 'https://innei.in/',
-                autoComplete: 'url',
-              },
-              icon: 'link',
-            },
-            {
-              type: 'field',
-              id: 'site-author-avatar',
-              title: '头像地址',
-              description: '可选，展示在站点顶部与分享卡片中。',
-              helperText: '留空则不显示头像。',
-              key: 'site.author.avatar',
-              component: {
-                type: 'text',
-                inputType: 'url',
-                placeholder: 'https://cdn.example.com/avatar.png',
-              },
-              icon: 'image',
-            },
-          ],
-        },
         {
           type: 'group',
           id: 'site-social-group',
@@ -194,7 +145,7 @@ export const SITE_SETTING_UI_SCHEMA: UiSchema<SiteSettingKey> = {
       type: 'section',
       id: 'site-feed',
       title: 'Feed 设置',
-      description: '配置第三方 Feed 数据源，用于聚合内容或挑战进度。',
+      description: '配置第三方 Feed 数据源，用于聚合内容',
       icon: 'radio',
       children: [
         {

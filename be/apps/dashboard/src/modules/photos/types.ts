@@ -44,6 +44,19 @@ export interface PhotoSyncResult {
   actions: PhotoSyncAction[]
 }
 
+export interface PhotoSyncRunRecord {
+  id: string
+  dryRun: boolean
+  summary: PhotoSyncResultSummary
+  actionsCount: number
+  startedAt: string
+  completedAt: string
+}
+
+export interface PhotoSyncStatus {
+  lastRun: PhotoSyncRunRecord | null
+}
+
 export type PhotoSyncConflictType = 'missing-in-storage' | 'metadata-mismatch' | 'photo-id-conflict'
 
 export interface PhotoSyncConflictPayload {

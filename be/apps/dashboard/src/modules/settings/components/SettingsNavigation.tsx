@@ -7,6 +7,12 @@ const SETTINGS_TABS = [
     path: '/settings/site',
     end: true,
   },
+  {
+    id: 'user',
+    label: '用户信息',
+    path: '/settings/user',
+    end: true,
+  },
 
   {
     id: 'account',

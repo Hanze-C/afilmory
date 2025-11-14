@@ -107,8 +107,8 @@ function UploadTrendsChart({ data }: { data: UploadTrendPoint[] }) {
   const maxUploads = data.reduce((max, point) => Math.max(max, point.uploads), 0)
 
   return (
-    <div className="mt-6 overflow-x-auto pb-2">
-      <div className="flex h-44 min-w-[480px] items-end gap-3">
+    <div className="mt-4 sm:mt-6 overflow-x-auto pb-2">
+      <div className="flex h-36 sm:h-44 min-w-[360px] sm:min-w-[480px] items-end gap-2 sm:gap-3">
         {data.map((point, index) => {
           const basePercent = maxUploads === 0 ? 0 : (point.uploads / maxUploads) * 100
           const heightPercent = Math.max(basePercent, point.uploads > 0 ? 8 : 0)
@@ -121,10 +121,10 @@ function UploadTrendsChart({ data }: { data: UploadTrendPoint[] }) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...Spring.presets.snappy, delay: index * 0.04 }}
-              className="group flex min-w-[32px] flex-1 flex-col items-center gap-1"
+              className="group flex min-w-[24px] sm:min-w-[32px] flex-1 flex-col items-center gap-0.5 sm:gap-1"
               title={`${fullLabel} · ${plainNumberFormatter.format(point.uploads)} 张`}
             >
-              <div className="relative flex h-40 w-full items-end">
+              <div className="relative flex h-32 sm:h-40 w-full items-end">
                 <div
                   className="bg-accent/70 group-hover:bg-accent absolute right-0 bottom-0 shape-squircle left-0 mb-2 transition-colors duration-200"
                   style={{ height: `${heightPercent}%` }}
@@ -144,11 +144,11 @@ function UploadTrendsChart({ data }: { data: UploadTrendPoint[] }) {
 
 function ProvidersList({ providers, totalBytes }: { providers: StorageProviderUsage[]; totalBytes: number }) {
   if (providers.length === 0) {
-    return <div className="text-text-tertiary mt-5 text-sm">暂无存储使用数据。</div>
+    return <div className="text-text-tertiary mt-4 sm:mt-5 text-xs sm:text-sm">暂无存储使用数据。</div>
   }
 
   return (
-    <div className="mt-5 space-y-3">
+    <div className="mt-4 sm:mt-5 space-y-2.5 sm:space-y-3">
       {providers.map((provider, index) => {
         const ratio = totalBytes > 0 ? provider.bytes / totalBytes : 0
         const percent = Math.round(ratio * 100)
@@ -158,13 +158,13 @@ function ProvidersList({ providers, totalBytes }: { providers: StorageProviderUs
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...Spring.presets.smooth, delay: index * 0.03 }}
-            className="space-y-1.5"
+            className="space-y-1 sm:space-y-1.5"
           >
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-xs sm:text-sm">
               <span className="text-text capitalize">{provider.provider}</span>
-              <span className="text-text-secondary">
+              <span className="text-text-secondary text-right">
                 {formatBytes(provider.bytes)}
-                <span className="text-text-tertiary ml-2">
+                <span className="text-text-tertiary ml-1 sm:ml-2 text-[11px] sm:text-xs">
                   {percent}% · {provider.photoCount} 张
                 </span>
               </span>
@@ -184,13 +184,13 @@ function ProvidersList({ providers, totalBytes }: { providers: StorageProviderUs
 
 function RankedList({ items, emptyText }: { items: Array<{ label: string; value: number }>; emptyText: string }) {
   if (items.length === 0) {
-    return <div className="text-text-tertiary mt-4 text-sm">{emptyText}</div>
+    return <div className="text-text-tertiary mt-3 sm:mt-4 text-xs sm:text-sm">{emptyText}</div>
   }
 
   const maxValue = items.reduce((max, item) => Math.max(max, item.value), 0)
 
   return (
-    <div className="mt-4 space-y-2.5">
+    <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-2.5">
       {items.map((item, index) => {
         const ratio = maxValue > 0 ? item.value / maxValue : 0
         return (
@@ -199,13 +199,15 @@ function RankedList({ items, emptyText }: { items: Array<{ label: string; value:
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...Spring.presets.smooth, delay: index * 0.03 }}
-            className="flex items-center gap-3 text-sm"
+            className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm"
           >
-            <div className="text-text-tertiary w-6 text-right text-[11px]">#{index + 1}</div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
+            <div className="text-text-tertiary w-5 sm:w-6 text-right text-[10px] sm:text-[11px]">#{index + 1}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-text truncate">{item.label}</span>
-                <span className="text-text-secondary text-[13px]">{plainNumberFormatter.format(item.value)}</span>
+                <span className="text-text-secondary text-[11px] sm:text-[13px] shrink-0">
+                  {plainNumberFormatter.format(item.value)}
+                </span>
               </div>
               <div className="bg-fill/15 mt-1.5 h-2 rounded-full">
                 <div
@@ -233,10 +235,10 @@ function SectionPanel({
   children: ReactNode
 }) {
   return (
-    <LinearBorderPanel className={clsxm('bg-background-tertiary p-5', className)}>
-      <div className="space-y-2">
-        <h2 className="text-text text-sm font-semibold">{title}</h2>
-        <p className="text-text-tertiary text-[13px] leading-relaxed">{description}</p>
+    <LinearBorderPanel className={clsxm('bg-background-tertiary p-4 sm:p-5', className)}>
+      <div className="space-y-1.5 sm:space-y-2">
+        <h2 className="text-text text-xs sm:text-sm font-semibold">{title}</h2>
+        <p className="text-text-tertiary text-[12px] sm:text-[13px] leading-relaxed">{description}</p>
       </div>
       {children}
     </LinearBorderPanel>
@@ -286,7 +288,7 @@ export function DashboardAnalytics() {
 
   return (
     <MainPageLayout title="Analytics" description="Track your photo collection statistics and trends">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
         <SectionPanel title="Upload Trends" description="近 12 个月的上传趋势">
           {isLoading ? (
             <TrendSkeleton />
@@ -295,7 +297,7 @@ export function DashboardAnalytics() {
           ) : data?.uploadTrends?.length ? (
             <>
               {uploadTrendStats ? (
-                <div className="mt-5 grid gap-3 text-sm">
+                <div className="mt-4 sm:mt-5 grid gap-2 sm:gap-3 text-xs sm:text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-text-secondary">累计上传</span>
                     <span className="text-text font-semibold">
@@ -304,9 +306,9 @@ export function DashboardAnalytics() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-text-secondary">表现最佳</span>
-                    <span className="text-text font-semibold">
-                      {formatFullMonth(uploadTrendStats.bestMonth.month)}
-                      <span className="text-text-tertiary ml-2 text-[13px]">
+                    <span className="text-text font-semibold text-right">
+                      <span className="block sm:inline">{formatFullMonth(uploadTrendStats.bestMonth.month)}</span>
+                      <span className="text-text-tertiary ml-0 sm:ml-2 text-[11px] sm:text-[13px]">
                         {plainNumberFormatter.format(uploadTrendStats.bestMonth.uploads)} 张
                       </span>
                     </span>
@@ -318,7 +320,7 @@ export function DashboardAnalytics() {
                       {uploadTrendStats.growth !== null ? (
                         <span
                           className={clsxm(
-                            'ml-2 text-[13px]',
+                            'ml-1 sm:ml-2 text-[11px] sm:text-[13px]',
                             uploadTrendStats.growth >= 0 ? 'text-emerald-300' : 'text-red-300',
                           )}
                         >
@@ -327,7 +329,7 @@ export function DashboardAnalytics() {
                             : `${uploadTrendStats.growth >= 0 ? '+' : ''}${percentFormatter.format(uploadTrendStats.growth)}`}
                         </span>
                       ) : uploadTrendStats.previousMonth ? (
-                        <span className="text-text-tertiary ml-2 text-[13px]">
+                        <span className="text-text-tertiary ml-1 sm:ml-2 text-[11px] sm:text-[13px]">
                           {uploadTrendStats.delta > 0 ? '首次出现上传记录' : '与上月持平'}
                         </span>
                       ) : null}
@@ -339,7 +341,7 @@ export function DashboardAnalytics() {
               <UploadTrendsChart data={data.uploadTrends} />
             </>
           ) : (
-            <div className="text-text-tertiary mt-6 text-sm">暂无上传记录。</div>
+            <div className="text-text-tertiary mt-4 sm:mt-6 text-xs sm:text-sm">暂无上传记录。</div>
           )}
         </SectionPanel>
 
@@ -364,10 +366,10 @@ export function DashboardAnalytics() {
 
               return (
                 <>
-                  <div className="mt-5 grid gap-3 text-sm">
+                  <div className="mt-4 sm:mt-5 grid gap-2 sm:gap-3 text-xs sm:text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-text-secondary">总占用</span>
-                      <span className="text-text font-semibold">{formatBytes(storageUsage.totalBytes)}</span>
+                      <span className="text-text font-semibold text-right">{formatBytes(storageUsage.totalBytes)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-text-secondary">照片数量</span>
@@ -377,9 +379,11 @@ export function DashboardAnalytics() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-text-secondary">本月新增</span>
-                      <span className="text-text font-semibold">
-                        {formatBytes(storageUsage.currentMonthBytes)}
-                        <span className="text-text-tertiary ml-2 text-[13px]">{monthDeltaDescription}</span>
+                      <span className="text-text font-semibold text-right">
+                        <span className="block sm:inline">{formatBytes(storageUsage.currentMonthBytes)}</span>
+                        <span className="text-text-tertiary ml-0 sm:ml-2 text-[11px] sm:text-[13px]">
+                          {monthDeltaDescription}
+                        </span>
                       </span>
                     </div>
                   </div>

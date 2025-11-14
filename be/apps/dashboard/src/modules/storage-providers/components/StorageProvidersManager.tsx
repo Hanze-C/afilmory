@@ -1,8 +1,10 @@
 import { Button, Modal } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
+import { DynamicIcon } from 'lucide-react/dynamic'
 import { m } from 'motion/react'
 import { startTransition, useEffect, useState } from 'react'
 
+import { LinearBorderPanel } from '~/components/common/GlassPanel'
 import { MainPageLayout, useMainPageLayout } from '~/components/layouts/MainPageLayout'
 import { useBlock } from '~/hooks/useBlock'
 
@@ -178,6 +180,7 @@ export function StorageProvidersManager() {
   return (
     <>
       {headerActionPortal}
+
       <m.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -246,6 +249,37 @@ export function StorageProvidersManager() {
           </p>
         </m.div>
       )}
+
+      {/* Security Notice */}
+      <m.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={Spring.presets.smooth}
+        className="mb-6"
+      >
+        <LinearBorderPanel className="bg-background-secondary/40 p-4 sm:p-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="shrink-0">
+              <div className="bg-accent/10 inline-flex h-8 w-8 items-center justify-center rounded-lg sm:h-10 sm:w-10">
+                <DynamicIcon name="shield-check" className="h-4 w-4 text-accent sm:h-5 sm:w-5" />
+              </div>
+            </div>
+            <div className="flex-1 space-y-1.5 sm:space-y-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-text text-sm font-semibold sm:text-base">存储安全性</span>
+              </div>
+              <p className="text-text-secondary text-xs sm:text-sm leading-relaxed">
+                所有存储提供商的敏感配置信息（如访问密钥、令牌等）均使用{' '}
+                <span className="font-mono font-semibold text-accent">AES-256-GCM</span>{' '}
+                加密算法进行加密存储，确保数据安全。
+              </p>
+              <p className="text-text-tertiary text-[11px] sm:text-xs">
+                AES-256-GCM 是一种经过验证的加密标准，提供认证加密功能，可同时保护数据的机密性和完整性。
+              </p>
+            </div>
+          </div>
+        </LinearBorderPanel>
+      </m.div>
     </>
   )
 }

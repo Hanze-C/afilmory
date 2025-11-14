@@ -21,3 +21,12 @@ export class UpdateSiteSettingsDto extends createZodDto(
     entries: z.array(entrySchema).min(1),
   }),
 ) {}
+
+const updateAuthorSchema = z.object({
+  name: z.string().trim().min(1, '作者名称不能为空'),
+  displayUsername: z.string().optional().nullable(),
+  username: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
+})
+
+export class UpdateSiteAuthorDto extends createZodDto(updateAuthorSchema) {}

@@ -34,7 +34,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
             )}
             <div
               className={clsxm(
-                'from-accent to-accent/80 inline-flex items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg',
+                'from-accent to-accent/80 inline-flex items-center justify-center rounded-2xl bg-linear-to-br shadow-lg',
                 siteConfig.author.avatar ? 'size-8 rounded absolute bottom-0 -right-3' : 'size-16 mb-4',
               )}
             >

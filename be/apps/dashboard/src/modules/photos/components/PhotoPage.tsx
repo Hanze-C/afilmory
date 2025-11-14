@@ -15,6 +15,7 @@ import {
   usePhotoAssetListQuery,
   usePhotoAssetSummaryQuery,
   usePhotoSyncConflictsQuery,
+  usePhotoSyncStatusQuery,
   useResolvePhotoSyncConflictMutation,
   useUploadPhotoAssetsMutation,
 } from '../hooks'
@@ -86,6 +87,14 @@ export function PhotoPage() {
   }, [activeTab, selectedIds.length])
 
   const summaryQuery = usePhotoAssetSummaryQuery()
+  const {
+    data: syncStatus,
+    isLoading: isSyncStatusLoading,
+    isFetching: isSyncStatusFetching,
+    refetch: refetchSyncStatus,
+  } = usePhotoSyncStatusQuery({
+    enabled: activeTab === 'sync',
+  })
   const listQuery = usePhotoAssetListQuery({ enabled: activeTab === 'library' })
   const deleteMutation = useDeletePhotoAssetsMutation()
   const uploadMutation = useUploadPhotoAssetsMutation()
@@ -233,7 +242,7 @@ export function PhotoPage() {
         })
       }
     },
-    [setResult, setLastWasDryRun],
+    [setLastWasDryRun],
   )
 
   const handleSyncError = useCallback((error: Error) => {
@@ -291,8 +300,9 @@ export function PhotoPage() {
 
       void summaryQuery.refetch()
       void listQuery.refetch()
+      void refetchSyncStatus()
     },
-    [listQuery, summaryQuery],
+    [listQuery, summaryQuery, refetchSyncStatus],
   )
 
   const handleDeleteSelected = useCallback(() => {
@@ -468,6 +478,8 @@ export function PhotoPage() {
               lastWasDryRun={lastWasDryRun}
               baselineSummary={summaryQuery.data}
               isSummaryLoading={summaryQuery.isLoading}
+              lastSyncRun={syncStatus?.lastRun ?? null}
+              isSyncStatusLoading={isSyncStatusLoading || isSyncStatusFetching}
               onRequestStorageUrl={getPhotoStorageUrl}
             />
           </div>
@@ -511,7 +523,7 @@ export function PhotoPage() {
         onSyncError={handleSyncError}
       />
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <PageTabs
           activeId={activeTab}
           items={[

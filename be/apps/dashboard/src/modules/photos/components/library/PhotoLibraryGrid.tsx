@@ -1,7 +1,9 @@
 import { Button, Modal, Prompt, Thumbhash } from '@afilmory/ui'
 import { clsxm } from '@afilmory/utils'
+import { useAtomValue } from 'jotai'
 import { DynamicIcon } from 'lucide-react/dynamic'
 
+import { viewportAtom } from '~/atoms/viewport'
 import { stopPropagation } from '~/lib/dom'
 
 import type { PhotoAssetListItem } from '../../types'
@@ -188,18 +190,13 @@ export function PhotoLibraryGrid({
   onDeleteAsset,
   isDeleting,
 }: PhotoLibraryGridProps) {
+  const viewport = useAtomValue(viewportAtom)
+  const columnWidth = viewport.sm ? 320 : 160
+
   if (isLoading) {
-    const skeletonKeys = [
-      'photo-skeleton-1',
-      'photo-skeleton-2',
-      'photo-skeleton-3',
-      'photo-skeleton-4',
-      'photo-skeleton-5',
-      'photo-skeleton-6',
-    ]
     return (
       <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
-        {skeletonKeys.map((key) => (
+        {Array.from({ length: 6 }, (_, i) => `photo-skeleton-${i + 1}`).map((key) => (
           <div key={key} className="mb-4 break-inside-avoid">
             <div className="bg-fill/30 h-48 w-full animate-pulse rounded-xl" />
           </div>
@@ -210,19 +207,19 @@ export function PhotoLibraryGrid({
 
   if (!assets || assets.length === 0) {
     return (
-      <div className="bg-background-tertiary relative overflow-hidden rounded-xl p-8 text-center">
-        <p className="text-text text-base font-semibold">当前没有图片资源</p>
-        <p className="text-text-tertiary mt-2 text-sm">使用右上角的“上传图片”按钮可以为图库添加新的照片。</p>
+      <div className="bg-background-tertiary relative overflow-hidden rounded-xl p-4 sm:p-8 text-center">
+        <p className="text-text text-sm sm:text-base font-semibold">当前没有图片资源</p>
+        <p className="text-text-tertiary mt-2 text-xs sm:text-sm">使用右上角的"上传图片"按钮可以为图库添加新的照片。</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-[calc(calc((3rem+100vw)-(var(--container-7xl)))*-1/2)] p-2">
+    <div className="lg:mx-[calc(calc((3rem+100vw)-(var(--container-7xl)))*-1/2)] -mx-2 lg:mt-0 mt-12 p-1">
       <Masonry
         items={assets}
         columnGutter={8}
-        columnWidth={320}
+        columnWidth={columnWidth}
         itemKey={(asset) => asset.id}
         render={({ data }) => (
           <PhotoGridItem

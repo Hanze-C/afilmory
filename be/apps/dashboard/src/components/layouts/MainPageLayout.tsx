@@ -72,19 +72,19 @@ function MainPageLayoutBase({ title, description, actions, footer, children }: M
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={Spring.presets.smooth}
-        className="mt-8 space-y-6"
+        className="mt-4 sm:mt-8 space-y-4 sm:space-y-6"
       >
         {/* Header - Sharp edges with gradient borders */}
-        <header className="relative flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <header className="relative flex flex-col gap-3 sm:gap-4 md:flex-row md:items-start md:justify-between">
           {/* Linear gradient borders */}
 
-          <div className="relative space-y-1.5">
-            <h1 className="text-text text-2xl font-semibold">{title}</h1>
-            {description ? <p className="text-text-secondary text-sm">{description}</p> : null}
+          <div className="relative space-y-1 sm:space-y-1.5">
+            <h1 className="text-text text-xl sm:text-2xl font-semibold">{title}</h1>
+            {description ? <p className="text-text-secondary text-xs sm:text-sm">{description}</p> : null}
           </div>
 
           {showHeaderActions ? (
-            <div className="relative flex flex-wrap items-center gap-2 md:justify-end">
+            <div className="flex flex-wrap items-center gap-2 md:justify-end absolute md:translate-y-0 -translate-y-1 right-0 md:relative">
               {actions}
               <div ref={assignActionsContainer} className="flex flex-wrap items-center gap-2" />
             </div>

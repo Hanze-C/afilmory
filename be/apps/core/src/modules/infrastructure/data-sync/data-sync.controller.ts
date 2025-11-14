@@ -13,6 +13,7 @@ import type {
   DataSyncConflict,
   DataSyncProgressEmitter,
   DataSyncProgressEvent,
+  DataSyncStatus,
 } from './data-sync.types'
 
 @Controller('data-sync')
@@ -50,6 +51,11 @@ export class DataSyncController {
         }
       },
     })
+  }
+
+  @Get('status')
+  async status(): Promise<DataSyncStatus> {
+    return await this.dataSyncService.getStatus()
   }
 
   @Get('conflicts')

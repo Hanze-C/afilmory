@@ -8,7 +8,7 @@ import { createConfiguredApp } from './app.factory'
 import { runCliPipeline } from './cli'
 import { logger } from './helpers/logger.helper'
 
-process.title = 'Hono HTTP Server'
+process.title = 'afilmory core'
 
 async function bootstrap() {
   const app = await createConfiguredApp({

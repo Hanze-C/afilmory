@@ -8,6 +8,13 @@
       "when": 1762852227998,
       "tag": "0000_broken_maria_hill",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763138147750,
+      "tag": "0001_open_sentinel",
+      "breakpoints": true
     }
   ]
 }

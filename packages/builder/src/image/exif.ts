@@ -22,9 +22,11 @@ const closeExiftool = () => {
   exiftool.end().catch(noop)
 }
 
-process.once('beforeExit', closeExiftool)
-process.once('SIGINT', closeExiftool)
-process.once('SIGTERM', closeExiftool)
+if (process.env.NODE_ENV !== 'development') {
+  process.once('beforeExit', closeExiftool)
+  process.once('SIGINT', closeExiftool)
+  process.once('SIGTERM', closeExiftool)
+}
 
 // 提取 EXIF 数据
 export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buffer): Promise<PickedExif | null> {
