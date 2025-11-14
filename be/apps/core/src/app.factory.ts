@@ -4,6 +4,7 @@ import { env } from '@afilmory/env'
 import type { HonoHttpApplication } from '@afilmory/framework'
 import { createApplication, createLogger, createZodValidationPipe, HttpException } from '@afilmory/framework'
 import { BizException } from 'core/errors'
+import { Hono } from 'hono'
 
 import { PgPoolProvider } from './database/database.provider'
 import { AllExceptionsFilter } from './filters/all-exceptions.filter'
@@ -31,10 +32,15 @@ const GlobalValidationPipe = createZodValidationPipe({
 const honoErrorLogger = createLogger('HonoErrorHandler')
 
 export async function createConfiguredApp(options: BootstrapOptions = {}): Promise<HonoHttpApplication> {
-  const app = await createApplication(AppModules, {
-    globalPrefix: options.globalPrefix ?? '/api',
-  })
-
+  const hono = new Hono()
+  registerOpenApiRoutes(hono, { globalPrefix: options.globalPrefix ?? '/api' })
+  const app = await createApplication(
+    AppModules,
+    {
+      globalPrefix: options.globalPrefix ?? '/api',
+    },
+    hono,
+  )
   const container = app.getContainer()
 
   app.useGlobalFilters(new AllExceptionsFilter())
@@ -51,9 +57,6 @@ export async function createConfiguredApp(options: BootstrapOptions = {}): Promi
   const redisProvider = container.resolve(RedisProvider)
   await redisProvider.warmup()
 
-  registerOpenApiRoutes(app.getInstance(), { globalPrefix: options.globalPrefix ?? '/api' })
-
-  const hono = app.getInstance()
   hono.onError((error, context) => {
     if (error instanceof BizException) {
       return new Response(JSON.stringify(error.toResponse()), {

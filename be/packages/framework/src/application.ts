@@ -113,7 +113,6 @@ function isOnApplicationShutdownHook(value: unknown): value is OnApplicationShut
 }
 
 export class HonoHttpApplication {
-  private readonly app = new Hono()
   private readonly container: DependencyContainer
   private readonly globalEnhancers: GlobalEnhancerRegistry = createDefaultRegistry()
   private readonly registeredModules = new Set<Constructor>()
@@ -143,6 +142,7 @@ export class HonoHttpApplication {
   constructor(
     private readonly rootModule: Constructor,
     private readonly options: ApplicationOptions = {},
+    private readonly app: Hono,
   ) {
     this.logger = options.logger ?? createLogger('Framework')
     this.diLogger = this.logger.extend('DI')
@@ -1313,8 +1313,9 @@ export class HonoHttpApplication {
 export async function createApplication(
   rootModule: Constructor,
   options: ApplicationOptions = {},
+  hono: Hono = new Hono(),
 ): Promise<HonoHttpApplication> {
-  const app = new HonoHttpApplication(rootModule, options)
+  const app = new HonoHttpApplication(rootModule, options, hono)
   await app.init()
   return app
 }

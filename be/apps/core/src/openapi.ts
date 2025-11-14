@@ -21,8 +21,6 @@ function normalizePrefix(prefix: string): string {
 
 export function registerOpenApiRoutes(app: Hono, options: RegisterOpenApiOptions): void {
   const prefix = normalizePrefix(options.globalPrefix)
-  const specPath = `${prefix}/openapi.json`
-  const docsPath = `${prefix}/docs`
 
   const document = createOpenApiDocument(AppModules, {
     title: 'Core Service API',
@@ -32,14 +30,14 @@ export function registerOpenApiRoutes(app: Hono, options: RegisterOpenApiOptions
     servers: prefix ? [{ url: prefix }] : undefined,
   })
 
-  app.get(specPath || '/openapi.json', (context) => context.json(document))
+  app.get('/internal/openapi.json', (context) => context.json(document))
 
-  app.get(docsPath || '/docs', (context) => {
+  app.get('/internal/docs', (context) => {
     context.header('content-type', 'text/html; charset=utf-8')
-    return context.html(renderScalarHtml(specPath || '/openapi.json'))
+    return context.html(renderScalarHtml('/internal/openapi.json'))
   })
 
-  logger.info(`OpenAPI routes registered: http://localhost:${env.PORT}${docsPath}`)
+  logger.info(`OpenAPI routes registered: http://localhost:${env.PORT}/internal/docs`)
 }
 
 function renderScalarHtml(specUrl: string): string {
