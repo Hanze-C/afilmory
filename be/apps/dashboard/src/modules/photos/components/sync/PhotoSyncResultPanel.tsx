@@ -214,7 +214,7 @@ export function PhotoSyncResultPanel({
           </span>
         </div>
 
-        {action.reason ? <p className="text-text-tertiary text-sm">{action.reason}</p> : null}
+        {action.reason ? <p className="text-text-tertiary text-sm mt-2">{action.reason}</p> : null}
 
         {conflictTypeLabel || conflictPayload?.incomingStorageKey ? (
           <div className="text-text-tertiary text-xs">
@@ -242,13 +242,13 @@ export function PhotoSyncResultPanel({
         {action.snapshots ? (
           <div className="text-text-tertiary grid gap-4 text-xs md:grid-cols-2">
             {action.snapshots.before ? (
-              <div>
+              <div className="mt-4">
                 <p className="text-text font-semibold">元数据（数据库）</p>
                 <MetadataSnapshot snapshot={action.snapshots.before} />
               </div>
             ) : null}
             {action.snapshots.after ? (
-              <div>
+              <div className="mt-4">
                 <p className="text-text font-semibold">元数据（存储）</p>
                 <MetadataSnapshot snapshot={action.snapshots.after} />
               </div>
@@ -355,7 +355,7 @@ export function PhotoSyncResultPanel({
           </div>
 
           {filteredActions.length === 0 ? (
-            <p className="text-text-tertiary text-sm">
+            <p className="text-text-tertiary text-sm mt-4">
               {result ? '当前筛选下没有需要查看的操作。' : '同步完成，未检测到需要处理的对象。'}
             </p>
           ) : (

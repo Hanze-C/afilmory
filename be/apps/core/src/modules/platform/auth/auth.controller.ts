@@ -365,12 +365,33 @@ export class AuthController {
   }
 
   @AllowPlaceholderTenant()
+  @SkipTenantGuard()
+  @Get('/callback/*')
+  async callback(@ContextParam() context: Context) {
+    const query = context.req.query()
+    const { tenantSlug } = query
+
+    const reqUrl = new URL(context.req.url)
+
+    if (tenantSlug) {
+      reqUrl.hostname = `${tenantSlug}.${reqUrl.hostname}`
+      reqUrl.searchParams.delete('tenantSlug')
+
+      return context.redirect(reqUrl.toString(), 302)
+    }
+
+    return await this.auth.handler(context)
+  }
+
+  @AllowPlaceholderTenant()
+  @SkipTenantGuard()
   @Get('/*')
   async passthroughGet(@ContextParam() context: Context) {
     return await this.auth.handler(context)
   }
 
   @AllowPlaceholderTenant()
+  @SkipTenantGuard()
   @Post('/*')
   async passthroughPost(@ContextParam() context: Context) {
     return await this.auth.handler(context)

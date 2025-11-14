@@ -41,10 +41,13 @@ export function useDeletePhotoAssetsMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (ids: string[]) => {
-      await deletePhotoAssets(ids)
+    mutationFn: async (variables: { ids: string[]; deleteFromStorage?: boolean }) => {
+      await deletePhotoAssets(variables.ids, {
+        deleteFromStorage: variables.deleteFromStorage,
+      })
     },
-    onSuccess: (_, ids) => {
+    onSuccess: (_, variables) => {
+      const {ids} = variables
       void queryClient.invalidateQueries({
         queryKey: PHOTO_ASSET_LIST_QUERY_KEY,
       })

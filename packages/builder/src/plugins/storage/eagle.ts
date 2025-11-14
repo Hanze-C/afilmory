@@ -28,7 +28,7 @@ export default function eagleStoragePlugin(options: EagleStoragePluginOptions = 
         const eagleConfig = storage
         const key = payload.item.s3Key
 
-        const meta = await readImageMetadata(eagleConfig.libraryPath, key)
+        const meta = await readImageMetadata((eagleConfig as EagleConfig).libraryPath, key)
 
         // Append folder names as tags if enabled
         if (eagleConfig.folderAsTag) {
@@ -36,7 +36,7 @@ export default function eagleStoragePlugin(options: EagleStoragePluginOptions = 
             const indexCacheKey = 'afilmory:eagle:folderIndex'
             let folderIndex = runShared.get(indexCacheKey) as Map<string, string[]> | undefined
             if (!folderIndex) {
-              folderIndex = await getEagleFolderIndex(eagleConfig.libraryPath)
+              folderIndex = await getEagleFolderIndex((eagleConfig as EagleConfig).libraryPath)
               runShared.set(indexCacheKey, folderIndex)
             }
             const folderNames = (meta.folders ?? [])
@@ -52,7 +52,7 @@ export default function eagleStoragePlugin(options: EagleStoragePluginOptions = 
           }
         }
         // Apply omitTagNamesInMetadata filter
-        const omit = new Set(eagleConfig.omitTagNamesInMetadata ?? [])
+        const omit = new Set((eagleConfig as EagleConfig).omitTagNamesInMetadata ?? [])
         if (omit.size > 0 && meta.tags) {
           meta.tags = meta.tags.filter((t) => !omit.has(t))
         }

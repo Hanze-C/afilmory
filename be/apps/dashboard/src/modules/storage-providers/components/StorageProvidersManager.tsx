@@ -49,12 +49,18 @@ export function StorageProvidersManager() {
   const markDirty = () => setIsDirty(true)
 
   const handleEditProvider = (provider: StorageProvider | null) => {
-    Modal.present(ProviderEditModal, {
-      provider,
-      activeProviderId,
-      onSave: handleSaveProvider,
-      onSetActive: handleSetActive,
-    })
+    Modal.present(
+      ProviderEditModal,
+      {
+        provider,
+        activeProviderId,
+        onSave: handleSaveProvider,
+        onSetActive: handleSetActive,
+      },
+      {
+        dismissOnOutsideClick: false,
+      },
+    )
   }
 
   const handleAddProvider = () => {
@@ -196,6 +202,27 @@ export function StorageProvidersManager() {
             />
           </m.div>
         ))}
+
+        {!hasProviders && (
+          <m.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={Spring.presets.smooth}
+            className="col-span-full"
+          >
+            <div className="bg-background-tertiary border-fill-tertiary flex flex-col items-center justify-center gap-3 rounded-lg border p-8 text-center">
+              <div className="space-y-1">
+                <p className="text-text-secondary text-sm">还没有配置任何存储提供商</p>
+                <p className="text-text-tertiary text-xs">
+                  添加一个存储提供商后，系统才能从远程存储同步和管理照片资源。
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="primary" onClick={handleAddProvider}>
+                新增提供商
+              </Button>
+            </div>
+          </m.div>
+        )}
       </m.div>
 
       {/* Status Message */}

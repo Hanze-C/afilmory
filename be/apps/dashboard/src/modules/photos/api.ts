@@ -163,10 +163,13 @@ export async function getPhotoAssetSummary(): Promise<PhotoAssetSummary> {
   return camelCaseKeys<PhotoAssetSummary>(summary)
 }
 
-export async function deletePhotoAssets(ids: string[]): Promise<void> {
+export async function deletePhotoAssets(ids: string[], options?: { deleteFromStorage?: boolean }): Promise<void> {
   await coreApi('/photos/assets', {
     method: 'DELETE',
-    body: { ids },
+    body: {
+      ids,
+      deleteFromStorage: options?.deleteFromStorage === true,
+    },
   })
 }
 

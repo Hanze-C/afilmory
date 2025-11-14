@@ -1,5 +1,5 @@
 import { StorageManager } from '../../storage/index.js'
-import type { StorageConfig } from '../../storage/interfaces.js'
+import type { S3Config, StorageConfig } from '../../storage/interfaces.js'
 import type { BuilderPlugin } from '../types.js'
 import type { ThumbnailPluginData } from './shared.js'
 import {
@@ -56,7 +56,7 @@ function joinSegments(...segments: Array<string | null | undefined>): string {
 function resolveRemotePrefix(config: UploadableStorageConfig, directory: string): string {
   switch (config.provider) {
     case 's3': {
-      const base = trimSlashes(config.prefix)
+      const base = trimSlashes((config as S3Config).prefix)
       return joinSegments(base, directory)
     }
     case 'github': {

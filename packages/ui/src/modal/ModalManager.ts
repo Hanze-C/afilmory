@@ -1,17 +1,28 @@
 import { atom } from 'jotai'
 
 import { modalStore } from './store'
-import type { ModalComponent, ModalContentConfig, ModalItem } from './types'
+import type { ModalComponent, ModalItem, ModalPresentConfig } from './types'
 
 export const modalItemsAtom = atom<ModalItem[]>([])
 
 const modalCloseRegistry = new Map<string, () => void>()
 
 export const Modal = {
-  present<P = unknown>(Component: ModalComponent<P>, props?: P, modalContent?: ModalContentConfig): string {
+  present<P = unknown>(Component: ModalComponent<P>, props?: P, config?: ModalPresentConfig): string {
     const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
     const items = modalStore.get(modalItemsAtom)
-    modalStore.set(modalItemsAtom, [...items, { id, component: Component as ModalComponent<any>, props, modalContent }])
+    const { dismissOnOutsideClick, ...modalContent } = config ?? {}
+
+    modalStore.set(modalItemsAtom, [
+      ...items,
+      {
+        id,
+        component: Component as ModalComponent<any>,
+        props,
+        modalContent,
+        dismissOnOutsideClick,
+      },
+    ])
     return id
   },
 

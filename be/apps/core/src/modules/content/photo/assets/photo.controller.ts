@@ -8,7 +8,8 @@ import type { PhotoAssetListItem, PhotoAssetSummary } from './photo-asset.servic
 import { PhotoAssetService } from './photo-asset.service'
 
 type DeleteAssetsDto = {
-  ids: string[]
+  ids?: string[]
+  deleteFromStorage?: boolean
 }
 
 @Controller('photos')
@@ -29,8 +30,9 @@ export class PhotoController {
   @Delete('assets')
   async deleteAssets(@Body() body: DeleteAssetsDto) {
     const ids = Array.isArray(body?.ids) ? body.ids : []
-    await this.photoAssetService.deleteAssets(ids)
-    return { ids, deleted: true }
+    const deleteFromStorage = body?.deleteFromStorage === true
+    await this.photoAssetService.deleteAssets(ids, { deleteFromStorage })
+    return { ids, deleted: true, deleteFromStorage }
   }
 
   @Post('assets/upload')

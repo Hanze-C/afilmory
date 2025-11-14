@@ -149,7 +149,7 @@ export class PhotoAssetService {
     return summary
   }
 
-  async deleteAssets(ids: readonly string[]): Promise<void> {
+  async deleteAssets(ids: readonly string[], options?: { deleteFromStorage?: boolean }): Promise<void> {
     if (ids.length === 0) {
       return
     }
@@ -166,14 +166,20 @@ export class PhotoAssetService {
       return
     }
 
-    const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
-    const storageManager = this.createStorageManager(builderConfig, storageConfig)
-    const thumbnailRemotePrefix = this.resolveThumbnailRemotePrefix(storageConfig)
-    const deletedThumbnailKeys = new Set<string>()
-    const deletedVideoKeys = new Set<string>()
+    const shouldDeleteFromStorage = options?.deleteFromStorage === true
 
-    for (const record of records) {
-      if (record.storageProvider !== DATABASE_ONLY_PROVIDER) {
+    if (shouldDeleteFromStorage) {
+      const { builderConfig, storageConfig } = await this.photoStorageService.resolveConfigForTenant(tenant.tenant.id)
+      const storageManager = this.createStorageManager(builderConfig, storageConfig)
+      const thumbnailRemotePrefix = this.resolveThumbnailRemotePrefix(storageConfig)
+      const deletedThumbnailKeys = new Set<string>()
+      const deletedVideoKeys = new Set<string>()
+
+      for (const record of records) {
+        if (record.storageProvider === DATABASE_ONLY_PROVIDER) {
+          continue
+        }
+
         try {
           await storageManager.deleteFile(record.storageKey)
         } catch (error) {

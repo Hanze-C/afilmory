@@ -3,7 +3,12 @@ import { clsxm } from '@afilmory/utils'
 import { DynamicIcon } from 'lucide-react/dynamic'
 
 import type { PhotoAssetListItem } from '../../types'
+import { DeleteFromStorageOption } from './DeleteFromStorageOption'
 import { Masonry } from './Masonry'
+
+export type DeleteAssetOptions = {
+  deleteFromStorage?: boolean
+}
 
 type PhotoLibraryGridProps = {
   assets: PhotoAssetListItem[] | undefined
@@ -11,7 +16,7 @@ type PhotoLibraryGridProps = {
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onOpenAsset: (asset: PhotoAssetListItem) => void
-  onDeleteAsset: (asset: PhotoAssetListItem) => Promise<void> | void
+  onDeleteAsset: (asset: PhotoAssetListItem, options?: DeleteAssetOptions) => Promise<void> | void
   isDeleting?: boolean
 }
 
@@ -27,7 +32,7 @@ function PhotoGridItem({
   isSelected: boolean
   onToggleSelect: (id: string) => void
   onOpenAsset: (asset: PhotoAssetListItem) => void
-  onDeleteAsset: (asset: PhotoAssetListItem) => Promise<void> | void
+  onDeleteAsset: (asset: PhotoAssetListItem, options?: DeleteAssetOptions) => Promise<void> | void
   isDeleting?: boolean
 }) {
   const manifest = asset.manifest?.data
@@ -43,13 +48,22 @@ function PhotoGridItem({
   const assetLabel = manifest?.title ?? manifest?.id ?? asset.photoId
 
   const handleDelete = () => {
+    let deleteFromStorage = false
+
     Prompt.prompt({
       title: '确认删除该资源？',
-      description: `删除后将无法恢复，是否继续删除「${assetLabel}」？`,
+      description: `删除后将无法恢复，是否继续删除「${assetLabel}」？如需同时删除远程存储文件，可勾选下方选项。`,
       variant: 'danger',
       onConfirmText: '删除',
       onCancelText: '取消',
-      onConfirm: () => Promise.resolve(onDeleteAsset(asset)),
+      content: (
+        <DeleteFromStorageOption
+          onChange={(checked) => {
+            deleteFromStorage = checked
+          }}
+        />
+      ),
+      onConfirm: () => Promise.resolve(onDeleteAsset(asset, { deleteFromStorage })),
     })
   }
 

@@ -1,3 +1,4 @@
+import { Prompt } from '@afilmory/ui'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
@@ -26,6 +27,8 @@ import type {
   PhotoSyncResolution,
   PhotoSyncResult,
 } from '../types'
+import { DeleteFromStorageOption } from './library/DeleteFromStorageOption'
+import type {DeleteAssetOptions} from './library/PhotoLibraryGrid';
 import { PhotoLibraryGrid } from './library/PhotoLibraryGrid'
 import { PhotoPageActions } from './PhotoPageActions'
 import { PhotoSyncConflictsPanel } from './sync/PhotoSyncConflictsPanel'
@@ -240,10 +243,13 @@ export function PhotoPage() {
   }, [])
 
   const handleDeleteAssets = useCallback(
-    async (ids: string[]) => {
+    async (ids: string[], options?: DeleteAssetOptions) => {
       if (ids.length === 0) return
       try {
-        await deleteMutation.mutateAsync(ids)
+        await deleteMutation.mutateAsync({
+          ids,
+          deleteFromStorage: options?.deleteFromStorage ?? false,
+        })
         toast.success(`已删除 ${ids.length} 个资源`)
         setSelectedIds((prev) => prev.filter((item) => !ids.includes(item)))
         void listQuery.refetch()
@@ -284,7 +290,28 @@ export function PhotoPage() {
   )
 
   const handleDeleteSelected = useCallback(() => {
-    void handleDeleteAssets(selectedIds)
+    if (selectedIds.length === 0) {
+      return
+    }
+
+    const ids = [...selectedIds]
+    let deleteFromStorage = false
+
+    Prompt.prompt({
+      title: `确认删除选中的 ${ids.length} 个资源？`,
+      description: '删除后将无法恢复。如需同时删除存储提供商中的文件，可勾选下方选项。',
+      variant: 'danger',
+      onConfirmText: '删除',
+      onCancelText: '取消',
+      content: (
+        <DeleteFromStorageOption
+          onChange={(checked) => {
+            deleteFromStorage = checked
+          }}
+        />
+      ),
+      onConfirm: () => handleDeleteAssets(ids, { deleteFromStorage }),
+    })
   }, [handleDeleteAssets, selectedIds])
 
   const handleSelectAll = useCallback(() => {
@@ -296,8 +323,8 @@ export function PhotoPage() {
   }, [listQuery.data])
 
   const handleDeleteSingle = useCallback(
-    (asset: PhotoAssetListItem) => {
-      void handleDeleteAssets([asset.id])
+    (asset: PhotoAssetListItem, options?: DeleteAssetOptions) => {
+      void handleDeleteAssets([asset.id], options)
     },
     [handleDeleteAssets],
   )

@@ -60,14 +60,21 @@ function ModalWrapper({ item }: { item: ModalItem }) {
 
   const { contentProps, contentClassName } = Component
 
+  const mergedContentConfig = {
+    ...contentProps,
+    ...item.modalContent,
+  }
+
+  const { dismissOnOutsideClick = true, ...restContentConfig } = mergedContentConfig
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={clsxm('w-full max-w-md', contentClassName)}
         transition={Spring.presets.smooth}
         onAnimationComplete={handleAnimationComplete}
-        {...contentProps}
-        {...item.modalContent}
+        dismissOnOutsideClick={item.dismissOnOutsideClick ?? dismissOnOutsideClick}
+        {...restContentConfig}
       >
         <Component modalId={item.id} dismiss={dismiss} {...(item.props as any)} />
       </DialogContent>

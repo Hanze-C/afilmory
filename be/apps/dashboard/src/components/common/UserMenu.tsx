@@ -61,8 +61,8 @@ export function UserMenu({ user }: UserMenuProps) {
 
           {/* User Info - Hidden on small screens */}
           <div className="hidden text-left md:block">
-            <div className="text-text text-[13px] leading-tight font-medium">{user.name || user.email}</div>
-            <div className="text-text-tertiary text-[11px] leading-tight capitalize">{user.role}</div>
+            <div className="text-text text-sm leading-tight font-medium">{user.name || user.email}</div>
+            <div className="text-text-tertiary text-[10px] leading-tight capitalize">{user.role}</div>
           </div>
 
           {/* Chevron Icon */}

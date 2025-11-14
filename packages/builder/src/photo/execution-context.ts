@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 
 import type { AfilmoryBuilder } from '../builder/builder.js'
 import type { StorageManager } from '../storage/index.js'
-import type { StorageConfig } from '../storage/interfaces.js'
+import type { GitHubConfig, S3Config, StorageConfig } from '../storage/interfaces.js'
 import type { PhotoProcessingLoggers } from './logger-adapter.js'
 
 export interface PhotoExecutionContext {
@@ -44,11 +44,11 @@ export function createStorageKeyNormalizer(storageConfig: StorageConfig): (key: 
 
   switch (storageConfig.provider) {
     case 's3': {
-      basePrefix = sanitizeStoragePath(storageConfig.prefix)
+      basePrefix = sanitizeStoragePath((storageConfig as S3Config).prefix)
       break
     }
     case 'github': {
-      basePrefix = sanitizeStoragePath(storageConfig.path)
+      basePrefix = sanitizeStoragePath((storageConfig as GitHubConfig).path)
       break
     }
     default: {

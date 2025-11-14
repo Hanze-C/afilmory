@@ -85,6 +85,11 @@ export type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Con
   HTMLMotionProps<'div'> & {
     from?: FlipDirection
     transition?: Transition
+    /**
+     * Whether the dialog can be dismissed by clicking outside (on the overlay).
+     * Defaults to `true`.
+     */
+    dismissOnOutsideClick?: boolean
   }
 
 const contentTransition: Transition = {
@@ -97,6 +102,8 @@ function DialogContent({
   children,
   from = 'top',
   transition = contentTransition,
+  dismissOnOutsideClick = true,
+  onInteractOutside,
   ...props
 }: DialogContentProps) {
   const { isOpen } = useDialog()
@@ -118,7 +125,17 @@ function DialogContent({
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             />
           </DialogOverlay>
-          <DialogPrimitive.Content asChild forceMount {...props}>
+          <DialogPrimitive.Content
+            asChild
+            forceMount
+            {...props}
+            onInteractOutside={(event) => {
+              if (!dismissOnOutsideClick) {
+                event.preventDefault()
+              }
+              onInteractOutside?.(event)
+            }}
+          >
             <motion.div
               key="dialog-content"
               data-slot="dialog-content"
