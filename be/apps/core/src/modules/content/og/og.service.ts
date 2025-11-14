@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 import type { PhotoManifestItem } from '@afilmory/builder'
@@ -19,6 +19,19 @@ const CACHE_CONTROL = 'public, max-age=31536000, stale-while-revalidate=31536000
 interface ThumbnailCandidateResult {
   buffer: Buffer
   contentType: string
+}
+
+const GeistFontCandidates = [
+  resolve(process.cwd(), `./${geistFontUrl}`),
+  resolve(process.cwd(), `./dist/${geistFontUrl}`),
+]
+
+if (__DEV__) {
+  GeistFontCandidates.push(
+    resolve(process.cwd(), `./be/apps/core/src/modules/content/og/assets/Geist-Medium.ttf`),
+    resolve(process.cwd(), `./apps/core/src/modules/content/og/assets/Geist-Medium.ttf`),
+    resolve(process.cwd(), `./core/src/modules/content/og/assets/Geist-Medium.ttf`),
+  )
 }
 
 @injectable()
@@ -76,19 +89,23 @@ export class OgService implements OnModuleDestroy {
     return new Response(body, { status: 200, headers })
   }
 
-  // private cjkFontPromise: Promise<NonSharedBuffer> | null = null
   private geistFontPromise: Promise<NonSharedBuffer> | null = null
 
-  loadFonts() {
+  async loadFonts() {
     if (!this.geistFontPromise) {
-      // this.cjkFontPromise = readFile(resolve(process.cwd(), `./${cjkFontUrl}`))
-      this.geistFontPromise = readFile(resolve(process.cwd(), `./${geistFontUrl}`))
+      for (const candidate of GeistFontCandidates) {
+        const stats = await stat(candidate)
+        if (stats.isFile()) {
+          this.geistFontPromise = readFile(candidate)
+          break
+        }
+      }
     }
     this.resetFontCleanupTimer()
   }
 
   private async getFontConfig(): Promise<SatoriOptions['fonts']> {
-    this.loadFonts()
+    await this.loadFonts()
 
     return [
       {

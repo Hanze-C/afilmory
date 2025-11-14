@@ -135,6 +135,9 @@ export default defineConfig({
       '@afilmory/be-utils/': `${resolve(__dirname, '../../packages/utils/src')}/`,
     },
   },
+  define: {
+    __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
+  },
   ssr: {
     noExternal: true,
     external,
