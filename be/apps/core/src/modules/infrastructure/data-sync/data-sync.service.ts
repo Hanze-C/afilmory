@@ -244,6 +244,8 @@ export class DataSyncService {
     if (storageConfig) {
       this.photoBuilderService.applyStorageConfig(builder, storageConfig)
     }
+    // Ensure plugin hooks (like thumbnail storage exclude filters) run before listing objects
+    await builder.ensurePluginsReady()
 
     const storageManager = builder.getStorageManager()
     const storageObjects = await storageManager.listImages()
