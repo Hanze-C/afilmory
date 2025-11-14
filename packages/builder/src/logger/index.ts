@@ -1,4 +1,4 @@
-import type {ConsolaInstance} from 'consola';
+import type { ConsolaInstance } from 'consola'
 import consola from 'consola'
 
 export type LogLevel = 'log' | 'info' | 'success' | 'warn' | 'error' | 'debug' | 'trace' | 'start' | 'fatal'
@@ -24,6 +24,10 @@ export function setLogListener(newListener: LogListener | null, options: { forwa
 
 export function setConsoleForwarding(enabled: boolean): void {
   forwardToConsole = enabled
+}
+
+export function relayLogMessage(tag: string, level: LogLevel | string, args: unknown[]): void {
+  notifyListener(tag, level, args)
 }
 
 function notifyListener(tag: string, level: LogLevel | string, args: unknown[]): void {

@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import { streamSSE } from 'hono/streaming'
 
 export interface CreateProgressSseResponseOptions<TEvent> {
   context: Context
@@ -22,108 +23,67 @@ export function createProgressSseResponse<TEvent>({
   heartbeatIntervalMs = DEFAULT_HEARTBEAT_MS,
   handler,
 }: CreateProgressSseResponseOptions<TEvent>): Response {
-  const encoder = new TextEncoder()
-  let cleanup: (() => void) | undefined
+  context.header('Cache-Control', 'no-cache, no-transform')
+  context.header('X-Accel-Buffering', 'no')
 
-  const stream = new ReadableStream<Uint8Array>({
-    start: (controller) => {
-      let closed = false
-      const rawRequest = context.req.raw
-      const abortSignal = rawRequest.signal
+  return streamSSE(context, async (stream) => {
+    const controller = new AbortController()
+    const abortSignal = controller.signal
 
-      let heartbeat: ReturnType<typeof setInterval> | undefined
-      let abortHandler: (() => void) | undefined
+    let heartbeat: ReturnType<typeof setInterval> | undefined
 
-      const cleanupInternal = () => {
-        if (heartbeat) {
-          clearInterval(heartbeat)
-          heartbeat = undefined
-        }
-
-        if (abortHandler) {
-          abortSignal.removeEventListener('abort', abortHandler)
-          abortHandler = undefined
-        }
-
-        if (!closed) {
-          closed = true
-          try {
-            controller.close()
-          } catch {
-            /* ignore */
-          }
-        }
+    const stopHeartbeat = () => {
+      if (heartbeat) {
+        clearInterval(heartbeat)
+        heartbeat = undefined
       }
+    }
 
-      const sendChunk = (chunk: string) => {
-        if (closed) {
-          return
-        }
-
-        try {
-          controller.enqueue(encoder.encode(chunk))
-        } catch {
-          cleanupInternal()
-          cleanup = undefined
-        }
+    stream.onAbort(() => {
+      if (!abortSignal.aborted) {
+        controller.abort()
       }
+      stopHeartbeat()
+    })
 
-      const sendEvent = (event: TEvent) => {
-        sendChunk(`event: ${eventName}\ndata: ${JSON.stringify(event)}\n\n`)
-      }
-
-      heartbeat = setInterval(() => {
-        sendChunk(`: keep-alive ${new Date().toISOString()}\n\n`)
-      }, heartbeatIntervalMs)
-
-      abortHandler = () => {
-        const currentCleanup = cleanup
-        cleanup = undefined
-        currentCleanup?.()
-      }
-
-      abortSignal.addEventListener('abort', abortHandler)
-
-      cleanup = () => {
-        cleanupInternal()
-        cleanup = undefined
-      }
-
-      sendChunk(': connected\n\n')
-      ;(async () => {
-        try {
-          await handler({
-            sendEvent,
-            sendChunk,
-            abortSignal,
-          })
-        } catch (error) {
-          console.error('SSE handler failed', error)
-        } finally {
-          const currentCleanup = cleanup
-          cleanup = undefined
-          currentCleanup?.()
-        }
-      })().catch((error) => {
-        console.error('Unhandled SSE handler error', error)
-        const currentCleanup = cleanup
-        cleanup = undefined
-        currentCleanup?.()
+    const sendEvent = (event: TEvent) => {
+      return stream.writeSSE({
+        event: eventName,
+        data: JSON.stringify(event),
       })
-    },
-    cancel() {
-      const currentCleanup = cleanup
-      cleanup = undefined
-      currentCleanup?.()
-    },
-  })
+    }
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
+    const sendChunk = (chunk: string) => {
+      void stream.write(chunk)
+    }
+
+    await stream.write(': connected\n\n')
+
+    heartbeat = setInterval(() => {
+      if (abortSignal.aborted) {
+        stopHeartbeat()
+        return
+      }
+
+      stream.write(`: keep-alive ${new Date().toISOString()}\n\n`).catch((error) => {
+        console.error('SSE heartbeat failed', error)
+        stopHeartbeat()
+      })
+    }, heartbeatIntervalMs)
+
+    try {
+      await handler({
+        sendEvent: (event) => {
+          void sendEvent(event)
+        },
+        sendChunk,
+        abortSignal,
+      })
+    } catch (error) {
+      console.error('SSE handler failed', error)
+    } finally {
+      stopHeartbeat()
+      stream.close()
+    }
   })
 }
