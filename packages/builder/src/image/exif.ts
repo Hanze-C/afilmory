@@ -3,12 +3,28 @@ import path from 'node:path'
 
 import { isNil, noop } from 'es-toolkit'
 import type { ExifDateTime, Tags } from 'exiftool-vendored'
-import { exiftool } from 'exiftool-vendored'
-import type { Metadata } from 'sharp'
-import sharp from 'sharp'
+import { ExifTool } from 'exiftool-vendored'
 
 import { getGlobalLoggers } from '../photo/logger-adapter.js'
 import type { PickedExif } from '../types/photo.js'
+
+const exiftool = new ExifTool({
+  ...(process.env.EXIFTOOL_PATH ? { exiftoolPath: process.env.EXIFTOOL_PATH } : {}),
+  taskTimeoutMillis: 30000,
+})
+
+let isExiftoolClosed = false
+const closeExiftool = () => {
+  if (isExiftoolClosed) {
+    return
+  }
+  isExiftoolClosed = true
+  exiftool.end().catch(noop)
+}
+
+process.once('beforeExit', closeExiftool)
+process.once('SIGINT', closeExiftool)
+process.once('SIGTERM', closeExiftool)
 
 // 提取 EXIF 数据
 export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buffer): Promise<PickedExif | null> {
@@ -18,29 +34,12 @@ export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buff
   const tempImagePath = path.resolve('/tmp/image_process', `${crypto.randomUUID()}.jpg`)
 
   try {
-    log.info('开始提取 EXIF 数据')
-
-    // 首先尝试从处理后的图片中提取 EXIF
-    let metadata = await sharp(imageBuffer).metadata()
-
-    // 如果处理后的图片没有 EXIF 数据，且提供了原始 buffer，尝试从原始图片提取
-    if (!metadata.exif && originalBuffer) {
-      log.info('处理后的图片缺少 EXIF 数据，尝试从原始图片提取')
-      try {
-        metadata = await sharp(originalBuffer).metadata()
-      } catch (error) {
-        log.warn('从原始图片提取 EXIF 失败，可能是不支持的格式：', error)
-      }
-    }
-
-    if (!metadata.exif) {
-      log.warn('未找到 EXIF 数据')
-      return null
-    }
-
     await writeFile(tempImagePath, originalBuffer || imageBuffer)
+
+    log.info(`开始提取 EXIF 数据, 文件路径: ${tempImagePath}`)
     const exifData = await exiftool.read(tempImagePath)
-    const result = handleExifData(exifData, metadata)
+
+    const result = handleExifData(exifData)
 
     if (!exifData) {
       log.warn('EXIF 数据解析失败')
@@ -135,7 +134,7 @@ const pickKeys: Array<keyof Tags | (string & {})> = [
   'MicroVideoOffset',
   'MicroVideoPresentationTimestampUs',
 ]
-function handleExifData(exifData: Tags, metadata: Metadata): PickedExif {
+function handleExifData(exifData: Tags): PickedExif {
   const date = {
     DateTimeOriginal: formatExifDate(exifData.DateTimeOriginal),
     DateTimeDigitized: formatExifDate(exifData.DateTimeDigitized),
@@ -177,8 +176,8 @@ function handleExifData(exifData: Tags, metadata: Metadata): PickedExif {
     }
   }
   const size = {
-    ImageWidth: exifData.ExifImageWidth || metadata.width,
-    ImageHeight: exifData.ExifImageHeight || metadata.height,
+    ImageWidth: exifData.ExifImageWidth,
+    ImageHeight: exifData.ExifImageHeight,
   }
   const result: any = structuredClone(exifData)
   for (const key in result) {

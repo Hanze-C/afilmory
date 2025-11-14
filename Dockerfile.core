@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
+# Use Alpine base image for smaller size
 FROM node:lts-alpine AS builder
 ENV PNPM_HOME=/pnpm
 ENV PATH="$PNPM_HOME:$PATH"
@@ -31,10 +32,22 @@ WORKDIR /app
 
 # Runtime deps for image processing:
 # - perl: required by exiftool-vendored on Linux
-# - perl-image-exiftool: provides the exiftool binary (optional but useful)
+# - perl-image-exiftool: provides the exiftool binary
 # - vips: runtime library for sharp
 # - libheif: enable HEIF/HEIC support in libvips when available
-RUN apk add --no-cache perl perl-image-exiftool vips libheif
+RUN apk add --no-cache \
+  perl \
+  exiftool \
+  perl-image-exiftool \
+  vips \
+  libheif \
+  libc6-compat \
+  gcompat \
+  && EXIFTOOL_BIN="$(command -v exiftool)" \
+  && echo "Using exiftool binary at ${EXIFTOOL_BIN}" \
+  && "${EXIFTOOL_BIN}" -ver \
+  && ln -sf "${EXIFTOOL_BIN}" /usr/local/bin/exiftool
+ENV EXIFTOOL_PATH=/usr/local/bin/exiftool
 COPY --from=builder /workspace/be/apps/core/dist ./dist
 COPY --from=builder /workspace/be/packages/db/migrations ./migrations
 COPY --from=builder /workspace/be/apps/core/docker-entrypoint.sh ./docker-entrypoint.sh
