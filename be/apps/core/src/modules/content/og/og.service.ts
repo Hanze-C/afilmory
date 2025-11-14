@@ -94,7 +94,10 @@ export class OgService implements OnModuleDestroy {
   async loadFonts() {
     if (!this.geistFontPromise) {
       for (const candidate of GeistFontCandidates) {
-        const stats = await stat(candidate)
+        const stats = await stat(candidate).catch(() => null)
+        if (!stats) {
+          continue
+        }
         if (stats.isFile()) {
           this.geistFontPromise = readFile(candidate)
           break
