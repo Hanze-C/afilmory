@@ -11,6 +11,7 @@ import { injectable } from 'tsyringe'
 
 import { ManifestService } from '../manifest/manifest.service'
 import geistFontUrl from './assets/Geist-Medium.ttf?url'
+import harmonySansScMediumFontUrl from './assets/HarmonyOS_Sans_SC_Medium.ttf?url'
 import { renderOgImage } from './og.renderer'
 import type { ExifInfo, PhotoDimensions } from './og.template'
 
@@ -34,6 +35,18 @@ if (__DEV__) {
   )
 }
 
+const HarmonySansScMediumFontCandidates = [
+  resolve(process.cwd(), `./${harmonySansScMediumFontUrl}`),
+  resolve(process.cwd(), `./dist/${harmonySansScMediumFontUrl}`),
+]
+
+if (__DEV__) {
+  HarmonySansScMediumFontCandidates.push(
+    resolve(process.cwd(), `./be/apps/core/src/modules/content/og/assets/HarmonyOS_Sans_SC_Medium.ttf`),
+    resolve(process.cwd(), `./apps/core/src/modules/content/og/assets/HarmonyOS_Sans_SC_Medium.ttf`),
+    resolve(process.cwd(), `./core/src/modules/content/og/assets/HarmonyOS_Sans_SC_Medium.ttf`),
+  )
+}
 @injectable()
 export class OgService implements OnModuleDestroy {
   private fontConfig: SatoriOptions['fonts'] | null = null
@@ -90,7 +103,7 @@ export class OgService implements OnModuleDestroy {
   }
 
   private geistFontPromise: Promise<NonSharedBuffer> | null = null
-
+  private harmonySansScMediumFontPromise: Promise<NonSharedBuffer> | null = null
   async loadFonts() {
     if (!this.geistFontPromise) {
       for (const candidate of GeistFontCandidates) {
@@ -100,6 +113,18 @@ export class OgService implements OnModuleDestroy {
         }
         if (stats.isFile()) {
           this.geistFontPromise = readFile(candidate)
+          break
+        }
+      }
+    }
+    if (!this.harmonySansScMediumFontPromise) {
+      for (const candidate of HarmonySansScMediumFontCandidates) {
+        const stats = await stat(candidate).catch(() => null)
+        if (!stats) {
+          continue
+        }
+        if (stats.isFile()) {
+          this.harmonySansScMediumFontPromise = readFile(candidate)
           break
         }
       }
@@ -117,12 +142,12 @@ export class OgService implements OnModuleDestroy {
         style: 'normal',
         weight: 400,
       },
-      // {
-      //   name: '狮尾咏腿黑体',
-      //   data: await this.cjkFontPromise!,
-      //   style: 'normal',
-      //   weight: 400,
-      // },
+      {
+        name: 'HarmonyOS Sans SC',
+        data: await this.harmonySansScMediumFontPromise!,
+        style: 'normal',
+        weight: 400,
+      },
     ]
   }
 
@@ -133,8 +158,8 @@ export class OgService implements OnModuleDestroy {
     // Clean font promises 10 minutes after last activity
     this.fontCleanupTimer = setTimeout(
       () => {
-        // this.cjkFontPromise = null
         this.geistFontPromise = null
+        this.harmonySansScMediumFontPromise = null
         this.fontConfig = null
         this.fontCleanupTimer = null
       },

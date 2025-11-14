@@ -30,6 +30,7 @@ type LayoutType = 'portrait' | 'square' | 'landscape' | 'wide'
 
 interface LayoutConfig {
   type: LayoutType
+  arrangement: 'split' | 'stack' | 'wide'
   padding: number
   gap: number
   photoBox: { maxWidth: number; maxHeight: number }
@@ -78,7 +79,8 @@ export function OgTemplate({
     />
   )
 
-  const layoutComponent = layout.type === 'wide' ? WideLayout : layout.type === 'landscape' ? StackLayout : SplitLayout
+  const layoutComponent =
+    layout.arrangement === 'wide' ? WideLayout : layout.arrangement === 'stack' ? StackLayout : SplitLayout
 
   return (
     <BaseCanvas padding={layout.padding} siteName={siteName}>
@@ -86,6 +88,8 @@ export function OgTemplate({
     </BaseCanvas>
   )
 }
+
+const ogAspect = CANVAS.width / CANVAS.height
 
 function determineLayout(aspect: number): LayoutConfig {
   let finalAspect = aspect
@@ -97,6 +101,7 @@ function determineLayout(aspect: number): LayoutConfig {
     const padding = 60
     return {
       type: 'portrait',
+      arrangement: 'split',
       padding,
       gap: 44,
       photoBox: {
@@ -112,6 +117,7 @@ function determineLayout(aspect: number): LayoutConfig {
     const padding = 60
     return {
       type: 'square',
+      arrangement: 'split',
       padding,
       gap: 44,
       photoBox: {
@@ -127,6 +133,7 @@ function determineLayout(aspect: number): LayoutConfig {
     const padding = 50
     return {
       type: 'wide',
+      arrangement: 'wide',
       padding,
       gap: 28,
       photoBox: {
@@ -139,8 +146,11 @@ function determineLayout(aspect: number): LayoutConfig {
   }
 
   const padding = 54
+  const landscapeArrangement = finalAspect / ogAspect <= 0.82 ? 'split' : 'stack'
+
   return {
     type: 'landscape',
+    arrangement: landscapeArrangement,
     padding,
     gap: 26,
     photoBox: {
@@ -186,7 +196,7 @@ function BaseCanvas({ padding, siteName, children }: BaseCanvasProps) {
         padding: `${padding}px`,
         position: 'relative',
         background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)',
-        fontFamily: 'Geist, system-ui, -apple-system, sans-serif',
+        fontFamily: 'Geist, HarmonyOS Sans SC, system-ui, -apple-system, sans-serif',
         display: 'flex',
       }}
     >
@@ -437,6 +447,8 @@ function InfoPanel({ title, tags, exifItems, camera, formattedDate, accentColor,
             <div
               key={tag}
               style={{
+                display: 'flex',
+                alignItems: 'center',
                 fontSize: `${13 * fontScale}px`,
                 color: 'rgba(255,255,255,0.9)',
                 backgroundColor: 'rgba(255,255,255,0.12)',
@@ -510,6 +522,7 @@ function InfoPanel({ title, tags, exifItems, camera, formattedDate, accentColor,
             color: 'rgba(255,255,255,0.45)',
             fontSize: `${13 * fontScale}px`,
             marginTop: compact ? '2px' : '6px',
+            display: 'flex',
           }}
         >
           {formattedDate}
